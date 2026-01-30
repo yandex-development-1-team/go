@@ -1,5 +1,0 @@
-app:
-  environment: development  # development, production
-  port: 8080
-  log_level: debug         # debug, info, warning, error
-

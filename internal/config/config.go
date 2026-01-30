@@ -1,53 +1,69 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	App AppConfig
+	TelegramBotToken string `yaml:"telegram_bot_token"`
+	PostgresURL      string `yaml:"postgres_url"`
+	Port             int    `yaml:"port"`
+	Environment      string `yaml:"environment"`
+	PrometheusPort   int    `yaml:"prometheus_port"`
+	LogLevel         string `yaml:"log_level"`
 }
 
-type AppConfig struct {
-	Port        int
-	Environment string
-	LogLevel    string
-}
-
-// LoadConfig loads configuration from config file
-func LoadConfig(configPath string) (*Config, error) {
+func LoadConfig() (*Config, error) {
 	viper.SetConfigName("config")
-	viper.SetConfigType("yml")
-	viper.AddConfigPath(configPath)
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("internal/config")
+	viper.AddConfigPath(".")
 
 	// Set defaults
-	viper.SetDefault("app.port", 8080)
-	viper.SetDefault("app.environment", "development")
-	viper.SetDefault("app.log_level", "info")
+	viper.SetDefault("port", 8080)
+	viper.SetDefault("environment", "dev")
+	viper.SetDefault("prometheus_port", 9090)
+	viper.SetDefault("log_level", "info")
+
+	// Set env vars mapping
+	viper.AutomaticEnv()
+	viper.BindEnv("telegram_bot_token", "BOT_TOKEN")
+	viper.BindEnv("postgres_url", "POSTGRES_URL")
+	viper.BindEnv("port", "PORT")
+	viper.BindEnv("environment", "ENVIRONMENT")
+	viper.BindEnv("prometheus_port", "PROMETHEUS_PORT")
+	viper.BindEnv("log_level", "LOG_LEVEL")
 
 	if err := viper.ReadInConfig(); err != nil {
-		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if errors.As(err, &configFileNotFoundError) {
-			// Config file not found - use defaults
-			return parseConfig()
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return nil, fmt.Errorf("error reading config.yml: %w", err)
 		}
-
-		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
-	return parseConfig()
+	config := &Config{}
+	if err := viper.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("error parsing config.yml: %w", err)
+	}
+
+	if err := ValidateConfig(config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
 
-func parseConfig() (*Config, error) {
-	cfg := &Config{}
+func ValidateConfig(config *Config) error {
 
-	// App
-	cfg.App.Port = viper.GetInt("app.port")
-	cfg.App.Environment = viper.GetString("app.environment")
-	cfg.App.LogLevel = viper.GetString("app.log_level")
+	if config.TelegramBotToken == "" {
+		return fmt.Errorf("telegram_bot_token is empty")
+	}
 
-	return cfg, nil
+	if config.PostgresURL == "" {
+		return fmt.Errorf("postgres_url is empty")
+	}
+
+	return nil
+
 }
