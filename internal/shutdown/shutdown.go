@@ -2,7 +2,6 @@ package shutdown
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
@@ -19,12 +20,12 @@ type ShutdownInterface interface {
 
 type ShutdownHandler struct {
 	logger  *zap.Logger
-	db      *sql.DB
-	bot     *BotAPI
+	db      *sqlx.DB
+	bot     *tgbotapi.BotAPI
 	metrics *http.Server
 }
 
-func NewShutdownHandler(logger *zap.Logger, db *sql.DB, bot *BotAPI, metrics *http.Server) *ShutdownHandler {
+func NewShutdownHandler(logger *zap.Logger, db *sqlx.DB, bot *tgbotapi.BotAPI, metrics *http.Server) *ShutdownHandler {
 	return &ShutdownHandler{
 		logger:  logger,
 		db:      db,
@@ -87,7 +88,7 @@ func (s *ShutdownHandler) fastShutdown(ctx context.Context, timeout int) error {
 	case err = <-closed:
 		if err != nil {
 			_ = terminateAllQueries(s.db)
-			s.logger.Error("failed to close database: %v", err)
+			s.logger.Error(err.Error())
 		}
 	// для закрытия по таймауту и жесткого закрытия всех соединений с бд и запросов
 	case <-ctx2.Done():
@@ -140,7 +141,7 @@ func (s *ShutdownHandler) slowShutdown(ctx context.Context, timeout int) error {
 	return err
 }
 
-func shutdownDBConn(ctx context.Context, db *sql.DB) error {
+func shutdownDBConn(ctx context.Context, db *sqlx.DB) error {
 	ctx, cancel20 := context.WithTimeout(ctx, 20)
 	defer cancel20()
 
@@ -171,7 +172,7 @@ func shutdownDBConn(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-func terminateAllQueries(db *sql.DB) error {
+func terminateAllQueries(db *sqlx.DB) error {
 	_, err := db.Exec(`
 			SELECT pg_terminate_backend(pid) 
 			FROM pg_stat_activity 
