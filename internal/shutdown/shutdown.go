@@ -70,7 +70,7 @@ func (s *ShutdownHandler) fastShutdown(ctx context.Context, timeout int) error {
 	defer cancel()
 
 	// закрытие канала входящих сообщений тг бота
-	close(s.bot.shutdownChannel)
+	s.bot.StopReceivingUpdates()
 	s.logger.Info("tg bot's incoming messages channel closed")
 
 	// закрытие соединения с бд
@@ -119,7 +119,7 @@ func (s *ShutdownHandler) slowShutdown(ctx context.Context, timeout int) error {
 	defer cancel()
 
 	// закрытие канала входящих сообщений тг бота
-	close(s.bot.shutdownChannel)
+	s.bot.StopReceivingUpdates()
 	s.logger.Info("tg bot's incoming messages channel closed")
 
 	// закрытие соединения с бд
