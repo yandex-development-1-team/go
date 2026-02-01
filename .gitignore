@@ -1,0 +1,29 @@
+# Бинарные файлы (исполняемые файлы)
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Артефакты покрытия кода
+*.coverprofile
+*.prof
+coverage.out
+
+# Папки IDE и редакторы
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Файлы окружения
+.env
+
+# Вендоринг (если не используете vendor/ в Git)
+# vendor/
+
+# Go workspace
+go.work
+go.work.sum
