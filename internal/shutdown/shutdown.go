@@ -35,6 +35,7 @@ func NewShutdownHandler(logger *zap.Logger, db *sqlx.DB, bot *tgbotapi.BotAPI, m
 }
 
 func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
+	var err error
 	// канал для прослушивания
 	shutdown := make(chan os.Signal, 1)
 	// os.Interrupt для кроссплатформенности
@@ -44,26 +45,17 @@ func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 	s.logger.Info("получен сигнал завершения работы приложения")
 
 	// выбор длительности таймаута контекста при shutdown
-	var err error
 	var timeout int
 	switch signal {
 	case os.Interrupt:
 		// для ctrl+c
 		timeout = 30
 		s.logger.Info("slow shutdown started")
-		err = s.slowShutdown(ctx, timeout)
 	case syscall.SIGTERM:
 		// для команды из ОС
 		timeout = 5
 		s.logger.Info("slow shutdown started")
-		err = s.fastShutdown(ctx, timeout)
 	}
-
-	return err
-}
-
-func (s *ShutdownHandler) fastShutdown(ctx context.Context, timeout int) error {
-	var err error
 
 	// обший таймаут на shutdown
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout))
@@ -74,8 +66,8 @@ func (s *ShutdownHandler) fastShutdown(ctx context.Context, timeout int) error {
 	s.logger.Info("tg bot's incoming messages channel closed")
 
 	// закрытие соединения с бд
-	// отводится 2 секунды или жесткое закрытие соединений и запросов
-	ctx2, cancel2 := context.WithTimeout(ctx, 2*time.Second)
+	timeoutForDB := timeout * 6 / 10
+	ctx2, cancel2 := context.WithTimeout(ctx, time.Duration(timeoutForDB)*time.Second)
 	defer cancel2()
 	closed := make(chan error, 1)
 	s.logger.Info("stoping database started")
@@ -84,101 +76,30 @@ func (s *ShutdownHandler) fastShutdown(ctx context.Context, timeout int) error {
 	}()
 
 	select {
-	// для быстрого корректного закрытия
+	// для корректного закрытия
 	case err = <-closed:
 		if err != nil {
-			_ = terminateAllQueries(s.db)
 			s.logger.Error(err.Error())
 		}
-	// для закрытия по таймауту и жесткого закрытия всех соединений с бд и запросов
+	// для выхода по таймауту
 	case <-ctx2.Done():
-		err = terminateAllQueries(s.db)
-		if err != nil {
-			s.logger.Error(err.Error())
-		}
+		s.logger.Error("database shutdown timeout")
+		err = fmt.Errorf("database shutdown timeout: %w", ctx.Err())
 	}
-
 	if err == nil {
 		s.logger.Info("database stopped successfully")
 	}
 
 	// закрытие HTTP сервера метрик
-	ctx3, cancel3 := context.WithTimeout(ctx, 1*time.Second)
+	timeoutForMetrics := (timeout - timeoutForDB) / 2
+	ctx3, cancel3 := context.WithTimeout(ctx, time.Duration(timeoutForMetrics)*time.Second)
 	defer cancel3()
 	s.metrics.Shutdown(ctx3)
 	s.logger.Info("prometheus metrics server stopped")
 
-	return err
-}
+	// завершение работы логгера
+	s.logger.Info("stoping logger")
+	_ = s.logger.Sync()
 
-func (s *ShutdownHandler) slowShutdown(ctx context.Context, timeout int) error {
-	var err error
-
-	// общий таймаут на shutdown
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout))
-	defer cancel()
-
-	// закрытие канала входящих сообщений тг бота
-	s.bot.StopReceivingUpdates()
-	s.logger.Info("tg bot's incoming messages channel closed")
-
-	// закрытие соединения с бд
-	s.logger.Info("stoping database started")
-	err = shutdownDBConn(ctx, s.db)
-	if err != nil {
-		s.logger.Error(err.Error())
-	} else {
-		s.logger.Info("database stopped successfully")
-	}
-
-	// закрытие HTTP сервера метрик
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel2()
-	s.logger.Info("start stopping prometheus metrics server")
-	s.metrics.Shutdown(ctx2)
-	s.logger.Info("prometheus metrics server stopped")
-
-	return err
-}
-
-func shutdownDBConn(ctx context.Context, db *sqlx.DB) error {
-	ctx, cancel20 := context.WithTimeout(ctx, 20)
-	defer cancel20()
-
-	// канал получения сингала закрытия БД
-	done := make(chan error)
-	defer close(done)
-	go func() {
-		done <- db.Close()
-	}()
-
-	select {
-	// корректное закрытие соединений за 20 секунд
-	case err := <-done:
-		if err != nil {
-			// если закрытие бд завершилось ошибкой - убиваем запросы
-			_ = terminateAllQueries(db)
-			return fmt.Errorf("failed to close database: %v", err)
-		}
-	case <-ctx.Done():
-		// не завершились за 20 секунд - зависшие или долгие запросы
-		// убиваем запросы и фиксируем результат
-		err := terminateAllQueries(db)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func terminateAllQueries(db *sqlx.DB) error {
-	_, err := db.Exec(`
-			SELECT pg_terminate_backend(pid) 
-			FROM pg_stat_activity 
-			WHERE usename = CURRENT_USER 
-				AND pid != pg_backend_pid()
-				AND state = 'active'
-	`)
 	return err
 }
