@@ -1,1 +1,7 @@
-package bot
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Print("Start service")
+}
