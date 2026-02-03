@@ -6,8 +6,8 @@ import (
 )
 
 // setEnvironment определяет и устанавливает конфигурацию Development/Production
-func setEnvironment(env string) zap.Config {
-	if env == "debug" {
+func setEnvironment(mode string) zap.Config {
+	if mode == "dev" {
 		return zap.NewDevelopmentConfig()
 	}
 
@@ -25,9 +25,9 @@ func setLevel(config *zap.Config, env string) {
 }
 
 // NewLogger создает и настраивает логгер
-func NewLogger(env string) *zap.Logger {
-	config := setEnvironment(env)
-	setLevel(&config, env)
+func NewLogger(mode string, level string) *zap.Logger {
+	config := setEnvironment(mode)
+	setLevel(&config, level)
 
 	logger, err := config.Build()
 	if err != nil {
