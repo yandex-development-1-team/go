@@ -21,6 +21,9 @@ coverage.out
 # Файлы окружения
 .env
 
+# Локальные конфиги
+internal/config/config.yaml
+
 # Вендоринг (если не используете vendor/ в Git)
 # vendor/
 
