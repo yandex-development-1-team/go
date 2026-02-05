@@ -1,10 +1,8 @@
-package telegram
+package handlers
 
 import (
 	"fmt"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/yandex-development-1-team/go/internal/bot"
 	"go.uber.org/zap"
 )
 
@@ -37,12 +35,12 @@ func SetUserSaver(userSaver UserSaver) { defaultUserSaver = userSaver }
 // HandleStart обрабатывает команду /start: логирует событие, при необходимости сохраняет
 // пользователя через UserSaver, отправляет приветственное сообщение и главное меню с inline-кнопками
 // Возвращает ошибку только при сбое отправки сообщения в Telegram
-func HandleStart(bot *bot.TelegramBot, msg *tgbotapi.Message) error {
+func HandleStart(bot *tgbotapi.BotAPI, msg *tgbotapi.Message, logger *zap.Logger) error {
 	userID := msg.From.ID
 	chatID := msg.Chat.ID
 	username := ""
 
-	bot.Logger.Info("start command",
+	logger.Info("start command",
 		zap.Int64("user_id", userID),
 		zap.String("username", username),
 		zap.Int64("chat_id", chatID),
@@ -50,7 +48,7 @@ func HandleStart(bot *bot.TelegramBot, msg *tgbotapi.Message) error {
 
 	if defaultUserSaver != nil {
 		if err := defaultUserSaver.SaveUser(userID, username, chatID); err != nil {
-			bot.Logger.Warn("failed to save user", zap.Int64("user_id", userID), zap.Error(err))
+			logger.Warn("failed to save user", zap.Int64("user_id", userID), zap.Error(err))
 		}
 	}
 
@@ -58,9 +56,12 @@ func HandleStart(bot *bot.TelegramBot, msg *tgbotapi.Message) error {
 	reply := tgbotapi.NewMessage(chatID, WelcomeText)
 	reply.ReplyMarkup = keyboard
 
-	if _, err := bot.Api.Send(reply); err != nil {
+	sent, err := bot.Send(reply)
+	if err != nil {
+		logger.Error("failed to send start message", zap.Int64("chat_id", chatID), zap.Error(err))
 		return fmt.Errorf("failed to send start message: %w", err)
 	}
+	_ = sent
 	return nil
 }
 
