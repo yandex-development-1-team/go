@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
@@ -18,50 +19,76 @@ const (
 )
 
 // WelcomeText - Приветственное сообщение при команде /start
-const WelcomeText = "👋 Добро пожаловать в Bot Яндекса!\n\nВыберите интересующую вас опцию:"
+// ErrMessageUser - Текст об ошибке при работе с БД
+const (
+	WelcomeText    = "👋 Добро пожаловать в Bot Яндекса!\n\nВыберите интересующую вас опцию:"
+	ErrMessageUser = "Произошла ошибка, попробуйте позже"
+)
 
 // UserSave сохраняет данные пользователя в БД
 // Реализация может сохранять только новых пользователей
-type UserSaver interface {
-	SaveUser(userID int64, username string, chatID int64) error
+type UserRepository interface {
+	CreateUser(ctx context.Context, telegramID int64, username, firstNme, lastName string) (created bool, err error)
 }
 
-var defaultUserSaver UserSaver
+var defaultUserRepository UserRepository
 
 // SetUserSaver задает реализацию UserSaver
 // Если не вызвана, сохранение пользователя не выполняется
-func SetUserSaver(userSaver UserSaver) { defaultUserSaver = userSaver }
+func SetUserRepository(repo UserRepository) { defaultUserRepository = repo }
 
 // HandleStart обрабатывает команду /start: логирует событие, при необходимости сохраняет
 // пользователя через UserSaver, отправляет приветственное сообщение и главное меню с inline-кнопками
 // Возвращает ошибку только при сбое отправки сообщения в Telegram
 func HandleStart(bot *tgbotapi.BotAPI, msg *tgbotapi.Message, logger *zap.Logger) error {
-	userID := msg.From.ID
+	ctx := context.Background()
 	chatID := msg.Chat.ID
+
+	telegramID := msg.From.ID
 	username := ""
+	firstName := ""
+	lastName := ""
+	if msg.From != nil {
+		username = msg.From.UserName
+		firstName = msg.From.FirstName
+		lastName = msg.From.LastName
+	}
 
 	logger.Info("start command",
-		zap.Int64("user_id", userID),
+		zap.Int64("telegram_id", telegramID),
 		zap.String("username", username),
 		zap.Int64("chat_id", chatID),
 	)
 
-	if defaultUserSaver != nil {
-		if err := defaultUserSaver.SaveUser(userID, username, chatID); err != nil {
-			logger.Warn("failed to save user", zap.Int64("user_id", userID), zap.Error(err))
+	if defaultUserRepository != nil {
+		created, err := defaultUserRepository.CreateUser(ctx, telegramID, username, firstName, lastName)
+		if err != nil {
+			logger.Error("database error in CreateUser",
+				zap.Int64("telegram_id", telegramID),
+				zap.String("username", username),
+				zap.Error(err),
+			)
+			errMsg := tgbotapi.NewMessage(chatID, ErrMessageUser)
+			if _, sendErr := bot.Send(errMsg); sendErr != nil {
+				logger.Error("failed to send error message", zap.Error(sendErr))
+			}
+			return err
+		}
+		if created {
+			logger.Info("new_user_registered",
+				zap.Int64("telegram_id", telegramID),
+				zap.String("username", username),
+			)
 		}
 	}
 
-	keyboard := mainMenuKeyboard()
 	reply := tgbotapi.NewMessage(chatID, WelcomeText)
-	reply.ReplyMarkup = keyboard
+	reply.ReplyMarkup = mainMenuKeyboard()
 
-	sent, err := bot.Send(reply)
-	if err != nil {
+	if _, err := bot.Send(reply); err != nil {
 		logger.Error("failed to send start message", zap.Int64("chat_id", chatID), zap.Error(err))
 		return fmt.Errorf("failed to send start message: %w", err)
 	}
-	_ = sent
 	return nil
 }
 
@@ -88,4 +115,22 @@ func mainMenuKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("Связь с поддержкой", CallbackSupport),
 		),
 	)
+}
+
+type StubUserRepository struct {
+	users map[int64]struct {
+		username, firstName, lastName string
+	}
+}
+
+func NewStubUserRepository() *StubUserRepository {
+	return &StubUserRepository{
+		users: make(map[int64]struct{ username, firstName, lastName string }),
+	}
+}
+
+func (s *StubUserRepository) CreateUser(ctx context.Context, telegramID int64, username, firstName, lastName string) (bool, error) {
+	_, exists := s.users[telegramID]
+	s.users[telegramID] = struct{ username, firstName, lastName string }{username, firstName, lastName}
+	return !exists, nil
 }
