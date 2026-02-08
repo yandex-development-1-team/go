@@ -24,7 +24,7 @@ coverage.out
 .env
 
 # Файлы конфигурации
-*.yml
+*.yaml
 
 # Вендоринг (если не используете vendor/ в Git)
 # vendor/
