@@ -40,7 +40,7 @@ func loadConfig() (*Config, error) {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath("internal/config")
+	v.AddConfigPath("config")
 	v.AddConfigPath(".")
 
 	// Set defaults
