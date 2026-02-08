@@ -14,6 +14,7 @@ type Config struct {
 	Environment      string `yaml:"environment"`
 	PrometheusPort   int    `yaml:"prometheus_port"`
 	LogLevel         string `yaml:"log_level"`
+	HostName         string `yaml:"host_name"`
 }
 
 var (
@@ -47,6 +48,7 @@ func loadConfig() (*Config, error) {
 	v.SetDefault("environment", "dev")
 	v.SetDefault("prometheus_port", 9090)
 	v.SetDefault("log_level", "info")
+	v.SetDefault("host_name", "unknown")
 
 	// Set env vars mapping
 	v.AutomaticEnv()
@@ -56,6 +58,7 @@ func loadConfig() (*Config, error) {
 	v.BindEnv("environment", "ENVIRONMENT")
 	v.BindEnv("prometheus_port", "PROMETHEUS_PORT")
 	v.BindEnv("log_level", "LOG_LEVEL")
+	v.BindEnv("host_name", "HOSTNAME")
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
