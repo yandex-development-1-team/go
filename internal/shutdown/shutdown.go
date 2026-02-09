@@ -9,11 +9,7 @@ import (
 	"syscall"
 	"time"
 
-<<<<<<< feat/4
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-=======
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
->>>>>>> main
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
