@@ -10,7 +10,10 @@ import (
 
 // RunMigrations применяет миграции и логирует результат
 func RunMigrations(db *sql.DB) error {
-	goose.SetDialect("postgres")
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("failed to set goose dialect: %w", err)
+	}
 
 	// Логируем текущую версию БД
 	versionBefore, err := goose.GetDBVersion(db)

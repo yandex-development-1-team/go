@@ -6,7 +6,6 @@ require (
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/lib/pq v1.11.1
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/spf13/viper v1.21.0
 	go.uber.org/zap v1.27.1
