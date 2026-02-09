@@ -1,1 +1,48 @@
 package handlers
+
+import (
+	"fmt"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
+
+// KeyboardService генерирует клавиатуры для разных экранов
+type KeyboardService struct{}
+
+func NewKeyboardService() *KeyboardService {
+	return &KeyboardService{}
+}
+
+// ServiceDetailKeyboard создаёт клавиатуру для детального просмотра услуги
+func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, serviceID, boxID int) tgbotapi.InlineKeyboardMarkup {
+	var buttons [][]tgbotapi.InlineKeyboardButton
+
+	switch serviceType {
+	case ServiceTypeMuseum:
+		buttons = [][]tgbotapi.InlineKeyboardButton{
+			{
+				tgbotapi.NewInlineKeyboardButtonData("👤 Приватный тур", fmt.Sprintf("private_view_%d", serviceID)),
+				tgbotapi.NewInlineKeyboardButtonData("👥 Групповой тур", fmt.Sprintf("public_view_%d", serviceID)),
+			},
+		}
+	case ServiceTypeSport:
+		buttons = [][]tgbotapi.InlineKeyboardButton{
+			{
+				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать сейчас", fmt.Sprintf("book_now_%d", serviceID)),
+			},
+		}
+	default:
+		buttons = [][]tgbotapi.InlineKeyboardButton{
+			{
+				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("book_now_%d", serviceID)),
+			},
+		}
+	}
+
+	// Кнопка "Назад" всегда в отдельной строке
+
+	backButton := tgbotapi.NewInlineKeyboardButtonData("⬅️ Назад", fmt.Sprintf("back_to_box_%d", boxID))
+	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{backButton})
+
+	return tgbotapi.NewInlineKeyboardMarkup(buttons...)
+}
