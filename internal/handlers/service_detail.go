@@ -22,13 +22,12 @@ type ServiceHandler struct {
 type ServiceType string
 
 const (
-	ServiceTypeMuseum  ServiceType = "museum"  // Музеи, галереи
-	ServiceTypeSport   ServiceType = "sport"   // Спортивные услуги
-	ServiceTypeDefault ServiceType = "default" // Прочие услуги
+	ServiceTypeMuseum  ServiceType = "museum"
+	ServiceTypeSport   ServiceType = "sport"
+	ServiceTypeDefault ServiceType = "default"
 )
 
 // Service представляет собой услугу с полной информацией
-// (должен соответствовать структуре из репозитория)
 type Service struct {
 	ID          int         //Уникальный идентификатор услуги
 	Name        string      // название услуги
@@ -49,20 +48,6 @@ func NewServiceHandler(logger *zap.Logger, repo *repository.Repository, bot *tgb
 }
 
 // HandleServiceDetail обрабатывает нажатие на конкретную услугу
-//
-// Параметры:
-//   - serviceID — ID услуги из базы данных
-//   - userID — ID пользователя телеграма
-//
-// Возвращает:
-//   - ошибку при проблемах с получением данных или отправкой сообщения
-//
-// Особенности:
-//   - Автоматически определяет тип услуги и показывает соответствующие кнопки
-//   - Для музеев/галерей: кнопки "Приватный тур" и "Групповой тур"
-//   - Для спорта: кнопка "Забронировать сейчас"
-//   - Всегда добавляет кнопку "Назад" для возврата в меню услуг
-//   - Логирует каждый запрос с указанием пользователя и услуги
 func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int, userID int64) error {
 
 	// === ШАГ 1: Логирование запроса ===
@@ -103,39 +88,55 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int,
 		emoji = "⚽"
 	}
 
-	var messageParts []string
-	messageParts = append(messageParts, fmt.Sprintf("%s %s\n", emoji, service.Name))
+	var builder strings.Builder
+	builder.Grow(300)
 
-	// Добавляем описание, если есть
-	if service.Description != "" {
-		messageParts = append(messageParts, fmt.Sprintf("Описание: %s", service.Description))
+	// Заголовок с эмодзи
+	builder.WriteString(emoji)
+	builder.WriteString(" ")
+	builder.WriteString(service.Name)
+	builder.WriteString("\n\n")
+
+	sections := []struct {
+		label string
+		value string
+	}{
+		{"Описание", service.Description},
+		{"Правила", service.Rules},
+		{"Расписание", service.Schedule},
 	}
 
-	// Добавляем правила, если есть
-	if service.Rules != "" {
-		messageParts = append(messageParts, fmt.Sprintf("Правила: %s", service.Rules))
-	}
+	for i, section := range sections {
+		if section.value != "" {
+			builder.WriteString(section.label)
+			builder.WriteString(": ")
+			builder.WriteString(section.value)
+			builder.WriteString("\n")
 
-	// Добавляем расписание, если есть
-	if service.Schedule != "" {
-		messageParts = append(messageParts, fmt.Sprintf("Расписание: %s", service.Schedule))
+			// Добавляем перенос только если это НЕ последний непустой раздел
+			// или если после него будут кнопки
+
+		}
+		if i == len(sections)-1 {
+			builder.WriteString("\n")
+		}
 	}
 
 	// Формируем основное сообщение
-	messageText := strings.Join(messageParts, "\n\n")
 
 	// === ШАГ 4: Формирование призыва к действию и кнопок ===
 	// Добавляем разделитель и призыв к действию
-	messageText += "\n\n"
 
 	switch service.Type {
 	case ServiceTypeMuseum:
-		messageText += "Выберите тип посещения:"
+		builder.WriteString("Выберите тип посещения:")
 	case ServiceTypeSport:
-		messageText += "Выберите действие:"
+		builder.WriteString("Выберите действие:")
 	default:
-		messageText += "Доступные действия:"
+		builder.WriteString("Доступные действия:")
 	}
+
+	messageText := builder.String() //итоговая строка
 
 	// === ШАГ 5: Создание клавиатуры с кнопками ===
 	// Кнопки зависят от типа услуги
