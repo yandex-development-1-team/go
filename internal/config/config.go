@@ -39,7 +39,7 @@ func loadConfig(paths []string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	if len(paths) > 0 {
+	if paths != nil && len(paths) > 0 {
 		for _, path := range paths {
 			v.AddConfigPath(path)
 		}
