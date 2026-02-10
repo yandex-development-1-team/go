@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/yandex-development-1-team/go/internal/models"
 	"go.uber.org/zap"
 )
 
@@ -25,7 +24,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	container, err := startContainer()
@@ -140,7 +139,6 @@ func TestCreateUser(t *testing.T) {
 		reqUserName     string
 		reqFirstName    string
 		reqLastName     string
-		wantUser        *models.User
 		wantErr         error
 	}{
 		{
@@ -150,14 +148,7 @@ func TestCreateUser(t *testing.T) {
 			reqUserName:     "test_name",
 			reqFirstName:    "test_first_name",
 			reqLastName:     "test_last_name",
-			wantUser: &models.User{
-				ID:         1,
-				TelegramID: 123456,
-				Username:   "test_name",
-				FirstName:  "test_first_name",
-				LastName:   "test_last_name",
-			},
-			wantErr: nil,
+			wantErr:         nil,
 		},
 		{
 			name:            "double_data",
@@ -166,24 +157,7 @@ func TestCreateUser(t *testing.T) {
 			reqUserName:     "test_name",
 			reqFirstName:    "test_first_name",
 			reqLastName:     "test_last_name",
-			wantUser:        &models.User{},
-			wantErr:         models.ErrAlreadyExist,
-		},
-		{
-			name:            "already_exist",
-			contextDuration: 2 * time.Second,
-			reqTelegramId:   123456,
-			reqUserName:     "test_name",
-			reqFirstName:    "test_first_name",
-			reqLastName:     "test_last_name",
-			wantUser: &models.User{
-				ID:         1,
-				TelegramID: 123456,
-				Username:   "",
-				FirstName:  "",
-				LastName:   "",
-			},
-			wantErr: models.ErrAlreadyExist,
+			wantErr:         nil,
 		},
 		{
 			name:            "request_canceled",
@@ -192,14 +166,7 @@ func TestCreateUser(t *testing.T) {
 			reqUserName:     "",
 			reqFirstName:    "",
 			reqLastName:     "",
-			wantUser: &models.User{
-				ID:         1,
-				TelegramID: 123456,
-				Username:   "",
-				FirstName:  "",
-				LastName:   "",
-			},
-			wantErr: ErrRequestCanceled,
+			wantErr:         ErrRequestCanceled,
 		},
 		{
 			name:            "request_timeout",
@@ -208,14 +175,7 @@ func TestCreateUser(t *testing.T) {
 			reqUserName:     "test_name",
 			reqFirstName:    "test_first_name",
 			reqLastName:     "test_last_name",
-			wantUser: &models.User{
-				ID:         1,
-				TelegramID: 123456,
-				Username:   "",
-				FirstName:  "",
-				LastName:   "",
-			},
-			wantErr: ErrRequestTimeout,
+			wantErr:         ErrRequestTimeout,
 		},
 	}
 
@@ -236,17 +196,8 @@ func TestCreateUser(t *testing.T) {
 			cancel()
 		}
 
-		user, err := repo.CreateUser(ctx, tt.reqTelegramId, tt.reqUserName, tt.reqFirstName, tt.reqLastName)
-		if tt.wantErr != nil {
-			assert.ErrorIs(t, err, tt.wantErr, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-		}
-		if tt.wantErr == nil {
-			assert.NoError(t, err, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantUser.TelegramID, user.TelegramID, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantUser.Username, user.Username, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantUser.FirstName, user.FirstName, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantUser.LastName, user.LastName, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-		}
+		err := repo.CreateUser(ctx, tt.reqTelegramId, tt.reqUserName, tt.reqFirstName, tt.reqLastName)
+		assert.ErrorIs(t, err, tt.wantErr, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
 	}
 }
 

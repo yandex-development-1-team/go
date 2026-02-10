@@ -13,12 +13,12 @@ import (
 var (
 	ErrRequestTimeout  = errors.New("request timeout")
 	ErrUserNotFound    = errors.New("user not found")
-	ErrRequestCanceled = errors.New("request canceles")
+	ErrRequestCanceled = errors.New("request canceled")
 	ErrDatabase        = errors.New("database error")
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) (*models.User, error)
+	CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) error
 	GetUserByTelegramID(ctx context.Context, telegramID int64) (*models.User, error)
 	UpdateUserGrade(ctx context.Context, telegramID int64, grade int) error
 	IsAdmin(ctx context.Context, telegramID int64) (bool, error)
@@ -36,27 +36,20 @@ func NewUserRepository(db *sqlx.DB, logger *zap.Logger) *UserRepo {
 	}
 }
 
-func (u *UserRepo) CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) (*models.User, error) {
-	var user models.User
+func (u *UserRepo) CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) error {
 	var operation = "create_user"
 
-	err := u.db.GetContext(ctx, &user, `
-	INSERT INTO users (telegram_id, username, first_name, last_name)
-	SELECT $1, $2, $3, $4
-	WHERE NOT EXISTS (
-			SELECT 1 FROM users WHERE telegram_id = $1
-	)
-	RETURNING *`,
-		telegramID, userName, firstName, lastName)
-	if errors.Is(err, sql.ErrNoRows) {
-		u.logger.Error("user_already_exist", zap.Error(models.ErrAlreadyExist), zap.String("operation", operation))
-		return &user, models.ErrAlreadyExist
-	}
+	_, err := u.db.ExecContext(ctx, `
+	INSERT INTO users (telegram_id, username, first_name, last_name) 
+	VALUES ($1, $2, $3, $4) 
+	ON CONFLICT (telegram_id) 
+	DO UPDATE SET username=EXCLUDED.username
+	`, telegramID, userName, firstName, lastName)
 	if err != nil {
-		return &user, u.checkError(operation, err)
+		return u.checkError(operation, err)
 	}
 
-	return &user, err
+	return nil
 }
 
 func (u *UserRepo) GetUserByTelegramID(ctx context.Context, telegramID int64) (*models.User, error) {
@@ -67,12 +60,12 @@ func (u *UserRepo) GetUserByTelegramID(ctx context.Context, telegramID int64) (*
 		SELECT *
 		FROM users
 		WHERE telegram_id=$1`, telegramID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		u.logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
-		return &user, ErrUserNotFound
+		return nil, ErrUserNotFound
 	}
 	if err != nil {
-		return &user, u.checkError(operation, err)
+		return nil, u.checkError(operation, err)
 	}
 
 	return &user, err
@@ -112,10 +105,10 @@ func (u *UserRepo) IsAdmin(ctx context.Context, telegramID int64) (bool, error) 
 
 	if errors.Is(err, sql.ErrNoRows) {
 		u.logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
-		return isAdmin, ErrUserNotFound
+		return false, ErrUserNotFound
 	}
 	if err != nil {
-		return isAdmin, u.checkError(operation, err)
+		return false, u.checkError(operation, err)
 	}
 
 	return isAdmin, err
