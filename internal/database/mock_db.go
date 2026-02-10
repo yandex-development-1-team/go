@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// Этот путь лучше получать из энвов
 const mockLocalDir = "./internal/database/mocks/mock.json"
 
 type MockClient struct {
@@ -19,17 +20,17 @@ func NewMockClient(ctx context.Context) *MockClient {
 	}
 }
 
-func (m MockClient) GetBoxes(ctx context.Context) ([]db_models.Box, error) {
-	var boxes []db_models.Box
+func (m MockClient) GetBoxSolutions(ctx context.Context) ([]db_models.BoxSolution, error) {
+	var boxes []db_models.BoxSolution
 
 	data, err := os.ReadFile(m.mockLocalDir)
 	if err != nil {
-		return []db_models.Box{}, err
+		return []db_models.BoxSolution{}, err
 	}
 
 	err = json.Unmarshal(data, &boxes)
 	if err != nil {
-		return []db_models.Box{}, err
+		return []db_models.BoxSolution{}, err
 	}
 
 	return boxes, nil

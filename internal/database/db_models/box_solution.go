@@ -1,6 +1,7 @@
 package db_models
 
-type Box struct {
+type BoxSolution struct {
+	ID             int64
 	Name           string
 	Description    string
 	AvailableSlots []AvailableSlot
