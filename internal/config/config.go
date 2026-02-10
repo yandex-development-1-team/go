@@ -2,18 +2,19 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	TelegramBotToken string `yaml:"telegram_bot_token"`
-	PostgresURL      string `yaml:"postgres_url"`
-	Port             int    `yaml:"port"`
-	Environment      string `yaml:"environment"`
-	PrometheusPort   int    `yaml:"prometheus_port"`
-	LogLevel         string `yaml:"log_level"`
+	TelegramBotToken string `mapstructure:"telegram_bot_token"`
+	PostgresURL      string `mapstructure:"postgres_url"`
+	Port             int    `mapstructure:"port"`
+	Environment      string `mapstructure:"environment"`
+	PrometheusPort   int    `mapstructure:"prometheus_port"`
+	LogLevel         string `mapstructure:"log_level"`
 }
 
 var (
@@ -22,9 +23,9 @@ var (
 	loadErr  error
 )
 
-func GetConfig() (Config, error) {
+func GetConfig(paths []string) (Config, error) {
 	loadOnce.Do(func() {
-		cfg, err := loadConfig()
+		cfg, err := loadConfig(paths)
 		if err != nil {
 			loadErr = err
 			return
@@ -34,13 +35,22 @@ func GetConfig() (Config, error) {
 	return appCfg, loadErr
 }
 
-func loadConfig() (*Config, error) {
+func loadConfig(paths []string) (*Config, error) {
+
+	dir, _ := os.Getwd()
+	fmt.Println("Current dir:", dir)
 
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath("config")
-	v.AddConfigPath(".")
+	if len(paths) > 0 {
+		for _, path := range paths {
+			v.AddConfigPath(path)
+		}
+	} else {
+		v.AddConfigPath("config")
+		v.AddConfigPath(".")
+	}
 
 	// Set defaults
 	v.SetDefault("port", 8080)
@@ -49,7 +59,7 @@ func loadConfig() (*Config, error) {
 	v.SetDefault("log_level", "info")
 
 	// Set env vars mapping
-	v.AutomaticEnv()
+	//v.AutomaticEnv()
 	v.BindEnv("telegram_bot_token", "BOT_TOKEN")
 	v.BindEnv("postgres_url", "POSTGRES_URL")
 	v.BindEnv("port", "PORT")
@@ -58,9 +68,10 @@ func loadConfig() (*Config, error) {
 	v.BindEnv("log_level", "LOG_LEVEL")
 
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config.yml: %w", err)
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return nil, fmt.Errorf("config file not found")
 		}
+		return nil, fmt.Errorf("error reading config.yml: %w", err)
 	}
 
 	config := &Config{}
