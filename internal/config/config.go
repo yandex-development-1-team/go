@@ -59,7 +59,6 @@ func loadConfig(paths []string) (*Config, error) {
 	v.SetDefault("log_level", "info")
 
 	// Set env vars mapping
-	//v.AutomaticEnv()
 	v.BindEnv("telegram_bot_token", "BOT_TOKEN")
 	v.BindEnv("postgres_url", "POSTGRES_URL")
 	v.BindEnv("port", "PORT")
