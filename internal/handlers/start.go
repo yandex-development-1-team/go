@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"go.uber.org/zap"
 )
 
@@ -35,7 +37,7 @@ func SetUserSaver(userSaver UserSaver) { defaultUserSaver = userSaver }
 // HandleStart обрабатывает команду /start: логирует событие, при необходимости сохраняет
 // пользователя через UserSaver, отправляет приветственное сообщение и главное меню с inline-кнопками
 // Возвращает ошибку только при сбое отправки сообщения в Telegram
-func HandleStart(bot *tgbotapi.BotAPI, msg *tgbotapi.Message, logger *zap.Logger) error {
+func HandleStart(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
 	userID := msg.From.ID
 	chatID := msg.Chat.ID
 	username := ""
