@@ -25,6 +25,13 @@ type ServiceHandler struct {
 	keyboardService *KeyboardService
 }
 
+func (h *ServiceHandler) sendMessage(userID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) error {
+	msg := tgbotapi.NewMessage(userID, text)
+	msg.ReplyMarkup = keyboard
+	_, err := h.bot.Send(msg)
+	return err
+}
+
 // NewServiceHandler создаёт новый обработчик услуг
 func NewServiceHandler(logger *zap.Logger, repo *repository.Repository, bot *tgbotapi.BotAPI) *ServiceHandler {
 	return &ServiceHandler{

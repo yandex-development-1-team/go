@@ -90,16 +90,8 @@ func (h *ServiceHandler) handleError(userID int64, serviceID int, err error) err
 	return err
 }
 
-func (h *ServiceHandler) sendMessage(userID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) error {
-	msg := tgbotapi.NewMessage(userID, text)
-	msg.ReplyMarkup = keyboard
-	_, err := h.bot.Send(msg)
-	return err
-}
-
 func buildServiceMessage(service *Service, serviceName string) string {
 	var builder strings.Builder
-	builder.Grow(300)
 
 	// Эмодзи в зависимости от типа услуги
 	emoji := "✨"
