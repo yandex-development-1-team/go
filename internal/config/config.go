@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -36,9 +35,6 @@ func GetConfig(paths []string) (Config, error) {
 }
 
 func loadConfig(paths []string) (*Config, error) {
-
-	dir, _ := os.Getwd()
-	fmt.Println("Current dir:", dir)
 
 	v := viper.New()
 	v.SetConfigName("config")
