@@ -29,11 +29,11 @@ var (
 	DatabaseQueryDuration     *prometheus.HistogramVec
 
 	// Gauge метрика
-	ActiveUsers prometheus.Gauge
+	ActiveUsers prometheus.GaugeVec
 
 	// Глобальные лейблы приложения
-	appLabels  prometheus.Labels
-	labelNames []string
+	appLabels   prometheus.Labels
+	labelsNames []string
 
 	initOnce sync.Once
 )
@@ -52,7 +52,7 @@ func initializeMetrics(cfg *config.Config) {
 		"environment": cfg.Environment,
 		"instance":    cfg.HostName,
 	}
-	labelNames = []string{"environment", "instance"}
+	labelsNames = []string{"environment", "instance"}
 
 	// Инициализация Counter метрик
 	MessagesReceived = prometheus.NewCounterVec(
@@ -60,7 +60,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "messages_received_total",
 			Help: "Total messages received",
 		},
-		[]string{}, // без лейблов
+		labelsNames,
 	)
 
 	MessagesProcessed = prometheus.NewCounterVec(
@@ -68,7 +68,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "messages_processed_total",
 			Help: "Total messages processed",
 		},
-		[]string{},
+		labelsNames,
 	)
 
 	MessagesErrors = prometheus.NewCounterVec(
@@ -76,7 +76,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "messages_errors_total",
 			Help: "Total errors during message processing",
 		},
-		[]string{},
+		labelsNames,
 	)
 
 	DatabaseQueries = prometheus.NewCounterVec(
@@ -84,7 +84,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "database_queries_total",
 			Help: "Total database queries",
 		},
-		[]string{},
+		labelsNames,
 	)
 
 	APIRequests = prometheus.NewCounterVec(
@@ -92,7 +92,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "api_requests_total",
 			Help: "Total requests to Telegram API",
 		},
-		[]string{},
+		labelsNames,
 	)
 
 	BookingsTotal = prometheus.NewCounterVec(
@@ -100,7 +100,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "bookings_total",
 			Help: "Total bookings",
 		},
-		[]string{},
+		labelsNames,
 	)
 
 	// Инициализация Histogram метрик
@@ -110,7 +110,7 @@ func initializeMetrics(cfg *config.Config) {
 			Help:    "Time spent processing messages",
 			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		},
-		[]string{},
+		labelsNames,
 	)
 
 	DatabaseQueryDuration = prometheus.NewHistogramVec(
@@ -119,16 +119,15 @@ func initializeMetrics(cfg *config.Config) {
 			Help:    "Time spent on database queries",
 			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1},
 		},
-		[]string{},
+		labelsNames,
 	)
 
 	// Инициализация Gauge метрики
-	ActiveUsers = prometheus.NewGauge(
+	ActiveUsers = *prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: PREFIX + "active_users",
 			Help: "Number of active users",
-		},
-	)
+		}, labelsNames)
 
 	// Регистрация всех метрик
 	registry.MustRegister(MessagesReceived)

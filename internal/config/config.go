@@ -2,20 +2,19 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	TelegramBotToken string `yaml:"telegram_bot_token"`
-	PostgresURL      string `yaml:"postgres_url"`
-	Port             int    `yaml:"port"`
-	Environment      string `yaml:"environment"`
-	PrometheusPort   int    `yaml:"prometheus_port"`
-	LogLevel         string `yaml:"log_level"`
-	HostName         string `yaml:"host_name"`
+	TelegramBotToken string `mapstructure:"telegram_bot_token"`
+	PostgresURL      string `mapstructure:"postgres_url"`
+	Port             int    `mapstructure:"port"`
+	Environment      string `ymapstructureaml:"environment"`
+	PrometheusPort   int    `mapstructure:"prometheus_port"`
+	LogLevel         string `mapstructure:"log_level"`
+	HostName         string `mapstructure:"host_name"`
 }
 
 var (
@@ -41,7 +40,7 @@ func loadConfig(paths []string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	if paths != nil && len(paths) > 0 {
+	if len(paths) > 0 {
 		for _, path := range paths {
 			v.AddConfigPath(path)
 		}
@@ -86,8 +85,6 @@ func loadConfig(paths []string) (*Config, error) {
 }
 
 func validateConfig(config *Config) error {
-	pwd, _ := os.Getwd()
-	fmt.Printf("Current working directory: %s\n", pwd)
 	if config.TelegramBotToken == "" {
 		return fmt.Errorf("telegram_bot_token is empty")
 	}
