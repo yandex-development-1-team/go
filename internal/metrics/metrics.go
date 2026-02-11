@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/yandex-development-1-team/go/internal/config"
 )
@@ -139,6 +140,19 @@ func initializeMetrics(cfg *config.Config) {
 	registry.MustRegister(MessageProcessingDuration)
 	registry.MustRegister(DatabaseQueryDuration)
 	registry.MustRegister(ActiveUsers)
+
+	// Стандартные метрики
+	registry.MustRegister(collectors.NewGoCollector())
+	registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+
+	// "Up" метрика
+	Up := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: PREFIX + "up",
+		Help: "Service health status",
+	})
+	Up.Set(1)
+	registry.MustRegister(Up)
+
 }
 
 func NewHandler() http.Handler {
