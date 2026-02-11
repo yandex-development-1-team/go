@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"go.uber.org/zap"
 )
@@ -25,14 +26,12 @@ type UserRepository interface {
 }
 
 type UserRepo struct {
-	db     *sqlx.DB
-	logger *zap.Logger
+	db *sqlx.DB
 }
 
-func NewUserRepository(db *sqlx.DB, logger *zap.Logger) *UserRepo {
+func NewUserRepository(db *sqlx.DB) *UserRepo {
 	return &UserRepo{
-		db:     db,
-		logger: logger,
+		db: db,
 	}
 }
 
@@ -74,7 +73,7 @@ func (u *UserRepo) GetUserByTelegramID(ctx context.Context, telegramID int64) (*
 		FROM users
 		WHERE telegram_id=$1`, telegramID)
 	if errors.Is(err, sql.ErrNoRows) {
-		u.logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
+		logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
 		return nil, ErrUserNotFound
 	}
 	if err != nil {
@@ -106,7 +105,7 @@ func (u *UserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade 
 
 	affected, err := result.RowsAffected()
 	if err == nil && affected == 0 {
-		u.logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
+		logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
 		return ErrUserNotFound
 	}
 	if err != nil {
@@ -132,7 +131,7 @@ func (u *UserRepo) IsAdmin(ctx context.Context, telegramID int64) (bool, error) 
 		telegramID).Scan(&isAdmin)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		u.logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
+		logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
 		return false, ErrUserNotFound
 	}
 	if err != nil {
@@ -144,14 +143,14 @@ func (u *UserRepo) IsAdmin(ctx context.Context, telegramID int64) (bool, error) 
 
 func (u *UserRepo) checkError(operation string, err error) error {
 	if errors.Is(err, context.Canceled) {
-		u.logger.Error("canceled_by_context", zap.Error(err), zap.String("operation", operation))
+		logger.Error("canceled_by_context", zap.Error(err), zap.String("operation", operation))
 		return ErrRequestCanceled
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		u.logger.Error("canceled_by_timeout", zap.Error(err), zap.String("operation", operation))
+		logger.Error("canceled_by_timeout", zap.Error(err), zap.String("operation", operation))
 		return ErrRequestTimeout
 	}
 
-	u.logger.Error("database_error", zap.Error(err), zap.String("operation", operation))
+	logger.Error("database_error", zap.Error(err), zap.String("operation", operation))
 	return ErrDatabase
 }

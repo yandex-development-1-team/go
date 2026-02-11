@@ -16,13 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"go.uber.org/zap"
 )
 
 var (
-	db     *sqlx.DB
-	logger *zap.Logger
-	repo   UserRepository
+	db   *sqlx.DB
+	repo UserRepository
 )
 
 func TestMain(m *testing.M) {
@@ -39,8 +37,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to connect to db: %s", err.Error())
 	}
 
-	logger = nopLogger()
-	repo = NewUserRepository(db, logger)
+	repo = NewUserRepository(db)
 
 	code := m.Run()
 
@@ -126,11 +123,6 @@ func createDB(container tc.Container) error {
 	}
 
 	return nil
-}
-
-// NopLogger - логгер который ничего не делает
-func nopLogger() *zap.Logger {
-	return zap.NewNop()
 }
 
 func TestCreateUser(t *testing.T) {
