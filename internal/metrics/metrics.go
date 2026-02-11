@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -13,7 +14,7 @@ const (
 )
 
 var (
-	Registry *prometheus.Registry
+	registry *prometheus.Registry
 
 	// Counter метрики
 	MessagesReceived  *prometheus.CounterVec
@@ -33,10 +34,18 @@ var (
 	// Глобальные лейблы приложения
 	appLabels  prometheus.Labels
 	labelNames []string
+
+	initOnce sync.Once
 )
 
 func Initialize(cfg config.Config) {
-	Registry = prometheus.NewRegistry()
+	initOnce.Do(func() {
+		initializeMetrics(&cfg)
+	})
+}
+
+func initializeMetrics(cfg *config.Config) {
+	registry = prometheus.NewRegistry()
 
 	// Настраиваем глобальные лейблы при старте
 	appLabels = prometheus.Labels{
@@ -122,37 +131,17 @@ func Initialize(cfg config.Config) {
 	)
 
 	// Регистрация всех метрик
-	Registry.MustRegister(MessagesReceived)
-	Registry.MustRegister(MessagesProcessed)
-	Registry.MustRegister(MessagesErrors)
-	Registry.MustRegister(DatabaseQueries)
-	Registry.MustRegister(APIRequests)
-	Registry.MustRegister(BookingsTotal)
-	Registry.MustRegister(MessageProcessingDuration)
-	Registry.MustRegister(DatabaseQueryDuration)
-	Registry.MustRegister(ActiveUsers)
+	registry.MustRegister(MessagesReceived)
+	registry.MustRegister(MessagesProcessed)
+	registry.MustRegister(MessagesErrors)
+	registry.MustRegister(DatabaseQueries)
+	registry.MustRegister(APIRequests)
+	registry.MustRegister(BookingsTotal)
+	registry.MustRegister(MessageProcessingDuration)
+	registry.MustRegister(DatabaseQueryDuration)
+	registry.MustRegister(ActiveUsers)
 }
 
-// StartMetricsServer запускает HTTP сервер для /metrics
-func StartMetricsServer(port string) *http.Server {
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.HandlerFor(Registry, promhttp.HandlerOpts{}))
-
-	server := &http.Server{
-		Addr:    ":" + port,
-		Handler: mux,
-	}
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			panic(err)
-		}
-	}()
-
-	return server
-}
-
-// StopMetricsServer корректно завершает сервер метрик
-func StopMetricsServer(server *http.Server) error {
-	return server.Close()
+func NewHandler() http.Handler {
+	return promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 }

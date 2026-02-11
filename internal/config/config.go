@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -23,9 +24,9 @@ var (
 	loadErr  error
 )
 
-func GetConfig() (Config, error) {
+func GetConfig(paths []string) (Config, error) {
 	loadOnce.Do(func() {
-		cfg, err := loadConfig()
+		cfg, err := loadConfig(paths)
 		if err != nil {
 			loadErr = err
 			return
@@ -35,13 +36,19 @@ func GetConfig() (Config, error) {
 	return appCfg, loadErr
 }
 
-func loadConfig() (*Config, error) {
+func loadConfig(paths []string) (*Config, error) {
 
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath("config")
-	v.AddConfigPath(".")
+	if paths != nil && len(paths) > 0 {
+		for _, path := range paths {
+			v.AddConfigPath(path)
+		}
+	} else {
+		v.AddConfigPath("config")
+		v.AddConfigPath(".")
+	}
 
 	// Set defaults
 	v.SetDefault("port", 8080)
@@ -51,7 +58,6 @@ func loadConfig() (*Config, error) {
 	v.SetDefault("host_name", "unknown")
 
 	// Set env vars mapping
-	v.AutomaticEnv()
 	v.BindEnv("telegram_bot_token", "BOT_TOKEN")
 	v.BindEnv("postgres_url", "POSTGRES_URL")
 	v.BindEnv("port", "PORT")
@@ -61,9 +67,10 @@ func loadConfig() (*Config, error) {
 	v.BindEnv("host_name", "HOSTNAME")
 
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config.yml: %w", err)
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return nil, fmt.Errorf("config file not found")
 		}
+		return nil, fmt.Errorf("error reading config.yml: %w", err)
 	}
 
 	config := &Config{}
@@ -79,7 +86,8 @@ func loadConfig() (*Config, error) {
 }
 
 func validateConfig(config *Config) error {
-
+	pwd, _ := os.Getwd()
+	fmt.Printf("Current working directory: %s\n", pwd)
 	if config.TelegramBotToken == "" {
 		return fmt.Errorf("telegram_bot_token is empty")
 	}
@@ -89,5 +97,4 @@ func validateConfig(config *Config) error {
 	}
 
 	return nil
-
 }
