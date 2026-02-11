@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -12,12 +11,12 @@ import (
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"go.uber.org/zap"
 )
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Println("error:", err)
-		os.Exit(1)
+		logger.Fatal("error", zap.Error(err))
 	}
 }
 

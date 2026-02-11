@@ -4,27 +4,43 @@ import (
 	"context"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/yandex-development-1-team/go/internal/bot"
+	"github.com/yandex-development-1-team/go/internal/logger"
+	"go.uber.org/zap"
 )
 
 const cmdStart = "start"
 
-type Handler struct {
-	bot *bot.TelegramBot
+type Bot interface {
+	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
+	// новые методы для bot api добавлять сюда, а реализовывать в go/internal/bot/bot.go
 }
 
-func NewHandler(b *bot.TelegramBot) *Handler {
+type Handler struct {
+	bot Bot
+}
+
+func NewHandler(bot Bot) *Handler {
 	return &Handler{
-		bot: b,
+		bot: bot,
 	}
 }
 
 func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
-	switch update.Message.Command() {
-	case cmdStart:
-		HandleStart(h.bot.Api, update.Message)
-	// в новые ветки добавлять вызовы функций обработчиков команд
-	default:
+	if msg := update.Message; msg != nil {
+		if msg.IsCommand() {
+			switch msg.Command() {
+			case cmdStart:
+				if err := HandleStart(h.bot, msg); err != nil {
+					logger.Error("failed to handle /start", zap.Error(err))
+				}
+			// в новые ветки добавлять вызовы функций обработчиков команд
+			default:
+				// todo
+			}
+		}
 		// todo
+	}
+	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
+		//todo
 	}
 }

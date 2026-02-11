@@ -37,7 +37,7 @@ func SetUserSaver(userSaver UserSaver) { defaultUserSaver = userSaver }
 // HandleStart обрабатывает команду /start: логирует событие, при необходимости сохраняет
 // пользователя через UserSaver, отправляет приветственное сообщение и главное меню с inline-кнопками
 // Возвращает ошибку только при сбое отправки сообщения в Telegram
-func HandleStart(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
+func HandleStart(bot Bot, msg *tgbotapi.Message) error {
 	userID := msg.From.ID
 	chatID := msg.Chat.ID
 	username := ""
@@ -58,12 +58,9 @@ func HandleStart(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
 	reply := tgbotapi.NewMessage(chatID, WelcomeText)
 	reply.ReplyMarkup = keyboard
 
-	sent, err := bot.Send(reply)
-	if err != nil {
-		logger.Error("failed to send start message", zap.Int64("chat_id", chatID), zap.Error(err))
+	if _, err := bot.Send(reply); err != nil {
 		return fmt.Errorf("failed to send start message: %w", err)
 	}
-	_ = sent
 	return nil
 }
 

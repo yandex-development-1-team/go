@@ -44,3 +44,8 @@ func (b *TelegramBot) GetUpdates(timeout time.Duration) tgbotapi.UpdatesChannel 
 func (b *TelegramBot) Shutdown(ctx context.Context) {
 	b.Api.StopReceivingUpdates()
 }
+
+func (b *TelegramBot) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
+	sent, err := b.Api.Send(c)
+	return sent, err
+}
