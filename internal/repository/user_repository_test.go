@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -102,23 +104,24 @@ func createDB(container tc.Container) error {
 		return err
 	}
 
-	// inline создание таблицы
-	query := `
-	CREATE TABLE users (
-    id BIGSERIAL PRIMARY KEY,
-    telegram_id BIGINT NOT NULL UNIQUE,
-    username VARCHAR(255),
-    first_name VARCHAR(255),
-    last_name VARCHAR(255),
-    grade SMALLINT DEFAULT 0,  -- 0=external, 1=junior, 2=mid, 3=senior, 4=admin
-    is_admin BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_users_telegram_id ON users(telegram_id);`
+	if err := goose.SetDialect("postgres"); err != nil {
+		return err
+	}
 
-	_, err = db.ExecContext(ctx, query)
-	if err != nil {
+	_, err = goose.GetDBVersion(db.DB)
+	if !errors.Is(err, goose.ErrNoMigrations) {
+		_, err := db.Exec("DROP TABLE IF EXISTS goose_db_version")
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := goose.UpContext(ctx, db.DB, "../../migrations"); err != nil {
+		return err
+	}
+
+	_, err = goose.GetDBVersion(db.DB)
+	if errors.Is(err, goose.ErrNoMigrations) {
 		return err
 	}
 

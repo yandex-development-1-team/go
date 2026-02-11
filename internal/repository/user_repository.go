@@ -39,12 +39,25 @@ func NewUserRepository(db *sqlx.DB, logger *zap.Logger) *UserRepo {
 func (u *UserRepo) CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) error {
 	var operation = "create_user"
 
-	_, err := u.db.ExecContext(ctx, `
+	tx, err := u.db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelReadCommitted,
+	})
+	if err != nil {
+		return u.checkError(operation, err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, `
 	INSERT INTO users (telegram_id, username, first_name, last_name) 
 	VALUES ($1, $2, $3, $4) 
 	ON CONFLICT (telegram_id) 
 	DO UPDATE SET username=EXCLUDED.username
 	`, telegramID, userName, firstName, lastName)
+	if err != nil {
+		return u.checkError(operation, err)
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return u.checkError(operation, err)
 	}
@@ -74,12 +87,19 @@ func (u *UserRepo) GetUserByTelegramID(ctx context.Context, telegramID int64) (*
 func (u *UserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade int) error {
 	var operation = "update_user_grade"
 
-	result, err := u.db.ExecContext(ctx, `
+	tx, err := u.db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelReadCommitted,
+	})
+	if err != nil {
+		return u.checkError(operation, err)
+	}
+	defer tx.Rollback()
+
+	result, err := tx.ExecContext(ctx, `
 		UPDATE users
 		SET grade=$1
 		WHERE telegram_id=$2`,
 		grade, telegramID)
-
 	if err != nil {
 		return u.checkError(operation, err)
 	}
@@ -88,6 +108,14 @@ func (u *UserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade 
 	if err == nil && affected == 0 {
 		u.logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
 		return ErrUserNotFound
+	}
+	if err != nil {
+		return u.checkError(operation, err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return u.checkError(operation, err)
 	}
 
 	return nil
