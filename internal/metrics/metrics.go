@@ -17,7 +17,7 @@ const (
 var (
 	registry *prometheus.Registry
 
-	// Counter метрики
+	// Counter metrics
 	MessagesReceived  *prometheus.CounterVec
 	MessagesProcessed *prometheus.CounterVec
 	MessagesErrors    *prometheus.CounterVec
@@ -25,14 +25,14 @@ var (
 	APIRequests       *prometheus.CounterVec
 	BookingsTotal     *prometheus.CounterVec
 
-	// Histogram метрики
+	// Histogram metrics
 	MessageProcessingDuration *prometheus.HistogramVec
 	DatabaseQueryDuration     *prometheus.HistogramVec
 
-	// Gauge метрика
+	// Gauge metrics
 	ActiveUsers prometheus.GaugeVec
 
-	// Глобальные лейблы приложения
+	// Global app lables
 	appLabels   prometheus.Labels
 	labelsNames []string
 
@@ -48,14 +48,14 @@ func Initialize(cfg config.Config) {
 func initializeMetrics(cfg *config.Config) {
 	registry = prometheus.NewRegistry()
 
-	// Настраиваем глобальные лейблы при старте
+	// init Global lables
 	appLabels = prometheus.Labels{
 		"environment": cfg.Environment,
 		"instance":    cfg.HostName,
 	}
 	labelsNames = []string{"environment", "instance"}
 
-	// Инициализация Counter метрик
+	// init Counter metrics
 	MessagesReceived = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "messages_received_total",
@@ -104,7 +104,7 @@ func initializeMetrics(cfg *config.Config) {
 		labelsNames,
 	)
 
-	// Инициализация Histogram метрик
+	// init Histogram metrics
 	MessageProcessingDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    PREFIX + "message_processing_duration_seconds",
@@ -123,14 +123,14 @@ func initializeMetrics(cfg *config.Config) {
 		labelsNames,
 	)
 
-	// Инициализация Gauge метрики
+	// init Gauge metrics
 	ActiveUsers = *prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: PREFIX + "active_users",
 			Help: "Number of active users",
 		}, labelsNames)
 
-	// Регистрация всех метрик
+	// metrics register
 	registry.MustRegister(MessagesReceived)
 	registry.MustRegister(MessagesProcessed)
 	registry.MustRegister(MessagesErrors)
@@ -141,11 +141,11 @@ func initializeMetrics(cfg *config.Config) {
 	registry.MustRegister(DatabaseQueryDuration)
 	registry.MustRegister(ActiveUsers)
 
-	// Стандартные метрики
+	// standart metrics
 	registry.MustRegister(collectors.NewGoCollector())
 	registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 
-	// "Up" метрика
+	// "Up" metric
 	Up := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: PREFIX + "up",
 		Help: "Service health status",
