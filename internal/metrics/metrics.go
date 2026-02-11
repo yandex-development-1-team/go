@@ -158,3 +158,31 @@ func initializeMetrics(cfg *config.Config) {
 func NewHandler() http.Handler {
 	return promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 }
+
+func IncMessagesReceived() {
+	MessagesReceived.With(appLabels).Inc()
+}
+
+func IncMessagesProcessed() {
+	MessagesProcessed.With(appLabels).Inc()
+}
+
+func IncMessagesErrors() {
+	MessagesErrors.With(appLabels).Inc()
+}
+
+func ObserveMessageProcessingDuration(seconds float64) {
+	MessageProcessingDuration.With(appLabels).Observe(seconds)
+}
+
+func IncDatabaseQueries() {
+	DatabaseQueries.With(appLabels).Inc()
+}
+
+func IncAPIRequests() {
+	APIRequests.With(appLabels).Inc()
+}
+
+func SetActiveUsers(count int) {
+	ActiveUsers.With(appLabels).Set(float64(count))
+}

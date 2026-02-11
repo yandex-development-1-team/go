@@ -11,7 +11,7 @@ type Config struct {
 	TelegramBotToken string `mapstructure:"telegram_bot_token"`
 	PostgresURL      string `mapstructure:"postgres_url"`
 	Port             int    `mapstructure:"port"`
-	Environment      string `ymapstructureaml:"environment"`
+	Environment      string `mapstructure:"environment"`
 	PrometheusPort   int    `mapstructure:"prometheus_port"`
 	LogLevel         string `mapstructure:"log_level"`
 	HostName         string `mapstructure:"host_name"`
