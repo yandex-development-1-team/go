@@ -31,21 +31,25 @@ func run() error {
 	logger.NewLogger("dev", "debug")
 	defer logger.Sync()
 
-	// init telegram bot
-	bot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
+	// init telegram tgBot
+	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
 	if err != nil {
 		return fmt.Errorf("failed to init telegram bot: %w", err)
 	}
 
 	// get channel with updates
-	updates := bot.GetUpdates(30 * time.Second)
+	updates := tgBot.GetUpdates(30 * time.Second)
 
 	// init signal ctx
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	// init rate limiters
+	msgRL := bot.NewRateLimiter(30)
+	apiRL := bot.NewRateLimiter(10)
+
 	// init handler
-	handler := handlers.NewHandler(bot)
+	handler := handlers.NewHandler(tgBot, msgRL, apiRL)
 
 	// handle updates
 	go func() {
@@ -61,7 +65,7 @@ func run() error {
 
 	ch := make(chan struct{})
 	go func() {
-		bot.Shutdown(ctxTimeout)
+		tgBot.Shutdown(ctxTimeout)
 		close(ch)
 	}()
 

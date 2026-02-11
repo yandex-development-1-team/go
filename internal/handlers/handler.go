@@ -15,13 +15,20 @@ type Bot interface {
 	// новые методы для bot api добавлять сюда, а реализовывать в go/internal/bot/bot.go
 }
 
-type Handler struct {
-	bot Bot
+type RateLimiter interface {
+	Exec(ctx context.Context, f func() error) error
 }
 
-func NewHandler(bot Bot) *Handler {
+type Handler struct {
+	bot          Bot
+	msgRL, apiRL RateLimiter
+}
+
+func NewHandler(bot Bot, msgRL, apiRL RateLimiter) *Handler {
 	return &Handler{
-		bot: bot,
+		bot:   bot,
+		msgRL: msgRL,
+		apiRL: apiRL,
 	}
 }
 
@@ -30,7 +37,7 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 		if msg.IsCommand() {
 			switch msg.Command() {
 			case cmdStart:
-				if err := HandleStart(h.bot, msg); err != nil {
+				if err := h.msgRL.Exec(ctx, func() error { return HandleStart(h.bot, msg) }); err != nil {
 					logger.Error("failed to handle /start", zap.Error(err))
 				}
 			// в новые ветки добавлять вызовы функций обработчиков команд
@@ -41,6 +48,6 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 		// todo
 	}
 	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
-		//todo
+		// todo
 	}
 }
