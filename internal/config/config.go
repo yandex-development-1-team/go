@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -15,6 +14,7 @@ type Config struct {
 	Environment      string `mapstructure:"environment"`
 	PrometheusPort   int    `mapstructure:"prometheus_port"`
 	LogLevel         string `mapstructure:"log_level"`
+	HostName         string `mapstructure:"host_name"`
 }
 
 var (
@@ -40,7 +40,7 @@ func loadConfig(paths []string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	if paths != nil && len(paths) > 0 {
+	if len(paths) > 0 {
 		for _, path := range paths {
 			v.AddConfigPath(path)
 		}
@@ -54,6 +54,7 @@ func loadConfig(paths []string) (*Config, error) {
 	v.SetDefault("environment", "dev")
 	v.SetDefault("prometheus_port", 9090)
 	v.SetDefault("log_level", "info")
+	v.SetDefault("host_name", "unknown")
 
 	// Set env vars mapping
 	v.BindEnv("telegram_bot_token", "BOT_TOKEN")
@@ -62,6 +63,7 @@ func loadConfig(paths []string) (*Config, error) {
 	v.BindEnv("environment", "ENVIRONMENT")
 	v.BindEnv("prometheus_port", "PROMETHEUS_PORT")
 	v.BindEnv("log_level", "LOG_LEVEL")
+	v.BindEnv("host_name", "HOSTNAME")
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -83,8 +85,6 @@ func loadConfig(paths []string) (*Config, error) {
 }
 
 func validateConfig(config *Config) error {
-	pwd, _ := os.Getwd()
-	fmt.Printf("Current working directory: %s\n", pwd)
 	if config.TelegramBotToken == "" {
 		return fmt.Errorf("telegram_bot_token is empty")
 	}

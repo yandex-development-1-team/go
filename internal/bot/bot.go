@@ -25,7 +25,7 @@ func NewTelegramBot(token string) (*TelegramBot, error) {
 	}
 	logger.Info("telegram bot authorized on account", zap.String("bot_name", user.UserName), zap.Int64("ID", user.ID))
 
-	bot.Debug = true
+	bot.Debug = true // TODO: брать из конфига
 
 	logger.Info("telegram bot has been initialized")
 	return &TelegramBot{
