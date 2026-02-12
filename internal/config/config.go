@@ -8,13 +8,14 @@ import (
 )
 
 type Config struct {
-	TelegramBotToken string `mapstructure:"telegram_bot_token"`
-	PostgresURL      string `mapstructure:"postgres_url"`
-	Port             int    `mapstructure:"port"`
-	Environment      string `mapstructure:"environment"`
-	PrometheusPort   int    `mapstructure:"prometheus_port"`
-	LogLevel         string `mapstructure:"log_level"`
-	HostName         string `mapstructure:"host_name"`
+	TelegramBotToken  string `mapstructure:"telegram_bot_token"`
+	TelegramBotAPIUrl string `mapstructure:"telegram_bot_api_url"`
+	PostgresURL       string `mapstructure:"postgres_url"`
+	Port              int    `mapstructure:"port"`
+	Environment       string `mapstructure:"environment"`
+	PrometheusPort    int    `mapstructure:"prometheus_port"`
+	LogLevel          string `mapstructure:"log_level"`
+	HostName          string `mapstructure:"host_name"`
 }
 
 var (
@@ -50,6 +51,7 @@ func loadConfig(paths []string) (*Config, error) {
 	}
 
 	// Set defaults
+	v.SetDefault("telegram_bot_api_url", "https://api.telegram.org")
 	v.SetDefault("port", 8080)
 	v.SetDefault("environment", "dev")
 	v.SetDefault("prometheus_port", 9090)
