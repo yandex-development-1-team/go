@@ -18,19 +18,19 @@ var (
 	registry *prometheus.Registry
 
 	// Counter metrics
-	MessagesReceived  *prometheus.CounterVec
-	MessagesProcessed *prometheus.CounterVec
-	MessagesErrors    *prometheus.CounterVec
-	DatabaseQueries   *prometheus.CounterVec
-	APIRequests       *prometheus.CounterVec
-	BookingsTotal     *prometheus.CounterVec
+	messagesReceived  *prometheus.CounterVec
+	messagesProcessed *prometheus.CounterVec
+	messagesErrors    *prometheus.CounterVec
+	databaseQueries   *prometheus.CounterVec
+	apiRequests       *prometheus.CounterVec
+	bookingsTotal     *prometheus.CounterVec
 
 	// Histogram metrics
-	MessageProcessingDuration *prometheus.HistogramVec
-	DatabaseQueryDuration     *prometheus.HistogramVec
+	messageProcessingDuration *prometheus.HistogramVec
+	databaseQueryDuration     *prometheus.HistogramVec
 
 	// Gauge metrics
-	ActiveUsers prometheus.GaugeVec
+	activeUsers prometheus.GaugeVec
 
 	// Global app lables
 	appLabels   prometheus.Labels
@@ -56,7 +56,7 @@ func initializeMetrics(cfg *config.Config) {
 	labelsNames = []string{"environment", "instance"}
 
 	// init Counter metrics
-	MessagesReceived = prometheus.NewCounterVec(
+	messagesReceived = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "messages_received_total",
 			Help: "Total messages received",
@@ -64,7 +64,7 @@ func initializeMetrics(cfg *config.Config) {
 		labelsNames,
 	)
 
-	MessagesProcessed = prometheus.NewCounterVec(
+	messagesProcessed = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "messages_processed_total",
 			Help: "Total messages processed",
@@ -72,7 +72,7 @@ func initializeMetrics(cfg *config.Config) {
 		labelsNames,
 	)
 
-	MessagesErrors = prometheus.NewCounterVec(
+	messagesErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "messages_errors_total",
 			Help: "Total errors during message processing",
@@ -80,7 +80,7 @@ func initializeMetrics(cfg *config.Config) {
 		labelsNames,
 	)
 
-	DatabaseQueries = prometheus.NewCounterVec(
+	databaseQueries = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "database_queries_total",
 			Help: "Total database queries",
@@ -88,7 +88,7 @@ func initializeMetrics(cfg *config.Config) {
 		labelsNames,
 	)
 
-	APIRequests = prometheus.NewCounterVec(
+	apiRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "api_requests_total",
 			Help: "Total requests to Telegram API",
@@ -96,7 +96,7 @@ func initializeMetrics(cfg *config.Config) {
 		labelsNames,
 	)
 
-	BookingsTotal = prometheus.NewCounterVec(
+	bookingsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "bookings_total",
 			Help: "Total bookings",
@@ -105,7 +105,7 @@ func initializeMetrics(cfg *config.Config) {
 	)
 
 	// init Histogram metrics
-	MessageProcessingDuration = prometheus.NewHistogramVec(
+	messageProcessingDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    PREFIX + "message_processing_duration_seconds",
 			Help:    "Time spent processing messages",
@@ -114,7 +114,7 @@ func initializeMetrics(cfg *config.Config) {
 		labelsNames,
 	)
 
-	DatabaseQueryDuration = prometheus.NewHistogramVec(
+	databaseQueryDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    PREFIX + "database_query_duration_seconds",
 			Help:    "Time spent on database queries",
@@ -124,34 +124,34 @@ func initializeMetrics(cfg *config.Config) {
 	)
 
 	// init Gauge metrics
-	ActiveUsers = *prometheus.NewGaugeVec(
+	activeUsers = *prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: PREFIX + "active_users",
 			Help: "Number of active users",
 		}, labelsNames)
 
 	// metrics register
-	registry.MustRegister(MessagesReceived)
-	registry.MustRegister(MessagesProcessed)
-	registry.MustRegister(MessagesErrors)
-	registry.MustRegister(DatabaseQueries)
-	registry.MustRegister(APIRequests)
-	registry.MustRegister(BookingsTotal)
-	registry.MustRegister(MessageProcessingDuration)
-	registry.MustRegister(DatabaseQueryDuration)
-	registry.MustRegister(ActiveUsers)
+	registry.MustRegister(messagesReceived)
+	registry.MustRegister(messagesProcessed)
+	registry.MustRegister(messagesErrors)
+	registry.MustRegister(databaseQueries)
+	registry.MustRegister(apiRequests)
+	registry.MustRegister(bookingsTotal)
+	registry.MustRegister(messageProcessingDuration)
+	registry.MustRegister(databaseQueryDuration)
+	registry.MustRegister(activeUsers)
 
 	// standart metrics
 	registry.MustRegister(collectors.NewGoCollector())
 	registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 
 	// "Up" metric
-	Up := prometheus.NewGauge(prometheus.GaugeOpts{
+	up := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: PREFIX + "up",
 		Help: "Service health status",
 	})
-	Up.Set(1)
-	registry.MustRegister(Up)
+	up.Set(1)
+	registry.MustRegister(up)
 
 }
 
@@ -160,29 +160,37 @@ func NewHandler() http.Handler {
 }
 
 func IncMessagesReceived() {
-	MessagesReceived.With(appLabels).Inc()
+	messagesReceived.With(appLabels).Inc()
 }
 
 func IncMessagesProcessed() {
-	MessagesProcessed.With(appLabels).Inc()
+	messagesProcessed.With(appLabels).Inc()
 }
 
 func IncMessagesErrors() {
-	MessagesErrors.With(appLabels).Inc()
-}
-
-func ObserveMessageProcessingDuration(seconds float64) {
-	MessageProcessingDuration.With(appLabels).Observe(seconds)
+	messagesErrors.With(appLabels).Inc()
 }
 
 func IncDatabaseQueries() {
-	DatabaseQueries.With(appLabels).Inc()
+	databaseQueries.With(appLabels).Inc()
 }
 
 func IncAPIRequests() {
-	APIRequests.With(appLabels).Inc()
+	apiRequests.With(appLabels).Inc()
+}
+
+func IncBookingsTotal() {
+	bookingsTotal.With(appLabels).Inc()
+}
+
+func ObserveMessageProcessingDuration(seconds float64) {
+	messageProcessingDuration.With(appLabels).Observe(seconds)
+}
+
+func ObserveDatabaseQueryDuration(seconds float64) {
+	databaseQueryDuration.With(appLabels).Observe(seconds)
 }
 
 func SetActiveUsers(count int) {
-	ActiveUsers.With(appLabels).Set(float64(count))
+	activeUsers.With(appLabels).Set(float64(count))
 }
