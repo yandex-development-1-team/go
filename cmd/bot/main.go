@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/handlers"
@@ -55,6 +56,7 @@ func run() error {
 	// init metrics server
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
+	metricsMux.HandleFunc("/health", api.NewHealthHandler(nil, cfg.TelegramBotAPIUrl))
 	metricsServer := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.PrometheusPort),
 		Handler: metricsMux,
@@ -72,7 +74,7 @@ func run() error {
 
 	// run metrics server
 	wg.Go(func() {
-		logger.Info("starting metrics server", zap.String("addr", metricsServer.Addr))
+		logger.Info("starting metrics and health server", zap.String("addr", metricsServer.Addr))
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("metrics server error", zap.Error(err))
 		}
