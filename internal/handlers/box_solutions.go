@@ -3,12 +3,12 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/yandex-development-1-team/go/internal/database/db_models"
 	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
 type DataBaseClient interface {
-	GetBoxSolutions(ctx context.Context) ([]db_models.BoxSolution, error)
+	GetBoxSolutions(ctx context.Context) ([]repository.BoxSolution, error)
 }
 
 type BoxSolutionsHandler struct {
@@ -19,7 +19,7 @@ func NewBoxSolutions(dbClient DataBaseClient) BoxSolutionsHandler {
 	return BoxSolutionsHandler{DBClient: dbClient}
 }
 
-//Логировать: user_id, выбранная услуга
+// Логировать: user_id, выбранная услуга
 func (bsh BoxSolutionsHandler) GetDetailsForBoxSolution(request models.GetDetailsForBoxSolutionRequest) {
 
 }
@@ -29,7 +29,7 @@ func (bsh BoxSolutionsHandler) GetBoxSolutions(ctx context.Context) (models.BoxS
 	boxesDB, err := bsh.DBClient.GetBoxSolutions(ctx)
 	//todo обработку ошибки нужно обернуть во что-другое?
 	if err != nil {
-		return models.BoxSolutionButtons{}, fmt.Errorf("Ошибка получения коробочных решений: %w", err)
+		return models.BoxSolutionButtons{}, fmt.Errorf("Error receiving boxed solutions: %w", err)
 	}
 
 	boxSolutions := convertModelsDBToModels(boxesDB)
@@ -42,7 +42,7 @@ func (bsh BoxSolutionsHandler) GetBoxSolutions(ctx context.Context) (models.BoxS
 	return buttonsResp, err
 }
 
-func convertModelsDBToModels(boxesDB []db_models.BoxSolution) models.GetBoxSolutionsResponse {
+func convertModelsDBToModels(boxesDB []repository.BoxSolution) models.GetBoxSolutionsResponse {
 	var response models.GetBoxSolutionsResponse
 
 	for _, boxDB := range boxesDB {

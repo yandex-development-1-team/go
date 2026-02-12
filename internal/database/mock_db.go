@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"encoding/json"
-	"github.com/yandex-development-1-team/go/internal/database/db_models"
+	"github.com/yandex-development-1-team/go/internal/repository"
 	"os"
 )
 
@@ -20,17 +20,17 @@ func NewMockClient(ctx context.Context) *MockClient {
 	}
 }
 
-func (m MockClient) GetBoxSolutions(ctx context.Context) ([]db_models.BoxSolution, error) {
-	var boxes []db_models.BoxSolution
+func (m MockClient) GetBoxSolutions(ctx context.Context) ([]repository.BoxSolution, error) {
+	var boxes []repository.BoxSolution
 
 	data, err := os.ReadFile(m.mockLocalDir)
 	if err != nil {
-		return []db_models.BoxSolution{}, err
+		return []repository.BoxSolution{}, err
 	}
 
 	err = json.Unmarshal(data, &boxes)
 	if err != nil {
-		return []db_models.BoxSolution{}, err
+		return []repository.BoxSolution{}, err
 	}
 
 	return boxes, nil

@@ -1,4 +1,4 @@
-package db_models
+package repository
 
 type BoxSolution struct {
 	ID             int64
