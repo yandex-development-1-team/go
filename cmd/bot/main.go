@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -45,35 +46,59 @@ func run() error {
 	defer cancel()
 
 	// init rate limiters
-	msgRL := bot.NewRateLimiter(30)
-	apiRL := bot.NewRateLimiter(10)
+	apiRL := bot.NewApiRateLimiter()
+	msgRL := bot.NewMsgRateLimiter()
 
 	// init handler
-	handler := handlers.NewHandler(tgBot, msgRL, apiRL)
+	handler := handlers.NewHandler(tgBot, msgRL)
+
+	logger.Info("bot has been started",
+		zap.String("environment", cfg.Environment),
+		zap.String("log_level", cfg.LogLevel),
+	)
 
 	// handle updates
+	var wg sync.WaitGroup
 	go func() {
 		for update := range updates {
-			handler.Handle(ctx, update)
+			wg.Go(func() {
+				if err := apiRL.Exec(ctx, func() { handler.Handle(ctx, update) }); err != nil {
+					logger.Error("failed to handle update", zap.Error(err))
+				}
+			})
 		}
 	}()
 
 	<-ctx.Done()
 
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	ch := make(chan struct{})
+	// wait for updates to finish
+	logger.Info("waiting for updates to finish...")
+	updatesDone := make(chan struct{})
 	go func() {
-		tgBot.Shutdown(ctxTimeout)
-		close(ch)
+		wg.Wait()
+		close(updatesDone)
 	}()
 
 	select {
-	case <-ch:
-		logger.Info("gracefully shutdown")
-	case <-ctxTimeout.Done():
-		logger.Warn("timeout graceful shutdown")
+	case <-updatesDone:
+		logger.Info("all updates processed")
+	case <-time.After(30 * time.Second):
+		logger.Warn("timeout waiting for updates to finish")
+	}
+
+	// bot gracefully shutdown
+	logger.Info("shutting down bot...")
+	botDone := make(chan struct{})
+	go func() {
+		tgBot.Shutdown()
+		close(botDone)
+	}()
+
+	select {
+	case <-botDone:
+		logger.Info("bot gracefully shutdown")
+	case <-time.After(30 * time.Second):
+		logger.Warn("bot timeout shutdown")
 	}
 
 	return nil

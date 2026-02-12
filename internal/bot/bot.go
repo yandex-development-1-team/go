@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"context"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -27,7 +26,6 @@ func NewTelegramBot(token string) (*TelegramBot, error) {
 
 	bot.Debug = true
 
-	logger.Info("telegram bot has been initialized")
 	return &TelegramBot{
 		Api: bot,
 	}, nil
@@ -41,7 +39,7 @@ func (b *TelegramBot) GetUpdates(timeout time.Duration) tgbotapi.UpdatesChannel 
 	return updates
 }
 
-func (b *TelegramBot) Shutdown(ctx context.Context) {
+func (b *TelegramBot) Shutdown() {
 	b.Api.StopReceivingUpdates()
 }
 
