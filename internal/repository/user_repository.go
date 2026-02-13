@@ -38,9 +38,7 @@ func NewUserRepository(db *sqlx.DB) *UserRepo {
 func (u *UserRepo) CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) error {
 	var operation = "create_user"
 
-	tx, err := u.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelReadCommitted,
-	})
+	tx, err := u.db.BeginTx(ctx, nil)
 	if err != nil {
 		return u.checkError(operation, err)
 	}
@@ -86,9 +84,7 @@ func (u *UserRepo) GetUserByTelegramID(ctx context.Context, telegramID int64) (*
 func (u *UserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade int) error {
 	var operation = "update_user_grade"
 
-	tx, err := u.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelReadCommitted,
-	})
+	tx, err := u.db.BeginTx(ctx, nil)
 	if err != nil {
 		return u.checkError(operation, err)
 	}
