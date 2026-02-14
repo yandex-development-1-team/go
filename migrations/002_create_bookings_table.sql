@@ -1,9 +1,7 @@
 -- Migration: 002_create_bookings_table
--- 
--- Создание таблицы бронирований для управления заказами услуг через телеграм-бот.
--- Поддерживаемые услуги (service_id): 1=gallery, 2=museum, 3=theater, 4=tennis, 5=padel, 6=digest
--- Возможные статусы (status): pending, confirmed, cancelled
--- Типы визитов (visit_type): private, public
+-- Создание таблицы бронирований для управления заказами услуг через телеграм-бот
+
+CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'cancelled');
 
 CREATE TABLE bookings (
     id BIGSERIAL PRIMARY KEY,
@@ -15,7 +13,7 @@ CREATE TABLE bookings (
     guest_organization VARCHAR(255),
     guest_position VARCHAR(255),
     visit_type VARCHAR(50),
-    status VARCHAR(50) DEFAULT 'pending',
+    status booking_status DEFAULT 'pending',
     tracker_ticket_id VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
