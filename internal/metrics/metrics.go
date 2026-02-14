@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"maps"
 	"net/http"
 	"sync"
 
@@ -32,9 +33,11 @@ var (
 	// Gauge metrics
 	activeUsers prometheus.GaugeVec
 
-	// Global app lables
-	appLabels   prometheus.Labels
-	labelsNames []string
+	// Global app labels
+	appLabels     prometheus.Labels
+	labelNames    []string
+	dbLabelNames  []string
+	apiLabelNames []string
 
 	initOnce sync.Once
 )
@@ -53,7 +56,9 @@ func initializeMetrics(cfg *config.Config) {
 		"environment": cfg.Environment,
 		"instance":    cfg.HostName,
 	}
-	labelsNames = []string{"environment", "instance"}
+	labelNames = []string{"environment", "instance"}
+	dbLabelNames = append(labelNames, "operation")
+	apiLabelNames = append(labelNames, "method", "endpoint", "status")
 
 	// init Counter metrics
 	messagesReceived = prometheus.NewCounterVec(
@@ -61,7 +66,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "messages_received_total",
 			Help: "Total messages received",
 		},
-		labelsNames,
+		labelNames,
 	)
 
 	messagesProcessed = prometheus.NewCounterVec(
@@ -69,7 +74,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "messages_processed_total",
 			Help: "Total messages processed",
 		},
-		labelsNames,
+		labelNames,
 	)
 
 	messagesErrors = prometheus.NewCounterVec(
@@ -77,7 +82,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "messages_errors_total",
 			Help: "Total errors during message processing",
 		},
-		labelsNames,
+		labelNames,
 	)
 
 	databaseQueries = prometheus.NewCounterVec(
@@ -85,7 +90,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "database_queries_total",
 			Help: "Total database queries",
 		},
-		labelsNames,
+		dbLabelNames,
 	)
 
 	apiRequests = prometheus.NewCounterVec(
@@ -93,7 +98,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "api_requests_total",
 			Help: "Total requests to Telegram API",
 		},
-		labelsNames,
+		apiLabelNames,
 	)
 
 	bookingsTotal = prometheus.NewCounterVec(
@@ -101,7 +106,7 @@ func initializeMetrics(cfg *config.Config) {
 			Name: PREFIX + "bookings_total",
 			Help: "Total bookings",
 		},
-		labelsNames,
+		labelNames,
 	)
 
 	// init Histogram metrics
@@ -111,7 +116,7 @@ func initializeMetrics(cfg *config.Config) {
 			Help:    "Time spent processing messages",
 			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		},
-		labelsNames,
+		labelNames,
 	)
 
 	databaseQueryDuration = prometheus.NewHistogramVec(
@@ -120,7 +125,7 @@ func initializeMetrics(cfg *config.Config) {
 			Help:    "Time spent on database queries",
 			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1},
 		},
-		labelsNames,
+		dbLabelNames,
 	)
 
 	// init Gauge metrics
@@ -128,7 +133,7 @@ func initializeMetrics(cfg *config.Config) {
 		prometheus.GaugeOpts{
 			Name: PREFIX + "active_users",
 			Help: "Number of active users",
-		}, labelsNames)
+		}, labelNames)
 
 	// metrics register
 	registry.MustRegister(messagesReceived)
@@ -171,12 +176,18 @@ func IncMessagesErrors() {
 	messagesErrors.With(appLabels).Inc()
 }
 
-func IncDatabaseQueries() {
-	databaseQueries.With(appLabels).Inc()
+func IncDatabaseQueries(operation string) {
+	labels := maps.Clone(appLabels)
+	labels["operation"] = operation
+	databaseQueries.With(labels).Inc()
 }
 
-func IncAPIRequests() {
-	apiRequests.With(appLabels).Inc()
+func IncAPIRequests(method, endpoint, status string) {
+	labels := maps.Clone(appLabels)
+	labels["method"] = method
+	labels["endpoint"] = endpoint
+	labels["status"] = status
+	apiRequests.With(labels).Inc()
 }
 
 func IncBookingsTotal() {
@@ -187,8 +198,10 @@ func ObserveMessageProcessingDuration(seconds float64) {
 	messageProcessingDuration.With(appLabels).Observe(seconds)
 }
 
-func ObserveDatabaseQueryDuration(seconds float64) {
-	databaseQueryDuration.With(appLabels).Observe(seconds)
+func ObserveDatabaseQueryDuration(operation string, seconds float64) {
+	labels := maps.Clone(appLabels)
+	labels["operation"] = operation
+	databaseQueryDuration.With(labels).Observe(seconds)
 }
 
 func SetActiveUsers(count int) {
