@@ -25,6 +25,7 @@ var (
 	databaseQueries   *prometheus.CounterVec
 	apiRequests       *prometheus.CounterVec
 	bookingsTotal     *prometheus.CounterVec
+	databaseErrors    *prometheus.CounterVec
 
 	// Histogram metrics
 	messageProcessingDuration *prometheus.HistogramVec
@@ -93,6 +94,14 @@ func initializeMetrics(cfg *config.Config) {
 		dbLabelNames,
 	)
 
+	databaseErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: PREFIX + "database_errors_total",
+			Help: "Total database errors",
+		},
+		dbLabelNames,
+	)
+
 	apiRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "api_requests_total",
@@ -144,6 +153,7 @@ func initializeMetrics(cfg *config.Config) {
 	registry.MustRegister(bookingsTotal)
 	registry.MustRegister(messageProcessingDuration)
 	registry.MustRegister(databaseQueryDuration)
+	registry.MustRegister(databaseErrors)
 	registry.MustRegister(activeUsers)
 
 	// standart metrics
@@ -180,6 +190,12 @@ func IncDatabaseQueries(operation string) {
 	labels := maps.Clone(appLabels)
 	labels["operation"] = operation
 	databaseQueries.With(labels).Inc()
+}
+
+func IncDatabaseErrors(operation string) {
+	labels := maps.Clone(appLabels)
+	labels["operation"] = operation
+	databaseErrors.With(labels).Inc()
 }
 
 func IncAPIRequests(method, endpoint, status string) {
