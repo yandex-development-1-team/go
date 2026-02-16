@@ -21,8 +21,26 @@ const (
 // internal/handlers/service_detail.go
 func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.CallbackQuery) error {
 	// ШАГ 1: Получаем ID пользователя и номер чата
-	userID := tg.Message.UserID
-	serviceID := tg.Message.ChatID
+	userID := tg.From.ID
+	chatID := tg.Message.Chat.ID
+	callbackData := tg.Data
+	i, err := parseServiceID(callbackData)
+	if err != nil {
+		h.logger.Error("failed_to_parse_service_id",
+			zap.String("callback_data", callbackData),
+			zap.Int64("user_id", userID),
+			zap.Int64("chat_id", chatID),
+			zap.Error(err),
+		)
+		// Отправляем сообщение об ошибке В ЧАТ
+		errorMsg := tgbotapi.NewMessage(chatID, "❌ Некорректные данные кнопки. Пожалуйста, попробуйте снова.")
+		errorMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+		if _, sendErr := h.bot.Send(errorMsg); sendErr != nil {
+			h.logger.Error("failed_to_send_error_message", zap.Error(sendErr))
+		}
+		return err
+	}
+	serviceID := i
 	// ШАГ 2: Логирование запроса
 	h.logger.Info("service_detail_requested",
 		zap.Int("service_id", serviceID),
@@ -50,7 +68,7 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 	)
 
 	// ШАГ 6: Отправка сообщения
-	if err := h.sendMessage(userID, messageText, keyboard); err != nil {
+	if err := h.sendMessage(chatID, messageText, keyboard); err != nil {
 		h.logger.Error("failed_to_send_service_detail",
 			zap.Int("service_id", serviceID),
 			zap.Int64("user_id", userID),
