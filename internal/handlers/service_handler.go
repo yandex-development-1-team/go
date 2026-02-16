@@ -7,7 +7,6 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/repository" // название пакета с запросом к ДБ
-	"go.uber.org/zap"
 )
 
 var (
@@ -29,7 +28,6 @@ type Service struct {
 
 // ServiceHandler обрабатывает действия, связанные с услугами
 type ServiceHandler struct {
-	logger          *zap.Logger
 	repo            *repository.Repository
 	bot             *tgbotapi.BotAPI
 	keyboardService *KeyboardService
@@ -43,9 +41,8 @@ func (h *ServiceHandler) sendMessage(userID int64, text string, keyboard tgbotap
 }
 
 // NewServiceHandler создаёт новый обработчик услуг
-func NewServiceHandler(logger *zap.Logger, repo *repository.Repository, bot *tgbotapi.BotAPI) *ServiceHandler {
+func NewServiceHandler(repo *repository.Repository, bot *tgbotapi.BotAPI) *ServiceHandler {
 	return &ServiceHandler{
-		logger:          logger.Named("service_handler"),
 		repo:            repo,
 		bot:             bot,
 		keyboardService: NewKeyboardService(),

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"go.uber.org/zap"
 )
 
@@ -24,9 +25,9 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 	userID := tg.From.ID
 	chatID := tg.Message.Chat.ID
 	callbackData := tg.Data
-	i, err := parseServiceID(callbackData)
+	serviceID, err := parseServiceID(callbackData)
 	if err != nil {
-		h.logger.Error("failed_to_parse_service_id",
+		logger.Error("failed_to_parse_service_id",
 			zap.String("callback_data", callbackData),
 			zap.Int64("user_id", userID),
 			zap.Int64("chat_id", chatID),
@@ -36,13 +37,12 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 		errorMsg := tgbotapi.NewMessage(chatID, "❌ Некорректные данные кнопки. Пожалуйста, попробуйте снова.")
 		errorMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 		if _, sendErr := h.bot.Send(errorMsg); sendErr != nil {
-			h.logger.Error("failed_to_send_error_message", zap.Error(sendErr))
+			logger.Error("failed_to_send_error_message", zap.Error(sendErr))
 		}
 		return err
 	}
-	serviceID := i
 	// ШАГ 2: Логирование запроса
-	h.logger.Info("service_detail_requested",
+	logger.Info("service_detail_requested",
 		zap.Int("service_id", serviceID),
 		zap.Int64("user_id", userID),
 	)
@@ -69,7 +69,7 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 
 	// ШАГ 6: Отправка сообщения
 	if err := h.sendMessage(chatID, messageText, keyboard); err != nil {
-		h.logger.Error("failed_to_send_service_detail",
+		logger.Error("failed_to_send_service_detail",
 			zap.Int("service_id", serviceID),
 			zap.Int64("user_id", userID),
 			zap.Error(err),
@@ -78,7 +78,7 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 	}
 
 	// ШАГ 7: Логирование успешного показа
-	h.logger.Info("service_detail_shown",
+	logger.Info("service_detail_shown",
 		zap.Int("service_id", serviceID),
 		zap.String("service_name", service.Name),
 		zap.Int64("user_id", userID),
@@ -92,7 +92,7 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 func (h *ServiceHandler) handleError(userID int64, serviceID int, err error) error {
 	// Отправка сообщения об ошибке + логирование
 	if err != nil {
-		h.logger.Error("failed_to_get_service",
+		logger.Error("failed_to_get_service",
 			zap.Int("service_id", serviceID),
 			zap.Int64("user_id", userID),
 			zap.Error(err),
@@ -102,7 +102,7 @@ func (h *ServiceHandler) handleError(userID int64, serviceID int, err error) err
 		msg := tgbotapi.NewMessage(userID, "❌ К сожалению, не удалось загрузить информацию об услуге. Пожалуйста, попробуйте позже.")
 		_, sendErr := h.bot.Send(msg)
 		if sendErr != nil {
-			h.logger.Error("failed_to_send_error_message",
+			logger.Error("failed_to_send_error_message",
 				zap.Int64("user_id", userID),
 				zap.Error(sendErr),
 			)
