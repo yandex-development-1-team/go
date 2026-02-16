@@ -48,8 +48,7 @@ func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, servic
 	}
 
 	// Кнопка "Назад" всегда в отдельной строке
-
-	backButton := tgbotapi.NewInlineKeyboardButtonData("⬅️ Назад", fmt.Sprintf("%s:%s:%d", bookHandler, backButtons, boxID))
+	backButton := tgbotapi.NewInlineKeyboardButtonData("⬅️ Назад", fmt.Sprintf("%s:%d", backButtons, boxID))
 	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{backButton})
 
 	return tgbotapi.NewInlineKeyboardMarkup(buttons...)
