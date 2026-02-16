@@ -7,10 +7,11 @@ import (
 )
 
 const (
-	bookHandler    = "book"
-	privateButtons = "private"
-	publicButtons  = "public"
-	backButtons    = "no"
+	bookHandler      = "book"
+	privateButtons   = "private"
+	publicButtons    = "public"
+	backButtons      = "back"
+	missingParameter = "no"
 )
 
 // KeyboardService генерирует клавиатуры для разных экранов
@@ -35,13 +36,13 @@ func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, servic
 	case ServiceTypeSport:
 		buttons = [][]tgbotapi.InlineKeyboardButton{
 			{
-				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать сейчас", fmt.Sprintf("%s:%s:%d", bookHandler, backButtons, serviceID)),
+				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать сейчас", fmt.Sprintf("%s:%s:%d", bookHandler, missingParameter, serviceID)),
 			},
 		}
 	default:
 		buttons = [][]tgbotapi.InlineKeyboardButton{
 			{
-				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%s:%d", bookHandler, backButtons, serviceID)),
+				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%s:%d", bookHandler, missingParameter, serviceID)),
 			},
 		}
 	}
