@@ -19,14 +19,17 @@ const (
 )
 
 // internal/handlers/service_detail.go
-func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int, userID int64) error {
-	// ШАГ 1: Логирование запроса
+func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.CallbackQuery) error {
+	// ШАГ 1: Получаем ID пользователя и номер чата
+	userID := tg.Message.UserID
+	serviceID := tg.Message.ChatID
+	// ШАГ 2: Логирование запроса
 	h.logger.Info("service_detail_requested",
 		zap.Int("service_id", serviceID),
 		zap.Int64("user_id", userID),
 	)
 
-	// ШАГ 2: Получение данных из репозитория
+	// ШАГ 3: Получение данных из репозитория
 	service, err := h.repo.GetServiceByID(ctx, serviceID)
 	if err != nil {
 		return h.handleError(userID, serviceID, err)
@@ -36,17 +39,17 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int,
 		serviceName = "Прочее"
 	}
 
-	// ШАГ 3: Формирование сообщения (чистая функция)
+	// ШАГ 4: Формирование сообщения (чистая функция)
 	messageText := buildServiceMessage(service, serviceName)
 
-	// ШАГ 4: Генерация клавиатуры (сервис)
+	// ШАГ 5: Генерация клавиатуры (сервис)
 	keyboard := h.keyboardService.ServiceDetailKeyboard(
 		service.Type,
 		service.ID,
 		service.BoxID,
 	)
 
-	// ШАГ 5: Отправка сообщения
+	// ШАГ 6: Отправка сообщения
 	if err := h.sendMessage(userID, messageText, keyboard); err != nil {
 		h.logger.Error("failed_to_send_service_detail",
 			zap.Int("service_id", serviceID),
@@ -56,7 +59,7 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int,
 		return fmt.Errorf("failed to send service detail: %w", err)
 	}
 
-	// ШАГ 6: Логирование успешного показа
+	// ШАГ 7: Логирование успешного показа
 	h.logger.Info("service_detail_shown",
 		zap.Int("service_id", serviceID),
 		zap.String("service_name", service.Name),
