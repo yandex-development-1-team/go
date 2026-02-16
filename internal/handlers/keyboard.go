@@ -8,7 +8,6 @@ import (
 
 const (
 	bookHandler    = "book"
-	bookButtons    = "book"
 	privateButtons = "private"
 	publicButtons  = "public"
 	backButtons    = "no"
@@ -36,13 +35,13 @@ func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, servic
 	case ServiceTypeSport:
 		buttons = [][]tgbotapi.InlineKeyboardButton{
 			{
-				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать сейчас", fmt.Sprintf("%s:%s:%d", bookHandler, bookButtons, serviceID)),
+				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать сейчас", fmt.Sprintf("%s:%s:%d", bookHandler, backButtons, serviceID)),
 			},
 		}
 	default:
 		buttons = [][]tgbotapi.InlineKeyboardButton{
 			{
-				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%s:%d", bookHandler, bookButtons, serviceID)),
+				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%s:%d", bookHandler, backButtons, serviceID)),
 			},
 		}
 	}
@@ -53,9 +52,4 @@ func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, servic
 	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{backButton})
 
 	return tgbotapi.NewInlineKeyboardMarkup(buttons...)
-}
-
-type Booking struct {
-	title     string //
-	serviceID int
 }
