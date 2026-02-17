@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
 )
@@ -24,7 +25,7 @@ func (bsh BoxSolutionsHandler) GetDetailsForBoxSolution(request models.GetDetail
 
 }
 
-func (bsh BoxSolutionsHandler) GetBoxSolutions(ctx context.Context) (models.BoxSolutionButtons, error) {
+func (bsh BoxSolutionsHandler) HandleBoxSolutions(ctx context.Context, query *tgbotapi.CallbackQuery) (models.BoxSolutionButtons, error) {
 	//todo получены данные по боксам. В хендлере мы забираем только названия боксов. Где хранить оставшуюся информацию для быстрого доступа по кнопкам?
 	boxesDB, err := bsh.DBClient.GetBoxSolutions(ctx)
 	//todo обработку ошибки нужно обернуть во что-другое?

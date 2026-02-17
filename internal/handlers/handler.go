@@ -41,6 +41,10 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 		// todo
 	}
 	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
+		switch callbackQuery.Data {
+		case CallbackBoxSolutions:
+
+		}
 		//todo
 	}
 }
