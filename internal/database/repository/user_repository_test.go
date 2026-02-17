@@ -113,7 +113,7 @@ func createDB(container tc.Container) error {
 		}
 	}
 
-	if err := goose.UpContext(ctx, db.DB, "../../migrations"); err != nil {
+	if err := goose.UpContext(ctx, db.DB, "../../../migrations"); err != nil {
 		return err
 	}
 
