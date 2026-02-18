@@ -10,14 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// ServiceType определяет тип услуги для выбора правильного набора кнопок
-type ServiceType string
-
-const (
-	ServiceTypeMuseum  ServiceType = "museum"
-	ServiceTypeSport   ServiceType = "sport"
-	ServiceTypeDefault ServiceType = "default"
-)
+const VessagesErrData = "❌ К сожалению, не удалось загрузить информацию об услуге. Пожалуйста, попробуйте позже."
 
 // internal/handlers/service_detail.go
 func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.CallbackQuery) error {
@@ -34,7 +27,7 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 			zap.Error(err),
 		)
 		// Отправляем сообщение об ошибке В ЧАТ
-		errorMsg := tgbotapi.NewMessage(chatID, "❌ Некорректные данные кнопки. Пожалуйста, попробуйте снова.")
+		errorMsg := tgbotapi.NewMessage(chatID, VessagesErrData)
 		errorMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 		if _, sendErr := h.bot.Send(errorMsg); sendErr != nil {
 			logger.Error("failed_to_send_error_message", zap.Error(sendErr))

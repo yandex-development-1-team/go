@@ -6,11 +6,22 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// ServiceType определяет тип услуги для выбора правильного набора кнопок
+type ServiceType string
+
+const (
+	ServiceTypeMuseum  ServiceType = "museum"
+	ServiceTypeSport   ServiceType = "sport"
+	ServiceTypeDefault ServiceType = "default"
+)
+
+// используется для определения значения serviceType
 const (
 	bookHandler      = "book"
 	privateButtons   = "private"
 	publicButtons    = "public"
 	backButtons      = "back"
+	BackButtonsTitle = "⬅️ Назад"
 	missingParameter = "no"
 )
 
@@ -48,7 +59,7 @@ func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, servic
 	}
 
 	// Кнопка "Назад" всегда в отдельной строке
-	backButton := tgbotapi.NewInlineKeyboardButtonData("⬅️ Назад", fmt.Sprintf("%s:%d", backButtons, boxID))
+	backButton := tgbotapi.NewInlineKeyboardButtonData(BackButtonsTitle, fmt.Sprintf("%s:%d", backButtons, boxID))
 	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{backButton})
 
 	return tgbotapi.NewInlineKeyboardMarkup(buttons...)
