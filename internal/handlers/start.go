@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"fmt"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"go.uber.org/zap"
@@ -20,52 +18,78 @@ const (
 )
 
 // WelcomeText - Приветственное сообщение при команде /start
-const WelcomeText = "👋 Добро пожаловать в Bot Яндекса!\n\nВыберите интересующую вас опцию:"
+// ErrMessageUser - Текст об ошибке при работе с БД
+const (
+	WelcomeText    = "👋 Добро пожаловать в Bot Яндекса!\n\nВыберите интересующую вас опцию:"
+	ErrMessageUser = "Произошла ошибка, попробуйте позже."
+)
 
-// UserSave сохраняет данные пользователя в БД
-// Реализация может сохранять только новых пользователей
-type UserSaver interface {
-	SaveUser(userID int64, username string, chatID int64) error
-}
+// userRepo хранит репозиторий пользователей внутри пакета
+// var userRepo repository.UserRepository
 
-var defaultUserSaver UserSaver
+// SetUserRepository задает репозиторий (вызывается из main.go)
+// func SetUserRepository(repo repository.UserRepository) {
+// 	userRepo = repo
+// }
 
-// SetUserSaver задает реализацию UserSaver
-// Если не вызвана, сохранение пользователя не выполняется
-func SetUserSaver(userSaver UserSaver) { defaultUserSaver = userSaver }
-
-// HandleStart обрабатывает команду /start: логирует событие, при необходимости сохраняет
-// пользователя через UserSaver, отправляет приветственное сообщение и главное меню с inline-кнопками
-// Возвращает ошибку только при сбое отправки сообщения в Telegram
+// HandleStart обрабатывает команду /start
 func HandleStart(bot Bot, msg *tgbotapi.Message) error {
-	userID := msg.From.ID
+	// ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	// defer cancel()
+
 	chatID := msg.Chat.ID
+	telegramID := msg.From.ID
 	username := ""
+	// firstName := ""
+	// lastName := ""
+	if msg.From != nil {
+		username = msg.From.UserName
+		// firstName = msg.From.FirstName
+		// lastName = msg.From.LastName
+	}
 
 	logger.Info("start command",
-		zap.Int64("user_id", userID),
+		zap.Int64("telegram_id", telegramID),
 		zap.String("username", username),
 		zap.Int64("chat_id", chatID),
 	)
 
-	if defaultUserSaver != nil {
-		if err := defaultUserSaver.SaveUser(userID, username, chatID); err != nil {
-			logger.Warn("failed to save user", zap.Int64("user_id", userID), zap.Error(err))
-		}
-	}
+	// if userRepo != nil {
+	// 	if err := userRepo.CreateUser(
+	// 		ctx,
+	// 		telegramID,
+	// 		username,
+	// 		firstName,
+	// 		lastName,
+	// 	); err != nil {
 
-	keyboard := mainMenuKeyboard()
+	// 		logger.Error("database error in CreateUser",
+	// 			zap.Int64("telegram_id", telegramID),
+	// 			zap.String("username", username),
+	// 			zap.Error(err),
+	// 		)
+
+	// 		errMsg := tgbotapi.NewMessage(chatID, ErrMessageUser)
+	// 		if _, sendErr := bot.Send(errMsg); sendErr != nil {
+	// 			logger.Error("failed to send error message", zap.Error(sendErr))
+	// 		}
+
+	// 		return err
+	// 	}
+	// }
+
 	reply := tgbotapi.NewMessage(chatID, WelcomeText)
-	reply.ReplyMarkup = keyboard
+	reply.ReplyMarkup = mainMenuKeyboard()
 
 	if _, err := bot.Send(reply); err != nil {
-		return fmt.Errorf("failed to send start message: %w", err)
+		logger.Error("failed to send start message", zap.Int64("chat_id", chatID), zap.Error(err))
+		return err
 	}
+
 	return nil
 }
 
 // mainMenuKeyboard возвращает разметку inline-кнопок главного меню
-// Используется в HandleStart при отправке приветственного сообщения
 func mainMenuKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(

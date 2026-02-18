@@ -2,19 +2,20 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	TelegramBotToken string `mapstructure:"telegram_bot_token"`
-	PostgresURL      string `mapstructure:"postgres_url"`
-	Port             int    `mapstructure:"port"`
-	Environment      string `mapstructure:"environment"`
-	PrometheusPort   int    `mapstructure:"prometheus_port"`
-	LogLevel         string `mapstructure:"log_level"`
+	TelegramBotToken  string `mapstructure:"telegram_bot_token"`
+	TelegramBotAPIUrl string `mapstructure:"telegram_bot_api_url"`
+	PostgresURL       string `mapstructure:"postgres_url"`
+	Port              int    `mapstructure:"port"`
+	Environment       string `mapstructure:"environment"`
+	PrometheusPort    int    `mapstructure:"prometheus_port"`
+	LogLevel          string `mapstructure:"log_level"`
+	HostName          string `mapstructure:"host_name"`
 }
 
 var (
@@ -23,9 +24,9 @@ var (
 	loadErr  error
 )
 
-func GetConfig() (Config, error) {
+func GetConfig(paths []string) (Config, error) {
 	loadOnce.Do(func() {
-		cfg, err := loadConfig()
+		cfg, err := loadConfig(paths)
 		if err != nil {
 			loadErr = err
 			return
@@ -35,33 +36,42 @@ func GetConfig() (Config, error) {
 	return appCfg, loadErr
 }
 
-func loadConfig() (*Config, error) {
+func loadConfig(paths []string) (*Config, error) {
 
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath("config")
-	v.AddConfigPath(".")
+	if len(paths) > 0 {
+		for _, path := range paths {
+			v.AddConfigPath(path)
+		}
+	} else {
+		v.AddConfigPath("config")
+		v.AddConfigPath(".")
+	}
 
 	// Set defaults
+	v.SetDefault("telegram_bot_api_url", "https://api.telegram.org")
 	v.SetDefault("port", 8080)
 	v.SetDefault("environment", "dev")
 	v.SetDefault("prometheus_port", 9090)
 	v.SetDefault("log_level", "info")
+	v.SetDefault("host_name", "unknown")
 
 	// Set env vars mapping
-	v.AutomaticEnv()
 	v.BindEnv("telegram_bot_token", "BOT_TOKEN")
 	v.BindEnv("postgres_url", "POSTGRES_URL")
 	v.BindEnv("port", "PORT")
 	v.BindEnv("environment", "ENVIRONMENT")
 	v.BindEnv("prometheus_port", "PROMETHEUS_PORT")
 	v.BindEnv("log_level", "LOG_LEVEL")
+	v.BindEnv("host_name", "HOSTNAME")
 
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config.yml: %w", err)
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return nil, fmt.Errorf("config file not found")
 		}
+		return nil, fmt.Errorf("error reading config.yml: %w", err)
 	}
 
 	config := &Config{}
@@ -77,8 +87,6 @@ func loadConfig() (*Config, error) {
 }
 
 func validateConfig(config *Config) error {
-	pwd, _ := os.Getwd()
-	fmt.Printf("Current working directory: %s\n", pwd)
 	if config.TelegramBotToken == "" {
 		return fmt.Errorf("telegram_bot_token is empty")
 	}
