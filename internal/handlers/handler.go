@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"go.uber.org/zap"
@@ -16,7 +15,8 @@ type Bot interface {
 }
 
 type Handler struct {
-	bot Bot
+	bot                Bot
+	ClientBoxSolutions DataBaseClient
 }
 
 func NewHandler(bot Bot) *Handler {
@@ -43,7 +43,9 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
 		switch callbackQuery.Data {
 		case CallbackBoxSolutions:
-
+			if err := h.HandleBoxSolutions(ctx, callbackQuery); err != nil {
+				logger.Error("failed to handle callback BoxSolutions", zap.Error(err))
+			}
 		}
 		//todo
 	}

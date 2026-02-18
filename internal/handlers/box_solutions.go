@@ -4,8 +4,14 @@ import (
 	"context"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
+	"go.uber.org/zap"
+)
+
+const (
+	TextForBoxSolutions = "📦 Коробочные решения\\n\\nВыберите интересующее вас предложение:\\n"
 )
 
 type DataBaseClient interface {
@@ -20,27 +26,46 @@ func NewBoxSolutions(dbClient DataBaseClient) BoxSolutionsHandler {
 	return BoxSolutionsHandler{DBClient: dbClient}
 }
 
-// Логировать: user_id, выбранная услуга
-func (bsh BoxSolutionsHandler) GetDetailsForBoxSolution(request models.GetDetailsForBoxSolutionRequest) {
+func (h *Handler) HandleBoxSolutions(ctx context.Context, query *tgbotapi.CallbackQuery) error {
+	//todo нужно контекст создавать тут?
+	//ctxBoxSolutions, cancel := context.WithTimeout(ctx, 2*time.Second)
+	//defer cancel()
 
-}
+	logger.Info("button is pressed",
+		zap.String("user_id", query.Message.From.UserName),
+		zap.String("service", query.Data),
+	)
 
-func (bsh BoxSolutionsHandler) HandleBoxSolutions(ctx context.Context, query *tgbotapi.CallbackQuery) (models.BoxSolutionButtons, error) {
-	//todo получены данные по боксам. В хендлере мы забираем только названия боксов. Где хранить оставшуюся информацию для быстрого доступа по кнопкам?
-	boxesDB, err := bsh.DBClient.GetBoxSolutions(ctx)
-	//todo обработку ошибки нужно обернуть во что-другое?
+	boxesDB, err := h.ClientBoxSolutions.GetBoxSolutions(ctx)
 	if err != nil {
-		return models.BoxSolutionButtons{}, fmt.Errorf("Error receiving boxed solutions: %w", err)
+		return fmt.Errorf("failed to retrieve boxed solutions from the database: %w", err)
 	}
 
 	boxSolutions := convertModelsDBToModels(boxesDB)
 	buttons := getButtons(boxSolutions)
-	buttonsResp := models.BoxSolutionButtons{
-		Description: "📦 Коробочные решения\n\nВыберите интересующее вас предложение:\n",
-		Buttons:     buttons,
+	//buttonsResp := models.BoxSolutionButtons{
+	//	Description: TextForBoxSolutions,
+	//	Buttons:     buttons,
+	//}
+
+	reply := tgbotapi.NewMessage(query.Message.Chat.ID, TextForBoxSolutions)
+	reply.ReplyMarkup = menuBoxSolutions(buttons)
+
+	if _, err := h.bot.Send(reply); err != nil {
+		logger.Error("failed to send inline buttons for boxed solutions", zap.Int64("chat_id", query.Message.Chat.ID), zap.Error(err))
+		return err
 	}
 
-	return buttonsResp, err
+	return nil
+}
+
+func menuBoxSolutions(buttons []models.Button) tgbotapi.InlineKeyboardMarkup {
+	var rows []tgbotapi.InlineKeyboardButton
+	for _, boxSolution := range buttons {
+		rows = append(rows, tgbotapi.NewInlineKeyboardButtonData(boxSolution.Name, boxSolution.Alias))
+	}
+
+	return tgbotapi.NewInlineKeyboardMarkup(rows)
 }
 
 func convertModelsDBToModels(boxesDB []repository.BoxSolution) models.GetBoxSolutionsResponse {
