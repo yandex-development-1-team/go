@@ -8,14 +8,16 @@ import (
 )
 
 type Config struct {
-	TelegramBotToken  string `mapstructure:"telegram_bot_token"`
-	TelegramBotAPIUrl string `mapstructure:"telegram_bot_api_url"`
-	PostgresURL       string `mapstructure:"postgres_url"`
-	Port              int    `mapstructure:"port"`
-	Environment       string `mapstructure:"environment"`
-	PrometheusPort    int    `mapstructure:"prometheus_port"`
-	LogLevel          string `mapstructure:"log_level"`
-	HostName          string `mapstructure:"host_name"`
+	TelegramBotToken  string  `mapstructure:"telegram_bot_token"`
+	TelegramBotAPIUrl string  `mapstructure:"telegram_bot_api_url"`
+	PostgresURL       string  `mapstructure:"postgres_url"`
+	Port              int     `mapstructure:"port"`
+	Environment       string  `mapstructure:"environment"`
+	PrometheusPort    int     `mapstructure:"prometheus_port"`
+	MsgRPS            float64 `mapstructure:"msg_rps"`
+	ApiRPS            float64 `mapstructure:"api_rps"`
+	LogLevel          string  `mapstructure:"log_level"`
+	HostName          string  `mapstructure:"host_name"`
 }
 
 var (
@@ -37,7 +39,6 @@ func GetConfig(paths []string) (Config, error) {
 }
 
 func loadConfig(paths []string) (*Config, error) {
-
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")

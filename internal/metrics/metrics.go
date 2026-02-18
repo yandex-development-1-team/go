@@ -26,6 +26,7 @@ var (
 	apiRequests       *prometheus.CounterVec
 	bookingsTotal     *prometheus.CounterVec
 	databaseErrors    *prometheus.CounterVec
+	botRateLimit      prometheus.Counter
 
 	// Histogram metrics
 	messageProcessingDuration *prometheus.HistogramVec
@@ -118,6 +119,11 @@ func initializeMetrics(cfg *config.Config) {
 		labelNames,
 	)
 
+	botRateLimit = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: PREFIX + "rate_limit_hits_total",
+		Help: "Total hits of the bot request limit",
+	})
+
 	// init Histogram metrics
 	messageProcessingDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -167,7 +173,6 @@ func initializeMetrics(cfg *config.Config) {
 	})
 	up.Set(1)
 	registry.MustRegister(up)
-
 }
 
 func NewHandler() http.Handler {
@@ -208,6 +213,10 @@ func IncAPIRequests(method, endpoint, status string) {
 
 func IncBookingsTotal() {
 	bookingsTotal.With(appLabels).Inc()
+}
+
+func IncBotRateLimit() {
+	botRateLimit.Inc()
 }
 
 func ObserveMessageProcessingDuration(seconds float64) {

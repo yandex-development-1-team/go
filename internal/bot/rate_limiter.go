@@ -5,20 +5,16 @@ import (
 	"sync"
 
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/metrics"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
-)
-
-const (
-	msgRPS = 30.0 // per-chat message limit
-	apiRPS = 10.0 // general message limit
 )
 
 type ApiRateLimiter struct {
 	limiter *rate.Limiter
 }
 
-func NewApiRateLimiter() *ApiRateLimiter {
+func NewApiRateLimiter(apiRPS float64) *ApiRateLimiter {
 	return &ApiRateLimiter{
 		limiter: rate.NewLimiter(rate.Limit(apiRPS), 1),
 	}
@@ -34,12 +30,14 @@ func (rl *ApiRateLimiter) Exec(ctx context.Context, f func()) error {
 
 type MsgRateLimiter struct {
 	limiters map[int64]*rate.Limiter
+	msgRPS   float64
 	lock     sync.RWMutex
 }
 
-func NewMsgRateLimiter() *MsgRateLimiter {
+func NewMsgRateLimiter(msgRPS float64) *MsgRateLimiter {
 	return &MsgRateLimiter{
 		limiters: map[int64]*rate.Limiter{},
+		msgRPS:   msgRPS,
 	}
 }
 
@@ -52,7 +50,7 @@ func (rl *MsgRateLimiter) Exec(ctx context.Context, chatID int64, f func() error
 		l = rl.limiters[chatID]
 		// double check, to avoid race
 		if l == nil {
-			l = rate.NewLimiter(msgRPS, 1)
+			l = rate.NewLimiter(rate.Limit(rl.msgRPS), 1)
 			rl.limiters[chatID] = l
 		}
 		rl.lock.Unlock()
@@ -60,7 +58,7 @@ func (rl *MsgRateLimiter) Exec(ctx context.Context, chatID int64, f func() error
 
 	// check limit exceeded
 	if l.Tokens() < 1 {
-		// место для метрики
+		metrics.IncBotRateLimit()
 		logger.Warn("message limit has been exceeded", zap.Int64("chatID", chatID))
 	}
 

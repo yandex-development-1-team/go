@@ -51,8 +51,8 @@ func run() error {
 	defer cancel()
 
 	// init rate limiters
-	apiRL := bot.NewApiRateLimiter()
-	msgRL := bot.NewMsgRateLimiter()
+	apiRL := bot.NewApiRateLimiter(cfg.ApiRPS)
+	msgRL := bot.NewMsgRateLimiter(cfg.MsgRPS)
 
 	// init metrics server
 	metricsMux := http.NewServeMux()

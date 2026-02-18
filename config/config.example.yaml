@@ -4,5 +4,7 @@ postgres_url: "postgres://user:pass@localhost:5432/bot_db"
 port: 8080
 environment: "dev"
 prometheus_port: 9090
+msg_rps: 30 # per-chat message limit / sec
+api_rps: 10 # general message limit / sec
 log_level: "info"
 host_name: "host"
