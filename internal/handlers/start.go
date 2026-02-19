@@ -6,9 +6,28 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/logger"
-	"github.com/yandex-development-1-team/go/internal/repository"
 	"go.uber.org/zap"
 )
+
+type UserRepository interface {
+	CreateUser(ctx context.Context, telegramID int64, userName string, firstName string, lastName string) error
+}
+
+type StartHandlerBot interface {
+	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
+}
+
+type StartHandler struct {
+	bot            StartHandlerBot
+	userRepository UserRepository
+}
+
+func NewStartHandler(bot StartHandlerBot, userRepository UserRepository) StartHandler {
+	return StartHandler{
+		bot:            bot,
+		userRepository: userRepository,
+	}
+}
 
 // Callback-данные для inline-кнопок главного меню
 // Используются как callback_data при нажатии на кнопки после /start
@@ -28,16 +47,8 @@ const (
 	ErrMessageUser = "Произошла ошибка, попробуйте позже."
 )
 
-// userRepo хранит репозиторий пользователей внутри пакета
-var userRepo repository.UserRepository
-
-// SetUserRepository задает репозиторий (вызывается из main.go)
-func SetUserRepository(repo repository.UserRepository) {
-	userRepo = repo
-}
-
 // HandleStart обрабатывает команду /start
-func HandleStart(bot Bot, msg *tgbotapi.Message) error {
+func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -58,8 +69,8 @@ func HandleStart(bot Bot, msg *tgbotapi.Message) error {
 		zap.Int64("chat_id", chatID),
 	)
 
-	if userRepo != nil {
-		if err := userRepo.CreateUser(
+	if sh.userRepository != nil {
+		if err := sh.userRepository.CreateUser(
 			ctx,
 			telegramID,
 			username,
@@ -74,7 +85,7 @@ func HandleStart(bot Bot, msg *tgbotapi.Message) error {
 			)
 
 			errMsg := tgbotapi.NewMessage(chatID, ErrMessageUser)
-			if _, sendErr := bot.Send(errMsg); sendErr != nil {
+			if _, sendErr := sh.bot.Send(errMsg); sendErr != nil {
 				logger.Error("failed to send error message", zap.Error(sendErr))
 			}
 
@@ -85,7 +96,7 @@ func HandleStart(bot Bot, msg *tgbotapi.Message) error {
 	reply := tgbotapi.NewMessage(chatID, WelcomeText)
 	reply.ReplyMarkup = mainMenuKeyboard()
 
-	if _, err := bot.Send(reply); err != nil {
+	if _, err := sh.bot.Send(reply); err != nil {
 		logger.Error("failed to send start message", zap.Int64("chat_id", chatID), zap.Error(err))
 		return err
 	}

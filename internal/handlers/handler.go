@@ -15,13 +15,14 @@ type Bot interface {
 }
 
 type Handler struct {
-	bot                Bot
-	ClientBoxSolutions DataBaseClient
+	startHandler        StartHandler
+	boxSolutionsHandler BoxSolutionsHandler
 }
 
-func NewHandler(bot Bot) *Handler {
+func NewHandler(startHandler StartHandler, boxSolutionsHandler BoxSolutionsHandler) *Handler {
 	return &Handler{
-		bot: bot,
+		startHandler:        startHandler,
+		boxSolutionsHandler: boxSolutionsHandler,
 	}
 }
 
@@ -30,7 +31,7 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 		if msg.IsCommand() {
 			switch msg.Command() {
 			case cmdStart:
-				if err := HandleStart(h.bot, msg); err != nil {
+				if err := h.startHandler.HandleStart(msg); err != nil {
 					logger.Error("failed to handle /start", zap.Error(err))
 				}
 			// в новые ветки добавлять вызовы функций обработчиков команд
@@ -43,7 +44,7 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
 		switch callbackQuery.Data {
 		case CallbackBoxSolutions:
-			if err := h.HandleBoxSolutions(ctx, callbackQuery); err != nil {
+			if err := h.boxSolutionsHandler.HandleBoxSolutions(ctx, callbackQuery); err != nil {
 				logger.Error("failed to handle callback BoxSolutions", zap.Error(err))
 			}
 		}
