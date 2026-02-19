@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	TextForBoxSolutions = "📦 Коробочные решения\n\nВыберите интересующее вас предложение:\n"
+	TextForBoxSolutions              = "📦 Коробочные решения\n\nВыберите интересующее вас предложение:\n"
+	BoxSolutionsButtonBackToMainMenu = "back_to_main"
 )
 
 type BoxSolutionsRepository interface {

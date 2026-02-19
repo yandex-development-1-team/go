@@ -47,7 +47,11 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 			if err := h.boxSolutionsHandler.HandleBoxSolutions(ctx, callbackQuery); err != nil {
 				logger.Error("failed to handle callback BoxSolutions", zap.Error(err))
 			}
+		case BoxSolutionsButtonBackToMainMenu:
+			if err := h.startHandler.HandleStartBackToMainMenu(ctx, callbackQuery); err != nil {
+				logger.Error("failed to handle callback BoxSolutionsButtonBackToMainMenu", zap.Error(err))
+			}
+			//todo
 		}
-		//todo
 	}
 }

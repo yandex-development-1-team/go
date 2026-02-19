@@ -104,6 +104,18 @@ func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 	return nil
 }
 
+func (sh *StartHandler) HandleStartBackToMainMenu(ctx context.Context, query *tgbotapi.CallbackQuery) error {
+	reply := tgbotapi.NewMessage(query.Message.Chat.ID, WelcomeText)
+	reply.ReplyMarkup = mainMenuKeyboard()
+
+	if _, err := sh.bot.Send(reply); err != nil {
+		logger.Error("failed to send start menu for button BoxSolutionsButtonBackToMainMenu", zap.Int64("chat_id", query.Message.Chat.ID), zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
 // mainMenuKeyboard возвращает разметку inline-кнопок главного меню
 func mainMenuKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(

@@ -1,4 +1,4 @@
-telegram_bot_token: "8235557247:AAH5zec-qWGqWepdssMDx8ErV26zgZgJSsY"  # будет переопределено BOT_TOKEN
+telegram_bot_token:  # будет переопределено BOT_TOKEN
 telegram_bot_api_url: "https://api.telegram.org"
 postgres_url: "postgres://user:pass@localhost:5432/bot_db"
 port: 8080
