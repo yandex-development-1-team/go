@@ -32,3 +32,4 @@ coverage.out
 # Go workspace
 go.work
 go.work.sum
+.DS_Store
