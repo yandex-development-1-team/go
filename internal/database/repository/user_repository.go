@@ -97,7 +97,6 @@ func (u *UserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade 
 
 		affected, err := result.RowsAffected()
 		if err == nil && affected == 0 {
-			//logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
 			return models.ErrUserNotFound
 		}
 		if err != nil {
@@ -126,7 +125,6 @@ func (u *UserRepo) IsAdmin(ctx context.Context, telegramID int64) (bool, error) 
 			telegramID).Scan(&isAdmin)
 
 		if errors.Is(err, sql.ErrNoRows) {
-			//logger.Error("user_not_found", zap.Error(err), zap.String("operation", operation))
 			return false, models.ErrUserNotFound
 		}
 		if err != nil {
