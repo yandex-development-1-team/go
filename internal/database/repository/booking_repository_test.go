@@ -3,27 +3,19 @@ package repository
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
-	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-var (
-	db   *sqlx.DB
-	repo BookingRepository
-)
+// var (
+// 	db   *sqlx.DB
+// 	repo BookingRepository
+// )
 
 func mustParseTime(layout, value string) *time.Time {
 	t, err := time.Parse(layout, value)
@@ -33,76 +25,76 @@ func mustParseTime(layout, value string) *time.Time {
 	return &t
 }
 
-func TestMain(m *testing.M) {
-	logger.NewLogger("dev", "debug")
+// func TestMain(m *testing.M) {
+// 	logger.NewLogger("dev", "debug")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+// 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+// 	defer cancel()
 
-	container, err := startContainer()
-	if err != nil {
-		log.Fatal(err)
-	}
+// 	container, err := startContainer()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	err = createDB(container)
-	if err != nil {
-		log.Fatalf("failed to connect to db: %s", err.Error())
-	}
+// 	err = createDB(container)
+// 	if err != nil {
+// 		log.Fatalf("failed to connect to db: %s", err.Error())
+// 	}
 
-	repo = NewBookingRepository(db)
+// 	repo = NewBookingRepository(db)
 
-	code := m.Run()
+// 	code := m.Run()
 
-	_ = container.Terminate(ctx)
-	os.Exit(code)
-}
+// 	_ = container.Terminate(ctx)
+// 	os.Exit(code)
+// }
 
-func startContainer() (tc.Container, error) {
-	req := tc.ContainerRequest{
-		Image:        "postgres:latest",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_PASSWORD": "password",
-			"POSTGRES_DB":       "testdb",
-		},
-		WaitingFor: wait.ForSQL(nat.Port("5432/tcp"), "postgres", func(host string, port nat.Port) string {
-			return fmt.Sprintf("host=%s port=%s user=postgres password=password dbname=testdb sslmode=disable", host, port.Port())
-		}).WithStartupTimeout(120 * time.Second),
-	}
+// func startContainer() (tc.Container, error) {
+// 	req := tc.ContainerRequest{
+// 		Image:        "postgres:latest",
+// 		ExposedPorts: []string{"5432/tcp"},
+// 		Env: map[string]string{
+// 			"POSTGRES_PASSWORD": "password",
+// 			"POSTGRES_DB":       "testdb",
+// 		},
+// 		WaitingFor: wait.ForSQL(nat.Port("5432/tcp"), "postgres", func(host string, port nat.Port) string {
+// 			return fmt.Sprintf("host=%s port=%s user=postgres password=password dbname=testdb sslmode=disable", host, port.Port())
+// 		}).WithStartupTimeout(120 * time.Second),
+// 	}
 
-	return tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-}
+// 	return tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+// 		ContainerRequest: req,
+// 		Started:          true,
+// 	})
+// }
 
-func createDB(container tc.Container) error {
-	host, _ := container.Host(context.Background())
-	port, _ := container.MappedPort(context.Background(), "5432")
+// func createDB(container tc.Container) error {
+// 	host, _ := container.Host(context.Background())
+// 	port, _ := container.MappedPort(context.Background(), "5432")
 
-	dbURI := fmt.Sprintf("host=%s port=%s user=postgres password=password dbname=testdb sslmode=disable", host, port.Port())
-	var err error
-	db, err = sqlx.Connect("postgres", dbURI)
-	if err != nil {
-		return err
-	}
+// 	dbURI := fmt.Sprintf("host=%s port=%s user=postgres password=password dbname=testdb sslmode=disable", host, port.Port())
+// 	var err error
+// 	db, err = sqlx.Connect("postgres", dbURI)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	if err := goose.SetDialect("postgres"); err != nil {
-		return err
-	}
+// 	if err := goose.SetDialect("postgres"); err != nil {
+// 		return err
+// 	}
 
-	if err := goose.UpContext(context.Background(), db.DB, "../../../migrations"); err != nil {
-		return err
-	}
+// 	if err := goose.UpContext(context.Background(), db.DB, "../../../migrations"); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func TestCreateBooking(t *testing.T) {
 	var userID int64
 	err := db.QueryRow(`
-        INSERT INTO users (telegram_id, username) VALUES ($1, $2) 
-        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username 
+        INSERT INTO users (telegram_id, username) VALUES ($1, $2)
+        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
         RETURNING id`, 111, "test").Scan(&userID)
 	assert.NoError(t, err)
 
@@ -142,10 +134,10 @@ func TestCreateBooking(t *testing.T) {
 				GuestName:   "Other",
 			},
 			preAction: func() {
-				_, _ = db.Exec(`INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status) 
+				_, _ = db.Exec(`INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status)
                     VALUES ($1, 1, $2, $3, 'Owner', 'confirmed')`, userID, targetDate, targetTime)
 			},
-			wantErr: ErrSlotOccupied,
+			wantErr: models.ErrSlotOccupied,
 		},
 		{
 			name:            "request_canceled",
@@ -157,7 +149,7 @@ func TestCreateBooking(t *testing.T) {
 				BookingTime: targetTime,
 				GuestName:   "CanceledUser",
 			},
-			wantErr: ErrRequestCanceled,
+			wantErr: models.ErrRequestCanceled,
 		},
 		{
 			name:            "request_timeout",
@@ -169,7 +161,7 @@ func TestCreateBooking(t *testing.T) {
 				BookingDate: targetDate,
 				BookingTime: targetTime,
 			},
-			wantErr: ErrRequestTimeout,
+			wantErr: models.ErrRequestTimeout,
 		},
 	}
 
@@ -186,7 +178,7 @@ func TestCreateBooking(t *testing.T) {
 				defer cancel()
 			}
 
-			id, err := repo.CreateBooking(ctx, tt.booking)
+			id, err := repoBooking.CreateBooking(ctx, tt.booking)
 			assert.ErrorIs(t, err, tt.wantErr)
 
 			if tt.wantErr == nil {
@@ -215,7 +207,7 @@ func TestCreateBooking_RaceCondition(t *testing.T) {
 
 	for i := 0; i < goroutines; i++ {
 		go func() {
-			_, err := repo.CreateBooking(context.Background(), &models.Booking{
+			_, err := repoBooking.CreateBooking(context.Background(), &models.Booking{
 				UserID:      userID,
 				ServiceID:   int16(serviceID),
 				BookingDate: date,
@@ -243,8 +235,8 @@ func TestGetAvailableSlots(t *testing.T) {
 
 	var userID int64
 	err := db.QueryRow(`
-        INSERT INTO users (telegram_id, username) VALUES (777, 'slot_tester') 
-        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username 
+        INSERT INTO users (telegram_id, username) VALUES (777, 'slot_tester')
+        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
         RETURNING id`).Scan(&userID)
 	assert.NoError(t, err)
 
@@ -255,13 +247,13 @@ func TestGetAvailableSlots(t *testing.T) {
 	slotConfirmed := "11:00:00"
 
 	_, err = db.Exec(`
-        INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status) 
+        INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status)
         VALUES ($1, $2, $3, $4, 'Guest Pending', 'pending'),
                ($1, $2, $3, $5, 'Guest Confirmed', 'confirmed')`,
 		userID, serviceID, targetDate, slotPending, slotConfirmed)
 	assert.NoError(t, err)
 
-	slots, err := repo.GetAvailableSlots(context.Background(), serviceID, targetDate)
+	slots, err := repoBooking.GetAvailableSlots(context.Background(), serviceID, targetDate)
 
 	assert.NoError(t, err)
 	if assert.Len(t, slots, 1, "Should only return slots where status is not confirmed") {
