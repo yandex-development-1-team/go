@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/yandex-development-1-team/go/internal/repository"
 	"github.com/yandex-development-1-team/go/internal/repository/mocks"
@@ -15,9 +16,12 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
+	"github.com/yandex-development-1-team/go/internal/database"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
+
+	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
 
@@ -41,6 +45,22 @@ func run() error {
 
 	// init metrics
 	metrics.Initialize(cfg)
+
+	// init database connection for migrations
+	db, err := sql.Open("postgres", cfg.PostgresURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// run migrations
+	if err := database.RunMigrations(db); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
 
 	// init telegram bot
 	bot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
