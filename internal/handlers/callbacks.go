@@ -8,6 +8,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/metrics"
 	"go.uber.org/zap"
 )
 
@@ -38,7 +39,17 @@ func (r *CallbackRouter) Register(name string, handler CallbackHandler) {
 
 // HandleCallback обрабатывает callback запрос
 func HandleCallback(router *CallbackRouter, query *tgbotapi.CallbackQuery) error {
+
+	// Инкрементируем CallbacksReceived
+	metrics.IncCallbacksReceived()
+
 	startTime := time.Now()
+
+	// Записываем длительность обработки в конце
+	defer func() {
+		duration := time.Since(startTime).Seconds()
+		metrics.ObserveCallbackProcessingDuration(duration)
+	}()
 
 	logger.Info("CallbackQuery",
 		zap.Int64("user_id", query.From.ID),
@@ -51,6 +62,9 @@ func HandleCallback(router *CallbackRouter, query *tgbotapi.CallbackQuery) error
 		if _, err := router.bot.Request(callbackConfig); err != nil {
 			logger.Error("Failed to send answer", zap.Error(err),
 				zap.String("callback_id", query.ID))
+
+			// При ошибке отправки ответа инкрементируем CallbacksErrors
+			metrics.IncCallbacksErrors()
 		}
 	}()
 
@@ -62,6 +76,8 @@ func HandleCallback(router *CallbackRouter, query *tgbotapi.CallbackQuery) error
 		logger.Error("No handler found", zap.Error(err),
 			zap.String("callback_data", query.Data))
 
+		// При ошибке поиска обработчика инкрементируем CallbacksErrors
+		metrics.IncCallbacksErrors()
 		return err
 	}
 
@@ -70,6 +86,8 @@ func HandleCallback(router *CallbackRouter, query *tgbotapi.CallbackQuery) error
 			zap.String("handler_name", getName(query.Data)),
 			zap.Duration("execution_time", time.Since(startTime)))
 
+		// При ошибке выполнения обработчика инкрементируем CallbacksErrors
+		metrics.IncCallbacksErrors()
 		return err
 	}
 
