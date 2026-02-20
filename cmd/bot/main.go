@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/yandex-development-1-team/go/internal/repository"
+	"github.com/yandex-development-1-team/go/internal/repository/mocks"
 	"net/http"
 	"os"
 	"os/signal"
@@ -100,8 +102,13 @@ func run() error {
 		}
 	})
 
+	rep := repository.NewRepository()
+	repMock := mocks.NewMockClient()
+
+	startHandler := handlers.NewStartHandler(bot, rep)
+	boxSolutionsHandler := handlers.NewBoxSolutions(bot, repMock)
 	// init handler
-	handler := handlers.NewHandler(bot)
+	handler := handlers.NewHandler(startHandler, boxSolutionsHandler)
 
 	// handle updates
 	go func() {

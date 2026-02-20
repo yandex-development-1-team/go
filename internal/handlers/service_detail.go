@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"github.com/yandex-development-1-team/go/internal/repository/models"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -27,17 +28,19 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int,
 	)
 
 	// ШАГ 2: Получение данных из репозитория
-	service, err := h.repo.GetServiceByID(ctx, serviceID)
+	serviceDBModel, err := h.repo.GetServiceByID(ctx, serviceID)
 	if err != nil {
 		return h.handleError(userID, serviceID, err)
 	}
+
+	service := convertDBServiceModelToHandlerModel(serviceDBModel)
 	serviceName := service.Name
 	if serviceName == "" {
 		serviceName = "Прочее"
 	}
 
 	// ШАГ 3: Формирование сообщения (чистая функция)
-	messageText := buildServiceMessage(service, serviceName)
+	messageText := buildServiceMessage(&service, serviceName)
 
 	// ШАГ 4: Генерация клавиатуры (сервис)
 	keyboard := h.keyboardService.ServiceDetailKeyboard(
@@ -65,6 +68,18 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int,
 	)
 
 	return nil
+}
+
+func convertDBServiceModelToHandlerModel(dbServiceModel models.Service) Service {
+	return Service{
+		ID:          dbServiceModel.ID,
+		Name:        dbServiceModel.Name,
+		Description: dbServiceModel.Description,
+		Rules:       dbServiceModel.Rules,
+		Schedule:    dbServiceModel.Schedule,
+		Type:        ServiceType(dbServiceModel.Type),
+		BoxID:       dbServiceModel.BoxID,
+	}
 }
 
 // Вспомогательные методы для оркестратора

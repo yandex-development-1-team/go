@@ -14,7 +14,6 @@ type User struct {
 	IsAdmin    bool      `db:"is_admin"`
 	CreatedAt  time.Time `db:"created_at"`
 	UpdatedAt  time.Time `db:"updated_at"`
-
 }
 type Booking struct {
 	ID                int64      `db:"id"`
@@ -30,4 +29,16 @@ type Booking struct {
 	TrackerTicketID   string     `db:"tracker_ticket_id"`
 	CreatedAt         time.Time  `db:"created_at"`
 	UpdatedAt         time.Time  `db:"updated_at"`
+}
+
+type BoxSolution struct {
+	ID             int64
+	Name           string
+	Description    string
+	AvailableSlots []AvailableSlot
+}
+
+type AvailableSlot struct {
+	Date      string
+	TimeSlots []string
 }
