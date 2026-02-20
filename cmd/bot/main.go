@@ -13,6 +13,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
+	sr "github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
@@ -40,11 +41,22 @@ func run() error {
 	// init metrics
 	metrics.Initialize(cfg)
 
+	redisClient, err := sr.NewRedisClient(cfg.Redis)
+	if err != nil {
+		return fmt.Errorf("init redis client: %w", err)
+	}
+
 	// init telegram bot
 	bot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
 	if err != nil {
 		return fmt.Errorf("failed to init telegram bot: %w", err)
 	}
+
+	// init repos
+	sessionRepo := sr.NewSessionRepository(
+		redisClient,
+		sr.WithTTL(cfg.Session.TTL),
+	)
 
 	// get channel with updates
 	updates := bot.GetUpdates(30 * time.Second) // TODO: перенести в конфиг
@@ -61,6 +73,12 @@ func run() error {
 		Addr:    fmt.Sprintf(":%d", cfg.PrometheusPort),
 		Handler: metricsMux,
 	}
+
+	// Redis connection check — fail fast.
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("redis ping: %w", err)
+	}
+	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
 	// TODO: init API server
 	/*apiMux := http.NewServeMux()
