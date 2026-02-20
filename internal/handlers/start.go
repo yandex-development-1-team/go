@@ -7,6 +7,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/metrics"
+	"github.com/yandex-development-1-team/go/internal/repository"
 	"go.uber.org/zap"
 )
 
@@ -38,6 +40,19 @@ func SetUserRepository(repo repository.UserRepository) {
 
 // HandleStart обрабатывает команду /start
 func HandleStart(bot Bot, msg *tgbotapi.Message) error {
+
+	// Инкрементируем MessagesReceived
+	metrics.IncMessagesReceived()
+
+	// Засекаем время для MessageProcessingDuration
+	startTime := time.Now()
+
+	// Записываем длительность обработки в конце
+	defer func() {
+		duration := time.Since(startTime).Seconds()
+		metrics.ObserveMessageProcessingDuration(duration)
+	}()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -67,6 +82,9 @@ func HandleStart(bot Bot, msg *tgbotapi.Message) error {
 			lastName,
 		); err != nil {
 
+			// При ошибке создания пользователя инкрементируем MessagesErrors
+			metrics.IncMessagesErrors()
+
 			logger.Error("database error in CreateUser",
 				zap.Int64("telegram_id", telegramID),
 				zap.String("username", username),
@@ -76,6 +94,9 @@ func HandleStart(bot Bot, msg *tgbotapi.Message) error {
 			errMsg := tgbotapi.NewMessage(chatID, ErrMessageUser)
 			if _, sendErr := bot.Send(errMsg); sendErr != nil {
 				logger.Error("failed to send error message", zap.Error(sendErr))
+
+				// При ошибке отправки сообщения об ошибке инкрементируем MessagesErrors
+				metrics.IncMessagesErrors()
 			}
 
 			return err
@@ -86,6 +107,10 @@ func HandleStart(bot Bot, msg *tgbotapi.Message) error {
 	reply.ReplyMarkup = mainMenuKeyboard()
 
 	if _, err := bot.Send(reply); err != nil {
+
+		// При ошибке отправки инкрементируем MessagesErrors
+		metrics.IncMessagesErrors()
+
 		logger.Error("failed to send start message", zap.Int64("chat_id", chatID), zap.Error(err))
 		return err
 	}
