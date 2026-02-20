@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
-	"go.uber.org/zap"
 )
 
 const (
@@ -53,15 +51,6 @@ const (
 		WHERE id = $2`
 )
 
-var (
-	ErrRequestTimeout  = errors.New("request timeout")
-	ErrRequestCanceled = errors.New("request canceled")
-	ErrDatabase        = errors.New("database error")
-	ErrSlotOccupied    = errors.New("slot is already occupied")
-	ErrInvalidInput    = errors.New("invalid input data")
-	ErrBookingNotFound = errors.New("booking not found")
-)
-
 type BookingRepository interface {
 	CreateBooking(ctx context.Context, b *models.Booking) (int64, error)
 	GetAvailableSlots(ctx context.Context, serviceID int, date time.Time) ([]time.Time, error)
@@ -82,103 +71,106 @@ func NewBookingRepository(db *sqlx.DB) *BookingRepo {
 func (r *BookingRepo) CreateBooking(ctx context.Context, b *models.Booking) (int64, error) {
 	const operation = "create_booking"
 
-	if err := r.validateBooking(b); err != nil {
-		return 0, err
-	}
+	return withMetricsValue(operation, func() (int64, error) {
 
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return 0, r.checkError(operation, err)
-	}
-	defer tx.Rollback()
-
-	if _, err := tx.ExecContext(ctx, advisoryLockQuery, b.ServiceID, b.BookingDate, b.BookingTime); err != nil {
-		return 0, r.checkError(operation, err)
-	}
-
-	var id int64
-	err = tx.QueryRowContext(ctx, createBookingAtomicQuery,
-		b.UserID,
-		b.ServiceID,
-		b.BookingDate,
-		b.BookingTime,
-		b.GuestName,
-		b.GuestOrganization,
-		b.GuestPosition,
-		b.VisitType,
-		b.TrackerTicketID,
-	).Scan(&id)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return 0, ErrSlotOccupied
+		if err := r.validateBooking(b); err != nil {
+			return 0, err
 		}
-		return 0, r.checkError(operation, err)
-	}
 
-	if err = tx.Commit(); err != nil {
-		return 0, r.checkError(operation, err)
-	}
+		tx, err := r.db.BeginTxx(ctx, nil)
+		if err != nil {
+			return 0, err
+		}
+		defer tx.Rollback()
 
-	return id, nil
+		if _, err := tx.ExecContext(ctx, advisoryLockQuery, b.ServiceID, b.BookingDate, b.BookingTime); err != nil {
+			return 0, err
+		}
+
+		var id int64
+		err = tx.QueryRowContext(ctx, createBookingAtomicQuery,
+			b.UserID,
+			b.ServiceID,
+			b.BookingDate,
+			b.BookingTime,
+			b.GuestName,
+			b.GuestOrganization,
+			b.GuestPosition,
+			b.VisitType,
+			b.TrackerTicketID,
+		).Scan(&id)
+
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return 0, models.ErrSlotOccupied
+			}
+			return 0, err
+		}
+
+		if err = tx.Commit(); err != nil {
+			return 0, err
+		}
+
+		return id, nil
+	})
 }
 
 func (r *BookingRepo) GetAvailableSlots(ctx context.Context, serviceID int, date time.Time) ([]time.Time, error) {
+	const operation = "get_available_slots"
 	var slots []time.Time
-	err := r.db.SelectContext(ctx, &slots, getAvailableSlotsQuery, serviceID, date)
-	if err != nil {
-		return nil, r.checkError("get_available_slots", err)
-	}
-	return slots, nil
+
+	return withMetricsValue(operation, func() ([]time.Time, error) {
+
+		err := r.db.SelectContext(ctx, &slots, getAvailableSlotsQuery, serviceID, date)
+		if err != nil {
+			return nil, err
+		}
+		return slots, nil
+	})
 }
 
 func (r *BookingRepo) GetBookingsByUserID(ctx context.Context, userID int64) ([]models.Booking, error) {
+	const operation = "get_booking_by_id"
 	var bookings []models.Booking
-	err := r.db.SelectContext(ctx, &bookings, getBookingsByUserIDQuery, userID)
-	if err != nil {
-		return nil, r.checkError("get_bookings_by_user", err)
-	}
-	return bookings, nil
+
+	return withMetricsValue(operation, func() ([]models.Booking, error) {
+
+		err := r.db.SelectContext(ctx, &bookings, getBookingsByUserIDQuery, userID)
+		if err != nil {
+			return nil, err
+		}
+		return bookings, nil
+	})
 }
 
 func (r *BookingRepo) UpdateBookingStatus(ctx context.Context, bookingID int64, status string) error {
 	const operation = "update_booking_status"
-	if bookingID <= 0 || status == "" {
-		return ErrInvalidInput
-	}
 
-	res, err := r.db.ExecContext(ctx, updateBookingStatusQuery, status, bookingID)
-	if err != nil {
-		return r.checkError(operation, err)
-	}
+	return withMetrics(operation, func() error {
 
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return r.checkError(operation, err)
-	}
-	if affected == 0 {
-		return ErrBookingNotFound
-	}
-	return nil
+		if bookingID <= 0 || status == "" {
+			return models.ErrInvalidInput
+		}
+
+		res, err := r.db.ExecContext(ctx, updateBookingStatusQuery, status, bookingID)
+		if err != nil {
+			return err
+		}
+
+		affected, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if affected == 0 {
+			return models.ErrBookingNotFound
+		}
+		return nil
+	})
 }
 
 func (r *BookingRepo) validateBooking(b *models.Booking) error {
 	if b == nil || b.UserID <= 0 || b.GuestName == "" || b.ServiceID <= 0 || b.BookingDate.IsZero() {
-		return ErrInvalidInput
+		return models.ErrInvalidInput
 	}
 	return nil
-}
-
-func (r *BookingRepo) checkError(operation string, err error) error {
-	if errors.Is(err, context.Canceled) {
-		logger.Error("canceled_by_context", zap.Error(err), zap.String("operation", operation))
-		return ErrRequestCanceled
-	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		logger.Error("canceled_by_timeout", zap.Error(err), zap.String("operation", operation))
-		return ErrRequestTimeout
-	}
-
-	logger.Error("database_error", zap.Error(err), zap.String("operation", operation))
-	return ErrDatabase
 }
