@@ -1,4 +1,4 @@
-.PHONY: migration migration-create
+.PHONY: migration migration-create generate-mocks
 
 migration:
 	@echo "Migration commands:"
@@ -20,3 +20,8 @@ migration-create:
 	echo "" >> $$FILENAME; \
 	echo "-- +goose Down" >> $$FILENAME; \
 	echo "Created migration: $$FILENAME"
+
+generate-mocks:
+	mkdir -p internal/mocks
+		mockgen -package=mocks -destination=internal/mocks/session_repository_mock.go -source=internal/database/session_repository_interface.go
+

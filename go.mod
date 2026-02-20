@@ -4,6 +4,7 @@ go 1.25.6
 
 require (
 	github.com/docker/go-connections v0.6.0
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.11.2
@@ -14,6 +15,15 @@ require (
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
 	go.uber.org/zap v1.27.1
+)
+
+require (
+	github.com/alicebob/miniredis/v2 v2.36.1
+	github.com/docker/go-connections v0.6.0
+	github.com/pressly/goose/v3 v3.26.0
+	github.com/redis/go-redis/v9 v9.18.0
+	github.com/stretchr/testify v1.11.1
+	github.com/testcontainers/testcontainers-go v0.40.0
 )
 
 require (
@@ -42,6 +52,8 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
@@ -91,6 +103,16 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	google.golang.org/grpc v1.78.0 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+	go.uber.org/multierr v1.10.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	golang.org/x/crypto v0.43.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
