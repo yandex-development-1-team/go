@@ -50,3 +50,15 @@ type UserSession struct {
 	CreatedAt    time.Time              `json:"created_at"`
 	UpdatedAt    time.Time              `json:"updated_at"`
 }
+
+type BoxSolution struct {
+	ID             int64
+	Name           string
+	Description    string
+	AvailableSlots []AvailableSlot
+}
+
+type AvailableSlot struct {
+	Date      string
+	TimeSlots []string
+}

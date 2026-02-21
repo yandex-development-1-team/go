@@ -5,6 +5,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/metrics"
 	"go.uber.org/zap"
 )
 
@@ -16,13 +17,15 @@ type Bot interface {
 }
 
 type Handler struct {
-	bot Bot
-	// TODO: добавить репозиторий пользователей
+	bot                 Bot
+	startHandler        StartHandler
+	boxSolutionsHandler BoxSolutionsHandler
 }
 
-func NewHandler(bot Bot) *Handler {
+func NewHandler(startHandler StartHandler, boxSolutionsHandler BoxSolutionsHandler) *Handler {
 	return &Handler{
-		bot: bot,
+		startHandler:        startHandler,
+		boxSolutionsHandler: boxSolutionsHandler,
 	}
 }
 
@@ -38,7 +41,7 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 		if msg.IsCommand() {
 			switch msg.Command() {
 			case cmdStart:
-				if err := HandleStart(h.bot, msg); err != nil {
+				if err := h.startHandler.HandleStart(msg); err != nil {
 					logger.Error("failed to handle /start", zap.Error(err))
 				}
 			// в новые ветки добавлять вызовы функций обработчиков команд
@@ -49,7 +52,17 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 		// todo
 	}
 	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
-		//todo
+		switch callbackQuery.Data {
+		case CallbackBoxSolutions:
+			if err := h.boxSolutionsHandler.HandleBoxSolutions(ctx, callbackQuery); err != nil {
+				logger.Error("failed to handle callback BoxSolutions", zap.Error(err))
+			}
+		case BoxSolutionsButtonBackToMainMenu:
+			if err := h.startHandler.HandleStartBackToMainMenu(ctx, callbackQuery); err != nil {
+				logger.Error("failed to handle callback BoxSolutionsButtonBackToMainMenu", zap.Error(err))
+			}
+			//todo
+		}
 	}
 }
 
