@@ -62,8 +62,8 @@ EXPOSE 9090
 # Health check (проверка каждые 30 секунд)
 # /health endpoint реализован в ветках: dev, feat/14, feat/17, feat/21
 # После мержа соответствующей ветки, раскомментируйте:
-# HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-#   CMD curl -f http://localhost:9090/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+   CMD curl -f http://localhost:9090/health || exit 1
 # Примечание: порт зависит от конфигурации (обычно PrometheusPort: 9090)
 
 # Entrypoint
