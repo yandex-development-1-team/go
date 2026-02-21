@@ -1,7 +1,18 @@
 package models
 
 import (
+	"errors"
 	"time"
+)
+
+var (
+	ErrRequestTimeout  = errors.New("request timeout")
+	ErrRequestCanceled = errors.New("request canceled")
+	ErrDatabase        = errors.New("database error")
+	ErrSlotOccupied    = errors.New("slot is already occupied")
+	ErrInvalidInput    = errors.New("invalid input data")
+	ErrBookingNotFound = errors.New("booking not found")
+	ErrUserNotFound    = errors.New("user not found")
 )
 
 type User struct {
@@ -14,7 +25,6 @@ type User struct {
 	IsAdmin    bool      `db:"is_admin"`
 	CreatedAt  time.Time `db:"created_at"`
 	UpdatedAt  time.Time `db:"updated_at"`
-
 }
 type Booking struct {
 	ID                int64      `db:"id"`
@@ -30,4 +40,25 @@ type Booking struct {
 	TrackerTicketID   string     `db:"tracker_ticket_id"`
 	CreatedAt         time.Time  `db:"created_at"`
 	UpdatedAt         time.Time  `db:"updated_at"`
+}
+
+type UserSession struct {
+	ID           int64                  `json:"id"`
+	UserID       int64                  `json:"user_id"`
+	CurrentState string                 `json:"current_state"`
+	StateData    map[string]interface{} `json:"state_data"`
+	CreatedAt    time.Time              `json:"created_at"`
+	UpdatedAt    time.Time              `json:"updated_at"`
+}
+
+type BoxSolution struct {
+	ID             int64
+	Name           string
+	Description    string
+	AvailableSlots []AvailableSlot
+}
+
+type AvailableSlot struct {
+	Date      string
+	TimeSlots []string
 }
