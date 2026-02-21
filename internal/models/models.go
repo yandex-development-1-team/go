@@ -49,6 +49,7 @@ type UserSession struct {
 	StateData    map[string]interface{} `json:"state_data"`
 	CreatedAt    time.Time              `json:"created_at"`
 	UpdatedAt    time.Time              `json:"updated_at"`
+}
 
 type BoxSolution struct {
 	ID             int64

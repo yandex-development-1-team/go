@@ -5,13 +5,9 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/logger"
-<<<<<<< HEAD
 	"github.com/yandex-development-1-team/go/internal/metrics"
-	"github.com/yandex-development-1-team/go/internal/repository"
-=======
->>>>>>> main
+
 	"go.uber.org/zap"
 )
 
@@ -54,8 +50,8 @@ const (
 )
 
 // HandleStart обрабатывает команду /start
-<<<<<<< HEAD
-func HandleStart(bot Bot, msg *tgbotapi.Message) error {
+
+func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 
 	// Инкрементируем MessagesReceived
 	metrics.IncMessagesReceived()
@@ -69,9 +65,6 @@ func HandleStart(bot Bot, msg *tgbotapi.Message) error {
 		metrics.ObserveMessageProcessingDuration(duration)
 	}()
 
-=======
-func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
->>>>>>> main
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -125,15 +118,10 @@ func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 	reply := tgbotapi.NewMessage(chatID, WelcomeText)
 	reply.ReplyMarkup = mainMenuKeyboard()
 
-<<<<<<< HEAD
-	if _, err := bot.Send(reply); err != nil {
+	if _, err := sh.bot.Send(reply); err != nil {
 
 		// При ошибке отправки инкрементируем MessagesErrors
 		metrics.IncMessagesErrors()
-
-=======
-	if _, err := sh.bot.Send(reply); err != nil {
->>>>>>> main
 		logger.Error("failed to send start message", zap.Int64("chat_id", chatID), zap.Error(err))
 		return err
 	}

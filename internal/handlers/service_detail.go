@@ -55,7 +55,7 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 	}
 
 	// ШАГ 4: Формирование сообщения (чистая функция)
-	messageText := buildServiceMessage(service, serviceName)
+	messageText := buildServiceMessage(&service, serviceName)
 
 	// ШАГ 5: Генерация клавиатуры (сервис)
 	keyboard := h.keyboardService.ServiceDetailKeyboard(

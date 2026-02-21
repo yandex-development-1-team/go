@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/yandex-development-1-team/go/internal/repository"
-	"github.com/yandex-development-1-team/go/internal/repository/mocks"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,9 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/yandex-development-1-team/go/internal/repository"
+	"github.com/yandex-development-1-team/go/internal/repository/mocks"
+
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
+	"github.com/yandex-development-1-team/go/internal/database"
 	sr "github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
@@ -60,6 +62,8 @@ func run() error {
 	// run migrations
 	if err := database.RunMigrations(db); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
 	redisClient, err := sr.NewRedisClient(cfg.Redis)
 	if err != nil {
 		return fmt.Errorf("init redis client: %w", err)
@@ -72,10 +76,10 @@ func run() error {
 	}
 
 	// init repos
-	sessionRepo := sr.NewSessionRepository(
+	/*sessionRepo := sr.NewSessionRepository(
 		redisClient,
 		sr.WithTTL(cfg.Session.TTL),
-	)
+	)*/
 
 	// get channel with updates
 	updates := bot.GetUpdates(30 * time.Second) // TODO: перенести в конфиг
