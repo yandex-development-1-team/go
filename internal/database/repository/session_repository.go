@@ -127,11 +127,14 @@ func (r *SessionRepository) GetSession(ctx context.Context, userID int64) (*mode
 // ClearSession removes the session for the given user.
 // It is a no-op (returns nil) when the session does not exist.
 func (r *SessionRepository) ClearSession(ctx context.Context, userID int64) error {
-	key := r.buildKey(userID)
-	if err := r.client.Del(ctx, key).Err(); err != nil {
-		return fmt.Errorf("redis DEL %s: %w", key, err)
-	}
-	return nil
+	return withMetricsRedis("Del", func() error {
+
+		key := r.buildKey(userID)
+		if err := r.client.Del(ctx, key).Err(); err != nil {
+			return fmt.Errorf("redis DEL %s: %w", key, err)
+		}
+		return nil
+	})
 }
 
 // UpdateSessionState changes only the state field of an existing session,
@@ -155,36 +158,41 @@ func (r *SessionRepository) buildKey(userID int64) string {
 
 // getDTO fetches and deserialises a session DTO from Redis.
 func (r *SessionRepository) getDTO(ctx context.Context, userID int64) (*sessionDTO, error) {
-	key := r.buildKey(userID)
+	return withMetricsRedisValue("getDTO", func() (*sessionDTO, error) {
 
-	raw, err := r.client.Get(ctx, key).Bytes()
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return nil, ErrSessionNotFound
+		key := r.buildKey(userID)
+
+		raw, err := r.client.Get(ctx, key).Bytes()
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				return nil, ErrSessionNotFound
+			}
+			return nil, fmt.Errorf("redis GET %s: %w", key, err)
 		}
-		return nil, fmt.Errorf("redis GET %s: %w", key, err)
-	}
 
-	var dto sessionDTO
-	if err := json.Unmarshal(raw, &dto); err != nil {
-		return nil, fmt.Errorf("unmarshal session %d: %w", userID, err)
-	}
-	return &dto, nil
+		var dto sessionDTO
+		if err := json.Unmarshal(raw, &dto); err != nil {
+			return nil, fmt.Errorf("unmarshal session %d: %w", userID, err)
+		}
+		return &dto, nil
+	})
 }
 
 // setDTO serialises and stores a session DTO in Redis, refreshing the TTL.
 func (r *SessionRepository) setDTO(ctx context.Context, userID int64, dto sessionDTO) error {
-	key := r.buildKey(userID)
+	return withMetricsRedis("setDTO", func() error {
+		key := r.buildKey(userID)
 
-	raw, err := json.Marshal(dto)
-	if err != nil {
-		return fmt.Errorf("marshal session %d: %w", userID, err)
-	}
+		raw, err := json.Marshal(dto)
+		if err != nil {
+			return fmt.Errorf("marshal session %d: %w", userID, err)
+		}
 
-	if err := r.client.Set(ctx, key, raw, r.ttl).Err(); err != nil {
-		return fmt.Errorf("redis SET %s: %w", key, err)
-	}
-	return nil
+		if err := r.client.Set(ctx, key, raw, r.ttl).Err(); err != nil {
+			return fmt.Errorf("redis SET %s: %w", key, err)
+		}
+		return nil
+	})
 }
 
 // dtoToModel converts the internal DTO to the public domain model.
