@@ -10,34 +10,51 @@ import (
 
 // RunMigrations применяет миграции и логирует результат
 func RunMigrations(db *sql.DB) error {
-
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("failed to set goose dialect: %w", err)
 	}
 
-	// Логируем текущую версию БД
+	// Получаем текущую версию БД
 	versionBefore, err := goose.GetDBVersion(db)
 	if err != nil {
 		return fmt.Errorf("failed to get DB version: %w", err)
 	}
 	log.Printf("Current database version: %d", versionBefore)
 
-	// Применяем миграции
-	err = goose.Up(db, "migrations")
+	// Собираем все миграции для подсчёта ожидающих
+	migrations, err := goose.CollectMigrations("migrations", 0, goose.MaxVersion)
 	if err != nil {
-		return fmt.Errorf("failed to apply migrations: %w", err)
+		return fmt.Errorf("failed to collect migrations: %w", err)
 	}
 
-	// Логируем финальную версию и считаем применённые миграции
-	versionAfter, err := goose.GetDBVersion(db)
-	if err != nil {
-		return fmt.Errorf("failed to get DB version: %w", err)
+	// Считаем количество миграций, которые новее текущей версии
+	pendingCount := 0
+	for _, m := range migrations {
+		if m.Version > versionBefore {
+			pendingCount++
+		}
 	}
 
-	// Количество применённых миграций = разница версий
-	appliedCount := versionAfter - versionBefore
-	log.Printf("Applied %d migration(s)", appliedCount)
-	log.Printf("Final database version: %d", versionAfter)
+	// Если есть ожидающие миграции — применяем и логируем
+	if pendingCount > 0 {
+		log.Printf("Found %d pending migration(s)", pendingCount)
+
+		if err := goose.Up(db, "migrations"); err != nil {
+			return fmt.Errorf("failed to apply migrations: %w", err)
+		}
+
+		// Получаем новую версию
+		versionAfter, err := goose.GetDBVersion(db)
+		if err != nil {
+			return fmt.Errorf("failed to get DB version: %w", err)
+		}
+
+		// Логируем точное количество применённых миграций
+		log.Printf("Applied %d migration(s)", pendingCount)
+		log.Printf("Database version: %d → %d", versionBefore, versionAfter)
+	} else {
+		log.Printf("Database is up to date (version: %d)", versionBefore)
+	}
 
 	return nil
 }
