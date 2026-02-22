@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,12 +11,19 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/yandex-development-1-team/go/internal/repository"
+	"github.com/yandex-development-1-team/go/internal/repository/mocks"
+
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
+	"github.com/yandex-development-1-team/go/internal/database"
+	sr "github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
+
+	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
 
@@ -40,11 +48,38 @@ func run() error {
 	// init metrics
 	metrics.Initialize(cfg)
 
+	// init database connection for migrations
+	db, err := sql.Open("postgres", cfg.PostgresURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// run migrations
+	if err := database.RunMigrations(db); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	redisClient, err := sr.NewRedisClient(cfg.Redis)
+	if err != nil {
+		return fmt.Errorf("init redis client: %w", err)
+	}
+
 	// init telegram bot
 	bot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
 	if err != nil {
 		return fmt.Errorf("failed to init telegram bot: %w", err)
 	}
+
+	// init repos
+	/*sessionRepo := sr.NewSessionRepository(
+		redisClient,
+		sr.WithTTL(cfg.Session.TTL),
+	)*/
 
 	// get channel with updates
 	updates := bot.GetUpdates(30 * time.Second) // TODO: перенести в конфиг
@@ -61,6 +96,12 @@ func run() error {
 		Addr:    fmt.Sprintf(":%d", cfg.PrometheusPort),
 		Handler: metricsMux,
 	}
+
+	// Redis connection check — fail fast.
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("redis ping: %w", err)
+	}
+	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
 	// TODO: init API server
 	/*apiMux := http.NewServeMux()
@@ -80,8 +121,13 @@ func run() error {
 		}
 	})
 
+	rep := repository.NewRepository()
+	repMock := mocks.NewMockClient()
+
+	startHandler := handlers.NewStartHandler(bot, rep)
+	boxSolutionsHandler := handlers.NewBoxSolutions(bot, repMock)
 	// init handler
-	handler := handlers.NewHandler(bot)
+	handler := handlers.NewHandler(startHandler, boxSolutionsHandler)
 
 	// handle updates
 	go func() {
