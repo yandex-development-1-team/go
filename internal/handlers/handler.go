@@ -11,13 +11,7 @@ import (
 
 const cmdStart = "start"
 
-type Bot interface {
-	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
-	// новые методы для bot api добавлять сюда, а реализовывать в go/internal/bot/bot.go
-}
-
 type Handler struct {
-	bot                 Bot
 	startHandler        StartHandler
 	boxSolutionsHandler BoxSolutionsHandler
 }

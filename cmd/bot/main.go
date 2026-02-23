@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/yandex-development-1-team/go/internal/service"
 	"net/http"
 	"os"
 	"os/signal"
@@ -125,7 +126,9 @@ func run() error {
 	repMock := mocks.NewMockClient()
 
 	startHandler := handlers.NewStartHandler(bot, rep)
-	boxSolutionsHandler := handlers.NewBoxSolutions(bot, repMock)
+	bsService := service.NewBoxSolutionsService(repMock)
+	boxSolutionsHandler := handlers.NewBoxSolutions(bot, bsService)
+
 	// init handler
 	handler := handlers.NewHandler(startHandler, boxSolutionsHandler)
 
