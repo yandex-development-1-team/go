@@ -42,17 +42,18 @@ func withMetrics(operation string, repo func() error) error {
 func withMetricsRedisValue[T any](operation string, repo func() (T, error)) (T, error) {
 	srart := time.Now()
 	result, err := repo()
-	microSeconds := time.Since(srart).Microseconds()
+	_ = time.Since(srart).Microseconds()
+	//microSeconds := time.Since(srart).Microseconds()
 
-	metrics.ObserveCacheSetDuration(operation, microSeconds)
-	if err != nil {
-		metrics.IncCacheErrors(operation)
-		if errors.Is(err, ErrSessionNotFound) {
-			return result, err
-		}
-		logger.Error("redis_error", zap.Error(err), zap.String("operation", operation))
-		return result, err
-	}
+	//metrics.ObserveCacheSetDuration(operation, microSeconds)
+	//if err != nil {
+	//	metrics.IncCacheErrors(operation)
+	//	if errors.Is(err, ErrSessionNotFound) {
+	//		return result, err
+	//	}
+	//	logger.Error("redis_error", zap.Error(err), zap.String("operation", operation))
+	//	return result, err
+	//}
 
 	return result, err
 }
@@ -60,14 +61,14 @@ func withMetricsRedisValue[T any](operation string, repo func() (T, error)) (T, 
 func withMetricsRedis(operation string, repo func() error) error {
 	srart := time.Now()
 	err := repo()
-	microSeconds := time.Since(srart).Microseconds()
+	_ = time.Since(srart).Microseconds()
 
-	metrics.ObserveCacheSetDuration(operation, microSeconds)
-	if err != nil {
-		metrics.IncCacheErrors(operation)
-		logger.Error("redis_error", zap.Error(err), zap.String("operation", operation))
-		return err
-	}
+	//metrics.ObserveCacheSetDuration(operation, microSeconds)
+	//if err != nil {
+	//	metrics.IncCacheErrors(operation)
+	//	logger.Error("redis_error", zap.Error(err), zap.String("operation", operation))
+	//	return err
+	//}
 
 	return err
 }
