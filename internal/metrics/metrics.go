@@ -27,10 +27,13 @@ var (
 	bookingsTotal     *prometheus.CounterVec
 	databaseErrors    *prometheus.CounterVec
 	botRateLimit      prometheus.Counter
+	callbacksReceived *prometheus.CounterVec
+	callbacksErrors   *prometheus.CounterVec
 
 	// Histogram metrics
-	messageProcessingDuration *prometheus.HistogramVec
-	databaseQueryDuration     *prometheus.HistogramVec
+	messageProcessingDuration  *prometheus.HistogramVec
+	databaseQueryDuration      *prometheus.HistogramVec
+	callbackProcessingDuration *prometheus.HistogramVec
 
 	// Gauge metrics
 	activeUsers prometheus.GaugeVec
@@ -87,6 +90,22 @@ func initializeMetrics(cfg *config.Config) {
 		labelNames,
 	)
 
+	callbacksReceived = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: PREFIX + "callbacks_received_total",
+			Help: "Total callbacks received",
+		},
+		labelNames,
+	)
+
+	callbacksErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: PREFIX + "callbacks_errors_total",
+			Help: "Total errors during callback processing",
+		},
+		labelNames,
+	)
+
 	databaseQueries = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "database_queries_total",
@@ -134,6 +153,15 @@ func initializeMetrics(cfg *config.Config) {
 		labelNames,
 	)
 
+	callbackProcessingDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    PREFIX + "callback_processing_duration_seconds",
+			Help:    "Time spent processing callbacks",
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		labelNames,
+	)
+
 	databaseQueryDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    PREFIX + "database_query_duration_seconds",
@@ -154,10 +182,13 @@ func initializeMetrics(cfg *config.Config) {
 	registry.MustRegister(messagesReceived)
 	registry.MustRegister(messagesProcessed)
 	registry.MustRegister(messagesErrors)
+	registry.MustRegister(callbacksReceived)
+	registry.MustRegister(callbacksErrors)
 	registry.MustRegister(databaseQueries)
 	registry.MustRegister(apiRequests)
 	registry.MustRegister(bookingsTotal)
 	registry.MustRegister(messageProcessingDuration)
+	registry.MustRegister(callbackProcessingDuration)
 	registry.MustRegister(databaseQueryDuration)
 	registry.MustRegister(databaseErrors)
 	registry.MustRegister(activeUsers)
@@ -231,4 +262,16 @@ func ObserveDatabaseQueryDuration(operation string, seconds float64) {
 
 func SetActiveUsers(count int) {
 	activeUsers.With(appLabels).Set(float64(count))
+}
+
+func IncCallbacksReceived() {
+	callbacksReceived.With(appLabels).Inc()
+}
+
+func IncCallbacksErrors() {
+	callbacksErrors.With(appLabels).Inc()
+}
+
+func ObserveCallbackProcessingDuration(seconds float64) {
+	callbackProcessingDuration.With(appLabels).Observe(seconds)
 }

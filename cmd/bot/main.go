@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,13 +11,20 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/yandex-development-1-team/go/internal/database"
+	"github.com/yandex-development-1-team/go/internal/repository"
+	"github.com/yandex-development-1-team/go/internal/repository/mocks"
+
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
+	sr "github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
 	"github.com/yandex-development-1-team/go/internal/shutdown"
+
+	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
 
@@ -40,7 +48,28 @@ func run() error {
 	// init metrics
 	metrics.Initialize(cfg)
 
-	// init telegram tgBot
+	// init database connection for migrations
+	db, err := sql.Open("postgres", cfg.PostgresURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// run migrations
+	if err := database.RunMigrations(db); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	redisClient, err := sr.NewRedisClient(cfg.Redis)
+	if err != nil {
+		return fmt.Errorf("init redis client: %w", err)
+	}
+
+	// init telegram bot
 	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
 	if err != nil {
 		return fmt.Errorf("failed to init telegram bot: %w", err)
@@ -52,7 +81,10 @@ func run() error {
 
 	// init rate limiters
 	apiRL := bot.NewApiRateLimiter(cfg.ApiRPS)
-	msgRL := bot.NewMsgRateLimiter(cfg.MsgRPS)
+	msgRL, err := bot.NewMsgRateLimiter(cfg.CacheSizeRPS, cfg.MsgRPS)
+	if err != nil {
+		return fmt.Errorf("failed to init new messages rate limiter")
+	}
 
 	// init metrics server
 	metricsMux := http.NewServeMux()
@@ -62,6 +94,12 @@ func run() error {
 		Addr:    fmt.Sprintf(":%d", cfg.PrometheusPort),
 		Handler: metricsMux,
 	}
+
+	// Redis connection check — fail fast.
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("redis ping: %w", err)
+	}
+	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
 	// TODO: init API server
 	/*apiMux := http.NewServeMux()
@@ -79,8 +117,14 @@ func run() error {
 		}
 	}()
 
+	rep := repository.NewRepository()
+	repMock := mocks.NewMockClient()
+
+	startHandler := handlers.NewStartHandler(tgBot, rep)
+	boxSolutionsHandler := handlers.NewBoxSolutions(tgBot, repMock)
+
 	// init handler
-	handler := handlers.NewHandler(tgBot, msgRL)
+	handler := handlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
 	logger.Info("bot has been started",
 		zap.String("environment", cfg.Environment),
 		zap.String("log_level", cfg.LogLevel),
