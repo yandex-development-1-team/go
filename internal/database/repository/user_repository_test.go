@@ -1,135 +1,126 @@
-package repository
+package repository_test
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"log"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
-	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
 var (
-	db          *sqlx.DB
-	repoBooking BookingRepository
-	repoUser    UserRepository
+	// db          *sqlx.DB
+	repoBooking repository.BookingRepository
+	repoUser    repository.UserRepository
 )
 
-func TestMain(m *testing.M) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+// func TestMain(m *testing.M) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+// 	defer cancel()
 
-	container, err := startContainer()
-	if err != nil {
-		log.Fatal(err)
-	}
+// 	container, err := startContainer()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	err = createDB(container)
-	if err != nil {
-		log.Fatalf("failed to connect to db: %s", err.Error())
-	}
+// 	err = createDB(container)
+// 	if err != nil {
+// 		log.Fatalf("failed to connect to db: %s", err.Error())
+// 	}
 
-	repoBooking = NewBookingRepository(db)
-	repoUser = NewUserRepository(db)
+// 	repoBooking = repository.NewBookingRepository(db)
+// 	repoUser = repository.NewUserRepository(db)
 
-	code := m.Run()
+// 	code := m.Run()
 
-	err = container.Terminate(ctx)
-	if err != nil {
-		log.Fatalf("failed to terminate db container: %s", err.Error())
-	}
+// 	err = container.Terminate(ctx)
+// 	if err != nil {
+// 		log.Fatalf("failed to terminate db container: %s", err.Error())
+// 	}
 
-	os.Exit(code)
-}
+// 	os.Exit(code)
+// }
 
-func startContainer() (tc.Container, error) {
-	// настройка testcontainers postgres
-	req := tc.ContainerRequest{
-		Image:        "postgres:latest",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_PASSWORD": "password",
-			"POSTGRES_DB":       "testdb",
-		},
-		WaitingFor: wait.ForSQL(
-			nat.Port("5432/tcp"),
-			"postgres",
-			func(host string, port nat.Port) string {
-				return fmt.Sprintf(
-					"host=%s port=%s user=postgres password=password dbname=postgres sslmode=disable connect_timeout=5",
-					host, port.Port())
-			}).
-			WithStartupTimeout(120 * time.Second),
-	}
+// func startContainer() (tc.Container, error) {
+// 	// настройка testcontainers postgres
+// 	req := tc.ContainerRequest{
+// 		Image:        "postgres:latest",
+// 		ExposedPorts: []string{"5432/tcp"},
+// 		Env: map[string]string{
+// 			"POSTGRES_PASSWORD": "password",
+// 			"POSTGRES_DB":       "testdb",
+// 		},
+// 		WaitingFor: wait.ForSQL(
+// 			nat.Port("5432/tcp"),
+// 			"postgres",
+// 			func(host string, port nat.Port) string {
+// 				return fmt.Sprintf(
+// 					"host=%s port=%s user=postgres password=password dbname=postgres sslmode=disable connect_timeout=5",
+// 					host, port.Port())
+// 			}).
+// 			WithStartupTimeout(120 * time.Second),
+// 	}
 
-	// генерация контейнера
-	dbContainer, err := tc.GenericContainer(
-		context.Background(),
-		tc.GenericContainerRequest{
-			ContainerRequest: req,
-			Started:          true,
-		})
-	if err != nil {
-		fmt.Printf("Container logs: %v\n", err)
-		return nil, err
-	}
+// 	// генерация контейнера
+// 	dbContainer, err := tc.GenericContainer(
+// 		context.Background(),
+// 		tc.GenericContainerRequest{
+// 			ContainerRequest: req,
+// 			Started:          true,
+// 		})
+// 	if err != nil {
+// 		fmt.Printf("Container logs: %v\n", err)
+// 		return nil, err
+// 	}
 
-	return dbContainer, err
-}
+// 	return dbContainer, err
+// }
 
-func createDB(container tc.Container) error {
-	var err error
+// func createDB(container tc.Container) error {
+// 	var err error
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+// 	defer cancel()
 
-	host, _ := container.Host(context.Background())
-	port, _ := container.MappedPort(context.Background(), "5432")
+// 	host, _ := container.Host(context.Background())
+// 	port, _ := container.MappedPort(context.Background(), "5432")
 
-	dbURI := fmt.Sprintf(
-		"host=%s port=%s user=postgres password=password dbname=testdb sslmode=disable",
-		host, port.Port())
-	db, err = sqlx.Connect("postgres", dbURI)
-	if err != nil {
-		return err
-	}
+// 	dbURI := fmt.Sprintf(
+// 		"host=%s port=%s user=postgres password=password dbname=testdb sslmode=disable",
+// 		host, port.Port())
+// 	db, err = sqlx.Connect("postgres", dbURI)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	if err := goose.SetDialect("postgres"); err != nil {
-		return err
-	}
+// 	if err := goose.SetDialect("postgres"); err != nil {
+// 		return err
+// 	}
 
-	_, err = goose.GetDBVersion(db.DB)
-	if !errors.Is(err, goose.ErrNoMigrations) {
-		_, err := db.Exec("DROP TABLE IF EXISTS goose_db_version")
-		if err != nil {
-			return err
-		}
-	}
+// 	_, err = goose.GetDBVersion(db.DB)
+// 	if !errors.Is(err, goose.ErrNoMigrations) {
+// 		_, err := db.Exec("DROP TABLE IF EXISTS goose_db_version")
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
 
-	if err := goose.UpContext(ctx, db.DB, "./migrations_test"); err != nil {
-		return err
-	}
+// 	if err := goose.UpContext(ctx, db.DB, "./migrations_test"); err != nil {
+// 		return err
+// 	}
 
-	_, err = goose.GetDBVersion(db.DB)
-	if errors.Is(err, goose.ErrNoMigrations) {
-		return err
-	}
+// 	_, err = goose.GetDBVersion(db.DB)
+// 	if errors.Is(err, goose.ErrNoMigrations) {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func TestCreateUser(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		contextDuration time.Duration
@@ -177,12 +168,12 @@ func TestCreateUser(t *testing.T) {
 		},
 	}
 
-	err := db.Ping()
-	if err != nil {
-		log.Println("Нет соединения с базой данных:", err)
-	} else {
-		log.Println("Соединение с базой успешно установлено")
-	}
+	// err := db.Ping()
+	// if err != nil {
+	// 	log.Println("Нет соединения с базой данных:", err)
+	// } else {
+	// 	log.Println("Соединение с базой успешно установлено")
+	// }
 
 	for _, tt := range tests {
 

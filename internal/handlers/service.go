@@ -17,7 +17,7 @@ var (
 
 // Service представляет собой услугу с полной информацией
 type Service struct {
-	ID          int         //Уникальный идентификатор услуги
+	ID          int         // Уникальный идентификатор услуги
 	Name        string      // название услуги
 	Description string      // описание
 	Rules       string      // правила
@@ -28,6 +28,7 @@ type Service struct {
 
 // ServiceHandler обрабатывает действия, связанные с услугами
 type ServiceHandler struct {
+	// repo            *repositsory.Repository
 	repo            *repository.Repository
 	bot             *tgbotapi.BotAPI
 	keyboardService *KeyboardService

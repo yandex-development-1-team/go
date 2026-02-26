@@ -52,7 +52,6 @@ const (
 // HandleStart обрабатывает команду /start
 
 func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
-
 	// Инкрементируем MessagesReceived
 	metrics.IncMessagesReceived()
 
@@ -65,18 +64,18 @@ func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 		metrics.ObserveMessageProcessingDuration(duration)
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	// defer cancel()
 
 	chatID := msg.Chat.ID
 	telegramID := msg.From.ID
 	username := ""
-	firstName := ""
-	lastName := ""
+	// firstName := ""
+	// lastName := ""
 	if msg.From != nil {
 		username = msg.From.UserName
-		firstName = msg.From.FirstName
-		lastName = msg.From.LastName
+		// firstName = msg.From.FirstName
+		// lastName = msg.From.LastName
 	}
 
 	logger.Info("start command",
@@ -86,33 +85,33 @@ func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 	)
 
 	if sh.userRepository != nil {
-		if err := sh.userRepository.CreateUser(
-			ctx,
-			telegramID,
-			username,
-			firstName,
-			lastName,
-		); err != nil {
+		// if err := sh.userRepository.CreateUser(
+		// 	ctx,
+		// 	telegramID,
+		// 	username,
+		// 	firstName,
+		// 	lastName,
+		// ); err != nil {
 
-			// При ошибке создания пользователя инкрементируем MessagesErrors
-			metrics.IncMessagesErrors()
+		// 	// При ошибке создания пользователя инкрементируем MessagesErrors
+		// 	metrics.IncMessagesErrors()
 
-			logger.Error("database error in CreateUser",
-				zap.Int64("telegram_id", telegramID),
-				zap.String("username", username),
-				zap.Error(err),
-			)
+		// 	logger.Error("database error in CreateUser",
+		// 		zap.Int64("telegram_id", telegramID),
+		// 		zap.String("username", username),
+		// 		zap.Error(err),
+		// 	)
 
-			errMsg := tgbotapi.NewMessage(chatID, ErrMessageUser)
-			if _, sendErr := sh.bot.Send(errMsg); sendErr != nil {
-				logger.Error("failed to send error message", zap.Error(sendErr))
+		// 	errMsg := tgbotapi.NewMessage(chatID, ErrMessageUser)
+		// 	if _, sendErr := sh.bot.Send(errMsg); sendErr != nil {
+		// 		logger.Error("failed to send error message", zap.Error(sendErr))
 
-				// При ошибке отправки сообщения об ошибке инкрементируем MessagesErrors
-				metrics.IncMessagesErrors()
-			}
+		// 		// При ошибке отправки сообщения об ошибке инкрементируем MessagesErrors
+		// 		metrics.IncMessagesErrors()
+		// 	}
 
-			return err
-		}
+		// 	return err
+		// }
 	}
 
 	reply := tgbotapi.NewMessage(chatID, WelcomeText)
