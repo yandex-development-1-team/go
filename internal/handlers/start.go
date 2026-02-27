@@ -24,8 +24,8 @@ type StartHandler struct {
 	userRepository UserRepository
 }
 
-func NewStartHandler(bot StartHandlerBot, userRepository UserRepository) StartHandler {
-	return StartHandler{
+func NewStartHandler(bot StartHandlerBot, userRepository UserRepository) *StartHandler {
+	return &StartHandler{
 		bot:            bot,
 		userRepository: userRepository,
 	}
@@ -129,7 +129,7 @@ func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 	return nil
 }
 
-func (sh *StartHandler) HandleStartBackToMainMenu(ctx context.Context, query *tgbotapi.CallbackQuery) error {
+func (sh *StartHandler) Handle(ctx context.Context, query *tgbotapi.CallbackQuery) error {
 	reply := tgbotapi.NewMessage(query.Message.Chat.ID, WelcomeText)
 	reply.ReplyMarkup = mainMenuKeyboard()
 

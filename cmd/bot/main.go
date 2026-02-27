@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/yandex-development-1-team/go/internal/repository"
 	"github.com/yandex-development-1-team/go/internal/repository/mocks"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
+	"github.com/yandex-development-1-team/go/internal/database/inmemory"
 	sr "github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
@@ -76,10 +78,10 @@ func run() error {
 	}
 
 	// init repos
-	/*sessionRepo := sr.NewSessionRepository(
+	sessionRepo := sr.NewSessionRepository(
 		redisClient,
 		sr.WithTTL(cfg.Session.TTL),
-	)*/
+	)
 
 	// get channel with updates
 	updates := bot.GetUpdates(30 * time.Second) // TODO: перенести в конфиг
@@ -126,8 +128,34 @@ func run() error {
 
 	startHandler := handlers.NewStartHandler(bot, rep)
 	boxSolutionsHandler := handlers.NewBoxSolutions(bot, repMock)
+
+	// init keyboard service
+	keyboard := handlers.NewKeyboardService()
+
+	// init Booking repo
+	sqlxDB := sqlx.NewDb(db, "postgres")
+	bookRepo := sr.NewBookingRepository(sqlxDB)
+
+	// init dates(temporary)
+	handlers.InitTestDates()
+
+	// init Booking state inmemory storage
+	bookState := inmemory.NewBookingState()
+
+	// init Booking handler
+	bookCallbackHandler := handlers.NewBookingFormHandler(bot.Api, bookState, sessionRepo, bookRepo, keyboard)
+
+	// Creating a callback router
+	callbackRouter := handlers.NewCallbackRouter(bot.Api)
+	msgRouter := handlers.NewMessageRouter(bot.Api, startHandler, sessionRepo, bookCallbackHandler)
+
+	// Registering all handlers
+	callbackRouter.Register(handlers.CallbackBoxSolutions, boxSolutionsHandler)
+	callbackRouter.Register(handlers.CallbackBookingPrefix, bookCallbackHandler)
+	callbackRouter.Register(handlers.BoxSolutionsButtonBackToMainMenu, startHandler)
+
 	// init handler
-	handler := handlers.NewHandler(startHandler, boxSolutionsHandler)
+	handler := handlers.NewHandler(msgRouter, callbackRouter)
 
 	// handle updates
 	go func() {

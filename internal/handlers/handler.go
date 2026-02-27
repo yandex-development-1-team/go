@@ -4,9 +4,7 @@ import (
 	"context"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
-	"go.uber.org/zap"
 )
 
 const cmdStart = "start"
@@ -17,20 +15,21 @@ type Bot interface {
 }
 
 type Handler struct {
-	bot                 Bot
-	startHandler        StartHandler
-	boxSolutionsHandler BoxSolutionsHandler
+	bot Bot
+	//startHandler   *StartHandler
+	msgRouter      *MessageRouter
+	callbackRouter *CallbackRouter
 }
 
-func NewHandler(startHandler StartHandler, boxSolutionsHandler BoxSolutionsHandler) *Handler {
+func NewHandler(msgRouter *MessageRouter, callbackRouter *CallbackRouter) *Handler {
 	return &Handler{
-		startHandler:        startHandler,
-		boxSolutionsHandler: boxSolutionsHandler,
+		//startHandler:   startHandler,
+		msgRouter:      msgRouter,
+		callbackRouter: callbackRouter,
 	}
 }
 
 func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
-
 	// Нужно получить количество активных пользователей
 	activeUsers := getActiveUsersCount(ctx) // Эту функцию нужно реализовать
 
@@ -38,31 +37,10 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 	metrics.SetActiveUsers(activeUsers)
 
 	if msg := update.Message; msg != nil {
-		if msg.IsCommand() {
-			switch msg.Command() {
-			case cmdStart:
-				if err := h.startHandler.HandleStart(msg); err != nil {
-					logger.Error("failed to handle /start", zap.Error(err))
-				}
-			// в новые ветки добавлять вызовы функций обработчиков команд
-			default:
-				// todo
-			}
-		}
-		// todo
+		h.msgRouter.HandleMessage(msg)
 	}
 	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
-		switch callbackQuery.Data {
-		case CallbackBoxSolutions:
-			if err := h.boxSolutionsHandler.HandleBoxSolutions(ctx, callbackQuery); err != nil {
-				logger.Error("failed to handle callback BoxSolutions", zap.Error(err))
-			}
-		case BoxSolutionsButtonBackToMainMenu:
-			if err := h.startHandler.HandleStartBackToMainMenu(ctx, callbackQuery); err != nil {
-				logger.Error("failed to handle callback BoxSolutionsButtonBackToMainMenu", zap.Error(err))
-			}
-			//todo
-		}
+		HandleCallback(h.callbackRouter, update.CallbackQuery)
 	}
 }
 

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -63,4 +64,92 @@ func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, servic
 	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{backButton})
 
 	return tgbotapi.NewInlineKeyboardMarkup(buttons...)
+}
+
+// FormNavigationKeyboard creates a keyboard with navigation for the steps of the form
+func (ks *KeyboardService) FormNavigationKeyboard() tgbotapi.InlineKeyboardMarkup {
+	buttons := [][]tgbotapi.InlineKeyboardButton{
+		{
+			tgbotapi.NewInlineKeyboardButtonData("Назад", "book:main_menu"),
+		},
+	}
+
+	return tgbotapi.NewInlineKeyboardMarkup(buttons...)
+}
+
+// ConfirmationKeyboard creates a keyboard for the confirmation step
+func (ks *KeyboardService) ConfirmationKeyboard() tgbotapi.InlineKeyboardMarkup {
+	buttons := [][]tgbotapi.InlineKeyboardButton{
+		{
+			tgbotapi.NewInlineKeyboardButtonData("Подтвердить", "book:confirm"),
+		},
+		{
+			tgbotapi.NewInlineKeyboardButtonData("Отменить", "book:main_menu"),
+		},
+	}
+
+	return tgbotapi.NewInlineKeyboardMarkup(buttons...)
+}
+
+// createNoDatesKeyboard creates a 'To Main Menu' button
+func (ks *KeyboardService) createMainMenuKeyboard() *tgbotapi.InlineKeyboardMarkup {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("В главное меню", "book:main_menu"),
+		),
+	)
+	return &keyboard
+}
+
+// createDatesKeyboard creates an inline keyboard with available dates
+func (ks *KeyboardService) createDatesKeyboard(dates []time.Time) tgbotapi.InlineKeyboardMarkup {
+	var rows [][]tgbotapi.InlineKeyboardButton
+
+	// Grouping the dates by 2 in a row
+	for i := 0; i < len(dates); i += 2 {
+		var row []tgbotapi.InlineKeyboardButton
+
+		// The first button in the row
+		btn1 := tgbotapi.NewInlineKeyboardButtonData(
+			ks.formatDateButton(dates[i]),
+			fmt.Sprintf("book:select_date:%s", dates[i].Format("2006-01-02")),
+		)
+		row = append(row, btn1)
+
+		// The second button, if available
+		if i+1 < len(dates) {
+			btn2 := tgbotapi.NewInlineKeyboardButtonData(
+				ks.formatDateButton(dates[i+1]),
+				fmt.Sprintf("book:select_date:%s", dates[i+1].Format("2006-01-02")),
+			)
+			row = append(row, btn2)
+		}
+
+		rows = append(rows, row)
+	}
+
+	// Adding the Back button
+	rows = append(rows, []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData("Назад", "book:main_menu"),
+	})
+
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+}
+
+// formatDateButton formats the date to display on the button
+func (ks *KeyboardService) formatDateButton(date time.Time) string {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	if date.YearDay() == today.YearDay() && date.Year() == today.Year() {
+		return "Сегодня"
+	}
+
+	tomorrow := today.AddDate(0, 0, 1)
+	if date.YearDay() == tomorrow.YearDay() && date.Year() == tomorrow.Year() {
+		return "Завтра"
+	}
+
+	// Format: "Jan 15 (Mon)"
+	return date.Format("02 Jan (Mon)")
 }

@@ -3,12 +3,13 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"time"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	dbmodels "github.com/yandex-development-1-team/go/internal/repository/models"
 	"go.uber.org/zap"
-	"time"
 )
 
 const (
@@ -29,14 +30,14 @@ type BoxSolutionsHandler struct {
 	boxSolutionsRepository BoxSolutionsRepository
 }
 
-func NewBoxSolutions(bot BoxSolutionsHandlerBot, repository BoxSolutionsRepository) BoxSolutionsHandler {
-	return BoxSolutionsHandler{
+func NewBoxSolutions(bot BoxSolutionsHandlerBot, repository BoxSolutionsRepository) *BoxSolutionsHandler {
+	return &BoxSolutionsHandler{
 		bot:                    bot,
 		boxSolutionsRepository: repository,
 	}
 }
 
-func (h *BoxSolutionsHandler) HandleBoxSolutions(ctx context.Context, query *tgbotapi.CallbackQuery) error {
+func (h *BoxSolutionsHandler) Handle(ctx context.Context, query *tgbotapi.CallbackQuery) error {
 	ctxBoxSolutions, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 

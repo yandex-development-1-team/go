@@ -1,4 +1,50 @@
+# The name of the binary file
+BIN_NAME=app
+
+# Go params
+GO=go
+GOBUILD=$(GO) build
+GOCLEAN=$(GO) clean
+GOTEST=$(GO) test
+GORUN=$(GO) run
+
+# Paths
+SRC_DIR=./cmd/bot
+BUILD_DIR=./bin
+
 .PHONY: migration migration-create generate-mocks
+
+all: build
+
+## build: building a project
+build:
+	$(GOBUILD) -C $(SRC_DIR) -o $(BUILD_DIR)/$(BIN_NAME)
+
+## run: run the application
+run:
+	$(GORUN) $(SRC_DIR)/*.go
+
+## clean: delete binary
+clean:	
+	$(GOCLEAN)
+	rm -rf $(SRC_DIR)/bin
+	
+## test: running tests
+test:
+	$(GOTEST) ./... -v -cover -count=1
+
+## fmt: Format the source code
+fmt:
+	$(GO) fmt ./...
+
+## vet: Check the code for suspicious structures
+vet:
+	$(GO) vet ./...
+
+## lint: Launch the linter (golangci-lint)
+lint:
+	golangci-lint run ./...
+
 
 migration:
 	@echo "Migration commands:"
