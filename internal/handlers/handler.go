@@ -11,6 +11,9 @@ import (
 
 const cmdStart = "start"
 
+<<<<<<< dev-feat/8
+type Handler struct {
+=======
 type Bot interface {
 	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
 	// новые методы для bot api добавлять сюда, а реализовывать в go/internal/bot/bot.go
@@ -23,6 +26,7 @@ type MsgRateLimiter interface {
 type Handler struct {
 	bot                 Bot
 	msgRL               MsgRateLimiter
+>>>>>>> dev
 	startHandler        StartHandler
 	boxSolutionsHandler BoxSolutionsHandler
 }
