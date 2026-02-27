@@ -4,16 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-<<<<<<< dev-feat/8
-	"github.com/yandex-development-1-team/go/internal/service"
-=======
 	"log"
->>>>>>> dev
 	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/yandex-development-1-team/go/internal/service"
 
 	"github.com/yandex-development-1-team/go/internal/database"
 	"github.com/yandex-development-1-team/go/internal/repository"
@@ -124,14 +122,9 @@ func run() error {
 	rep := repository.NewRepository()
 	repMock := mocks.NewMockClient()
 
-<<<<<<< dev-feat/8
-	startHandler := handlers.NewStartHandler(bot, rep)
-	bsService := service.NewBoxSolutionsService(repMock)
-	boxSolutionsHandler := handlers.NewBoxSolutions(bot, bsService)
-=======
 	startHandler := handlers.NewStartHandler(tgBot, rep)
-	boxSolutionsHandler := handlers.NewBoxSolutions(tgBot, repMock)
->>>>>>> dev
+	bsService := service.NewBoxSolutionsService(repMock)
+	boxSolutionsHandler := handlers.NewBoxSolutions(tgBot, bsService)
 
 	// init handler
 	handler := handlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
