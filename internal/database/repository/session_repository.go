@@ -20,10 +20,8 @@ const (
 	keyPrefix = "session:user:"
 )
 
-var (
-	// ErrSessionNotFound is returned when a requested session does not exist.
-	ErrSessionNotFound = errors.New("session not found")
-)
+// ErrSessionNotFound is returned when a requested session does not exist.
+var ErrSessionNotFound = errors.New("session not found")
 
 type sessionDTO struct {
 	UserID       int64                  `json:"user_id"`
@@ -99,9 +97,9 @@ func (r *SessionRepository) SaveSession(
 
 	// Preserve CreatedAt when overwriting an existing session.
 	createdAt := now
-	if existing, err := r.getDTO(ctx, userID); err == nil {
-		createdAt = existing.CreatedAt
-	}
+	// if existing, err := r.getDTO(ctx, userID); err == nil {
+	// 	createdAt = existing.CreatedAt
+	// }
 
 	dto := sessionDTO{
 		UserID:       userID,

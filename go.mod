@@ -15,10 +15,12 @@ require (
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
 	go.uber.org/zap v1.27.1
+	golang.org/x/time v0.14.0
 )
 
 require (
 	github.com/alicebob/miniredis/v2 v2.36.1
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/redis/go-redis/v9 v9.18.0
 )
 

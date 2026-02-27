@@ -77,9 +77,9 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 	// ШАГ 7: Логирование успешного показа
 	logger.Info("service_detail_shown",
 		zap.Int("service_id", serviceID),
-		zap.String("service_name", service.Name),
+		// zap.String("service_name", service.Name),
 		zap.Int64("user_id", userID),
-		zap.String("service_type", string(service.Type)),
+		// zap.String("service_type", string(service.Type)),
 	)
 
 	return nil
