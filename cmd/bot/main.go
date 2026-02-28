@@ -14,7 +14,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
-	sr "github.com/yandex-development-1-team/go/internal/database/repository"
+	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
