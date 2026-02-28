@@ -1,8 +1,4 @@
-
-.PHONY: migration migration-create migration-rollback
-
-.PHONY: migration migration-create generate-mocks
-
+.PHONY: migration migration-create migration-rollback generate-mocks
 
 migration:
 	@echo "Migration commands:"
@@ -27,7 +23,6 @@ migration-create:
 	echo "-- +goose Down" >> $$FILENAME; \
 	echo "Created migration: $$FILENAME"
 
-
 migration-rollback:
 	@if [ -z "$(DB_DSN)" ]; then \
 		echo "Error: DB_DSN is required"; \
@@ -38,7 +33,5 @@ migration-rollback:
 	goose -dir migrations postgres "$(DB_DSN)" down
 
 generate-mocks:
-	mkdir -p internal/mocks
-		mockgen -package=mocks -destination=internal/mocks/session_repository_mock.go -source=internal/database/session_repository_interface.go
-
-
+	@mkdir -p internal/mocks
+	mockgen -package=mocks -destination=internal/mocks/session_repository_mock.go -source=internal/database/session_repository_interface.go
