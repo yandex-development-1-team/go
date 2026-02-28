@@ -9,7 +9,9 @@
     "/api/v1/auth/login": {
       "post": {
         "summary": "Логин менеджера/админа",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -17,10 +19,18 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "login": { "type": "string" },
-                  "password": { "type": "string", "format": "password" }
+                  "login": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
                 },
-                "required": ["login", "password"]
+                "required": [
+                  "login",
+                  "password"
+                ]
               }
             }
           }
@@ -33,23 +43,33 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "token": { "type": "string" },
-                    "user": { "$ref": "#/components/schemas/User" }
+                    "token": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
                   },
-                  "required": ["token", "user"]
+                  "required": [
+                    "token",
+                    "user"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/auth/refresh": {
       "post": {
         "summary": "Обновление access токена",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -57,9 +77,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "refresh_token": { "type": "string" }
+                  "refresh_token": {
+                    "type": "string"
+                  }
                 },
-                "required": ["refresh_token"]
+                "required": [
+                  "refresh_token"
+                ]
               }
             }
           }
@@ -72,52 +96,79 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "token": { "type": "string" }
+                    "token": {
+                      "type": "string"
+                    }
                   },
-                  "required": ["token"]
+                  "required": [
+                    "token"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/boxes": {
       "get": {
         "summary": "Список коробочных решений",
-        "tags": ["boxes"],
+        "tags": [
+          "boxes"
+        ],
         "parameters": [
           {
             "name": "status",
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["active", "hidden", "draft", "processed"]
+              "enum": [
+                "active",
+                "hidden",
+                "draft",
+                "processed"
+              ]
             }
           },
           {
             "name": "search",
             "in": "query",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "limit",
             "in": "query",
-            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 }
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
           },
           {
             "name": "offset",
             "in": "query",
-            "schema": { "type": "integer", "default": 0, "minimum": 0 }
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
           },
           {
             "name": "sort",
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["name", "created_at", "updated_at"]
+              "enum": [
+                "name",
+                "created_at",
+                "updated_at"
+              ]
             }
           },
           {
@@ -125,7 +176,10 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["asc", "desc"],
+              "enum": [
+                "asc",
+                "desc"
+              ],
               "default": "asc"
             }
           }
@@ -140,26 +194,39 @@
                   "properties": {
                     "items": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/Box" }
+                      "items": {
+                        "$ref": "#/components/schemas/Box"
+                      }
                     },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
                   },
-                  "required": ["items", "pagination"]
+                  "required": [
+                    "items",
+                    "pagination"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       },
       "post": {
         "summary": "Создать коробочное решение",
-        "tags": ["boxes"],
+        "tags": [
+          "boxes"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/BoxCreateRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/BoxCreateRequest"
+              }
             }
           }
         },
@@ -168,47 +235,80 @@
             "description": "Коробка создана",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Box" }
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/MessageResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Box"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/boxes/{id}": {
       "get": {
         "summary": "Детали коробки",
-        "tags": ["boxes"],
+        "tags": [
+          "boxes"
+        ],
         "parameters": [
-          { "$ref": "#/components/parameters/IdPathParam" }
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
         ],
         "responses": {
           "200": {
             "description": "Детальная информация о коробке",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Box" }
+                "schema": {
+                  "$ref": "#/components/schemas/Box"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "put": {
         "summary": "Обновить коробку",
-        "tags": ["boxes"],
+        "tags": [
+          "boxes"
+        ],
         "parameters": [
-          { "$ref": "#/components/parameters/IdPathParam" }
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/BoxUpdateRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/BoxUpdateRequest"
+              }
             }
           }
         },
@@ -217,20 +317,44 @@
             "description": "Коробка обновлена",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Box" }
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/MessageResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Box"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "delete": {
         "summary": "Удалить коробку",
-        "tags": ["boxes"],
+        "tags": [
+          "boxes"
+        ],
         "parameters": [
-          { "$ref": "#/components/parameters/IdPathParam" }
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
         ],
         "responses": {
           "200": {
@@ -240,25 +364,36 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": { "type": "string" }
+                    "message": {
+                      "type": "string"
+                    }
                   },
-                  "required": ["message"]
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/boxes/{id}/image": {
       "post": {
         "summary": "Загрузить обложку коробки",
-        "tags": ["boxes"],
+        "tags": [
+          "boxes"
+        ],
         "parameters": [
-          { "$ref": "#/components/parameters/IdPathParam" }
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -272,7 +407,9 @@
                     "format": "binary"
                   }
                 },
-                "required": ["image"]
+                "required": [
+                  "image"
+                ]
               }
             }
           }
@@ -285,26 +422,40 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "image_url": { "type": "string", "format": "uri" }
+                    "image_url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
                   },
-                  "required": ["image_url"]
+                  "required": [
+                    "image_url"
+                  ]
                 }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/boxes/{id}/status": {
       "put": {
         "summary": "Сменить статус коробки",
-        "tags": ["boxes"],
+        "tags": [
+          "boxes"
+        ],
         "parameters": [
-          { "$ref": "#/components/parameters/IdPathParam" }
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -315,10 +466,17 @@
                 "properties": {
                   "status": {
                     "type": "string",
-                    "enum": ["active", "hidden", "draft", "processed"]
+                    "enum": [
+                      "active",
+                      "hidden",
+                      "draft",
+                      "processed"
+                    ]
                   }
                 },
-                "required": ["status"]
+                "required": [
+                  "status"
+                ]
               }
             }
           }
@@ -331,38 +489,62 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer", "format": "int64" },
-                    "status": { "type": "string" },
-                    "updated_at": { "type": "string", "format": "date-time" }
+                    "id": {
+                      "type": "integer",
+                      "format": "int64"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
                   },
-                  "required": ["id", "status", "updated_at"]
+                  "required": [
+                    "id",
+                    "status",
+                    "updated_at"
+                  ]
                 }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/boxes/export": {
       "get": {
         "summary": "Экспорт коробок",
-        "tags": ["boxes"],
+        "tags": [
+          "boxes"
+        ],
         "parameters": [
           {
             "name": "status",
             "in": "query",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "format",
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["pdf", "csv"],
+              "enum": [
+                "pdf",
+                "csv"
+              ],
               "default": "pdf"
             }
           }
@@ -371,32 +553,82 @@
           "200": {
             "description": "Файл экспорта",
             "content": {
-              "application/pdf": { "schema": { "type": "string", "format": "binary" } },
-              "text/csv": { "schema": { "type": "string", "format": "binary" } }
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-        "/api/v1/events": {
+    "/api/v1/events": {
       "get": {
         "summary": "Список событий/слотов",
-        "tags": ["events"],
+        "tags": [
+          "events"
+        ],
         "parameters": [
-          { "name": "box_id", "in": "query", "schema": { "type": "integer", "format": "int64" } },
-          { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "box_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "limit",
             "in": "query",
-            "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 }
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 100
+            }
           },
           {
             "name": "offset",
             "in": "query",
-            "schema": { "type": "integer", "default": 0, "minimum": 0 }
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
           }
         ],
         "responses": {
@@ -409,25 +641,40 @@
                   "properties": {
                     "items": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/EventListItem" }
+                      "items": {
+                        "$ref": "#/components/schemas/EventListItem"
+                      }
                     },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
                   },
-                  "required": ["items", "pagination"]
+                  "required": [
+                    "items",
+                    "pagination"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       },
       "post": {
         "summary": "Создать событие",
-        "tags": ["events"],
+        "tags": [
+          "events"
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/EventCreateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCreateRequest"
+              }
+            }
           }
         },
         "responses": {
@@ -435,42 +682,69 @@
             "description": "Событие создано",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Event" }
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/events/{id}": {
       "get": {
         "summary": "Детали события",
-        "tags": ["events"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "events"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Слот с привязками и участниками",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/EventWithBookings" }
+                "schema": {
+                  "$ref": "#/components/schemas/EventWithBookings"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "put": {
         "summary": "Обновить событие",
-        "tags": ["events"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "events"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/EventUpdateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventUpdateRequest"
+              }
+            }
           }
         },
         "responses": {
@@ -478,19 +752,33 @@
             "description": "Событие обновлено",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Event" }
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "delete": {
         "summary": "Отменить событие",
-        "tags": ["events"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "events"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Событие отменено",
@@ -499,45 +787,72 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": { "type": "string" },
-                    "notifications_sent": { "type": "integer" }
+                    "message": {
+                      "type": "string"
+                    },
+                    "notifications_sent": {
+                      "type": "integer"
+                    }
                   },
-                  "required": ["message", "notifications_sent"]
+                  "required": [
+                    "message",
+                    "notifications_sent"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/events/{id}/participants": {
       "get": {
         "summary": "Участники события",
-        "tags": ["events"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "events"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Участники события",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/EventParticipantsResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/EventParticipantsResponse"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/events/{id}/notify": {
       "post": {
         "summary": "Отправить уведомление участникам",
-        "tags": ["events"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "events"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -545,10 +860,17 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "message": { "type": "string" },
-                  "notification_type": { "type": "string" }
+                  "message": {
+                    "type": "string"
+                  },
+                  "notification_type": {
+                    "type": "string"
+                  }
                 },
-                "required": ["message", "notification_type"]
+                "required": [
+                  "message",
+                  "notification_type"
+                ]
               }
             }
           }
@@ -561,34 +883,110 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "sent": { "type": "integer" },
-                    "failed": { "type": "integer" },
-                    "notification_id": { "type": "string" }
+                    "sent": {
+                      "type": "integer"
+                    },
+                    "failed": {
+                      "type": "integer"
+                    },
+                    "notification_id": {
+                      "type": "string"
+                    }
                   },
-                  "required": ["sent", "failed", "notification_id"]
+                  "required": [
+                    "sent",
+                    "failed",
+                    "notification_id"
+                  ]
                 }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/applications": {
       "get": {
         "summary": "Список заявок",
-        "tags": ["applications"],
+        "tags": [
+          "applications"
+        ],
         "parameters": [
-          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["queue", "in_progress", "done"] } },
-          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["box", "special_project"] } },
-          { "name": "manager_id", "in": "query", "schema": { "type": "integer", "format": "int64" } },
-          { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "queue",
+                "in_progress",
+                "done"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "box",
+                "special_project"
+              ]
+            }
+          },
+          {
+            "name": "manager_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -600,25 +998,40 @@
                   "properties": {
                     "items": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/ApplicationListItem" }
+                      "items": {
+                        "$ref": "#/components/schemas/ApplicationListItem"
+                      }
                     },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
                   },
-                  "required": ["items", "pagination"]
+                  "required": [
+                    "items",
+                    "pagination"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       },
       "post": {
         "summary": "Создать заявку (из бота или вручную)",
-        "tags": ["applications"],
+        "tags": [
+          "applications"
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/ApplicationCreateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationCreateRequest"
+              }
+            }
           }
         },
         "responses": {
@@ -626,53 +1039,100 @@
             "description": "Заявка создана",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Application" }
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
         }
       }
     },
-
     "/api/v1/applications/{id}": {
       "get": {
         "summary": "Детали заявки",
-        "tags": ["applications"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "applications"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Заявка",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Application" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "put": {
         "summary": "Обновить заявку",
-        "tags": ["applications"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "applications"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/ApplicationUpdateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationUpdateRequest"
+              }
+            }
           }
         },
         "responses": {
           "200": {
             "description": "Заявка обновлена",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Application" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "delete": {
         "summary": "Удалить заявку",
-        "tags": ["applications"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "applications"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Заявка удалена",
@@ -680,27 +1140,47 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": { "message": { "type": "string" } },
-                  "required": ["message"]
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/applications/{id}/create-box": {
       "post": {
         "summary": "Создать коробку из заявки",
-        "tags": ["applications", "boxes"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "applications",
+          "boxes"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/CreateBoxFromApplicationRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBoxFromApplicationRequest"
+              }
+            }
           }
         },
         "responses": {
@@ -708,24 +1188,49 @@
             "description": "Коробка создана и связана с заявкой",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CreateBoxFromApplicationResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/CreateBoxFromApplicationResponse"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/special-projects": {
       "get": {
         "summary": "Список спецпроектов",
-        "tags": ["special-projects"],
+        "tags": [
+          "special-projects"
+        ],
         "parameters": [
-          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["active", "inactive"] } },
-          { "name": "search", "in": "query", "schema": { "type": "string" } }
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "inactive"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -734,21 +1239,31 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/SpecialProjectListItem" }
+                  "items": {
+                    "$ref": "#/components/schemas/SpecialProjectListItem"
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       },
       "post": {
         "summary": "Создать спецпроект",
-        "tags": ["special-projects"],
+        "tags": [
+          "special-projects"
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/SpecialProjectCreateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpecialProjectCreateRequest"
+              }
+            }
           }
         },
         "responses": {
@@ -756,54 +1271,103 @@
             "description": "Спецпроект создан",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SpecialProject" }
+                "schema": {
+                  "$ref": "#/components/schemas/SpecialProject"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/special-projects/{id}": {
       "get": {
         "summary": "Детали спецпроекта",
-        "tags": ["special-projects"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "special-projects"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Спецпроект",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SpecialProject" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecialProject"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "put": {
         "summary": "Обновить спецпроект",
-        "tags": ["special-projects"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "special-projects"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/SpecialProjectUpdateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpecialProjectUpdateRequest"
+              }
+            }
           }
         },
         "responses": {
           "200": {
             "description": "Спецпроект обновлён",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SpecialProject" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecialProject"
+                }
+              }
+            }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "delete": {
         "summary": "Удалить спецпроект",
-        "tags": ["special-projects"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "special-projects"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Спецпроект удалён (логически)",
@@ -811,27 +1375,74 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": { "message": { "type": "string" } },
-                  "required": ["message"]
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
     "/api/v1/users": {
       "get": {
         "summary": "Список сотрудников/пользователей",
-        "tags": ["users"],
+        "tags": [
+          "users"
+        ],
         "parameters": [
-          { "name": "role", "in": "query", "schema": { "type": "string" } },
-          { "name": "status", "in": "query", "schema": { "type": "string" } },
-          { "name": "search", "in": "query", "schema": { "type": "string" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -841,78 +1452,148 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/UserListItem" } },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UserListItem"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
                   },
-                  "required": ["items", "pagination"]
+                  "required": [
+                    "items",
+                    "pagination"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       },
       "post": {
         "summary": "Добавить сотрудника/менеджера",
-        "tags": ["users"],
+        "tags": [
+          "users"
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/UserCreateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreateRequest"
+              }
+            }
           }
         },
         "responses": {
           "201": {
             "description": "Пользователь создан",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/users/{id}": {
       "get": {
         "summary": "Карточка сотрудника",
-        "tags": ["users"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Профиль пользователя",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserWithDetails" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserWithDetails"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "put": {
         "summary": "Обновить данные сотрудника",
-        "tags": ["users"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/UserUpdateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequest"
+              }
+            }
           }
         },
         "responses": {
           "200": {
             "description": "Пользователь обновлён",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/users/{id}/block": {
       "put": {
         "summary": "Заблокировать пользователя",
-        "tags": ["users"],
-        "parameters": [{ "$ref": "#/components/parameters/IdPathParam" }],
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Пользователь заблокирован",
@@ -921,40 +1602,71 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer", "format": "int64" },
-                    "status": { "type": "string" },
-                    "updated_at": { "type": "string", "format": "date-time" }
+                    "id": {
+                      "type": "integer",
+                      "format": "int64"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
                   },
-                  "required": ["id", "status", "updated_at"]
+                  "required": [
+                    "id",
+                    "status",
+                    "updated_at"
+                  ]
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/settings": {
       "get": {
         "summary": "Системные настройки",
-        "tags": ["settings"],
+        "tags": [
+          "settings"
+        ],
         "responses": {
           "200": {
             "description": "Настройки системы",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Settings" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settings"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       },
       "put": {
         "summary": "Обновить системные настройки",
-        "tags": ["settings"],
+        "tags": [
+          "settings"
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/SettingsUpdateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsUpdateRequest"
+              }
+            }
           }
         },
         "responses": {
@@ -965,25 +1677,40 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": { "type": "string" },
-                    "updated_at": { "type": "string", "format": "date-time" }
+                    "message": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
                   },
-                  "required": ["message", "updated_at"]
+                  "required": [
+                    "message",
+                    "updated_at"
+                  ]
                 }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "403": { "$ref": "#/components/responses/ForbiddenError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
         }
       }
     },
-
     "/api/v1/resources": {
       "get": {
         "summary": "Список ресурсных страниц",
-        "tags": ["resources"],
+        "tags": [
+          "resources"
+        ],
         "responses": {
           "200": {
             "description": "Ресурсные страницы",
@@ -991,191 +1718,453 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/ResourcePageSummary" }
+                  "items": {
+                    "$ref": "#/components/schemas/ResourcePageSummary"
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/resources/{slug}": {
       "get": {
         "summary": "Получить ресурсную страницу по slug",
-        "tags": ["resources"],
+        "tags": [
+          "resources"
+        ],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Ресурсная страница",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResourcePage" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcePage"
+                }
+              }
+            }
           },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       },
       "put": {
         "summary": "Обновить ресурсную страницу",
-        "tags": ["resources"],
+        "tags": [
+          "resources"
+        ],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/ResourcePageUpdateRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourcePageUpdateRequest"
+              }
+            }
           }
         },
         "responses": {
           "200": {
             "description": "Ресурсная страница обновлена",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResourcePage" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcePage"
+                }
+              }
+            }
           },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         }
       }
     },
-
     "/api/v1/public/resources/{slug}": {
       "get": {
         "summary": "Публичный доступ к ресурсной странице (для бота)",
-        "tags": ["resources"],
+        "tags": [
+          "resources"
+        ],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Публичное содержимое ресурсной страницы",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResourcePagePublic" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcePagePublic"
+                }
+              }
+            }
           },
-          "404": { "$ref": "#/components/responses/NotFoundError" }
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
         },
         "security": []
       }
     },
-
     "/api/v1/analytics/overview": {
       "get": {
         "summary": "Общая аналитика",
-        "tags": ["analytics"],
+        "tags": [
+          "analytics"
+        ],
         "parameters": [
-          { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "period", "in": "query", "schema": { "type": "string", "enum": ["today", "week", "month", "year"] } }
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "week",
+                "month",
+                "year"
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Сводная аналитика",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AnalyticsOverview" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsOverview"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/analytics/boxes": {
       "get": {
         "summary": "Аналитика по коробочным решениям",
-        "tags": ["analytics"],
+        "tags": [
+          "analytics"
+        ],
         "parameters": [
-          { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "sort_by", "in": "query", "schema": { "type": "string", "enum": ["popularity", "revenue", "attendance"] } }
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "popularity",
+                "revenue",
+                "attendance"
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Аналитика коробок",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AnalyticsBoxesResponse" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsBoxesResponse"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/analytics/users": {
       "get": {
         "summary": "Аналитика по пользователям",
-        "tags": ["analytics"],
+        "tags": [
+          "analytics"
+        ],
         "parameters": [
-          { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } }
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Аналитика пользователей",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AnalyticsUsers" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsUsers"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/analytics/dashboard": {
       "get": {
         "summary": "Данные для дашборда",
-        "tags": ["analytics"],
+        "tags": [
+          "analytics"
+        ],
         "parameters": [
-          { "name": "period", "in": "query", "schema": { "type": "string", "enum": ["today", "week", "month"] } }
+          {
+            "name": "period",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "week",
+                "month"
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Данные для дашборда",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AnalyticsDashboard" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsDashboard"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     },
-
     "/api/v1/analytics/export": {
       "get": {
         "summary": "Экспорт аналитики",
-        "tags": ["analytics"],
+        "tags": [
+          "analytics"
+        ],
         "parameters": [
           {
             "name": "type",
             "in": "query",
-            "schema": { "type": "string", "enum": ["employees", "attendance", "boxes", "users"] },
+            "schema": {
+              "type": "string",
+              "enum": [
+                "employees",
+                "attendance",
+                "boxes",
+                "users"
+              ]
+            },
             "description": "Какой отчёт экспортировать"
           },
-          { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } },
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
           {
             "name": "format",
             "in": "query",
-            "schema": { "type": "string", "enum": ["pdf", "xlsx", "csv"], "default": "xlsx" }
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pdf",
+                "xlsx",
+                "csv"
+              ],
+              "default": "xlsx"
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "Файл с аналитикой",
             "content": {
-              "application/pdf": { "schema": { "type": "string", "format": "binary" } },
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                "schema": { "type": "string", "format": "binary" }
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               },
-              "text/csv": { "schema": { "type": "string", "format": "binary" } }
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
             }
           },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
         }
       }
     }
   },
   "components": {
     "schemas": {
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "error",
+              "success",
+              "info"
+            ]
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "message",
+          "status"
+        ]
+      },
       "Box": {
         "description": "Коробочное решение: карточка продукта, который видит пользователь в боте и на сайте.",
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "name": { "type": "string" },
-          "slug": { "type": "string" },
-          "description": { "type": "string" },
-          "rules": { "type": "string" },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "string"
+          },
           "date": {
             "type": "string",
             "description": "Базовая дата/старт коробочного решения для промо/одиночных мероприятий, формат DDMMYYYY"
@@ -1184,529 +2173,1105 @@
             "type": "string",
             "description": "Базовое время начала (для промо/одиночных мероприятий), формат HH:MM"
           },
-          "location": { "type": "string" },
-          "price": { "type": "integer" },
-          "image": { "type": "string", "format": "uri" },
-          "status": { "type": "string", "enum": ["active", "hidden", "draft", "processed"] },
-          "organizer": { "type": "string" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time" },
-          "created_by": { "type": "integer", "format": "int64" }
+          "location": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "hidden",
+              "draft",
+              "processed"
+            ]
+          },
+          "organizer": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": "integer",
+            "format": "int64"
+          }
         }
       },
-
       "BoxCreateRequest": {
         "description": "Payload для создания коробочного решения.",
         "type": "object",
         "properties": {
-          "name": { "type": "string" },
-          "description": { "type": "string" },
-          "rules": { "type": "string" },
-          "date": { "type": "string", "description": "Дата проведения, формат DDMMYYYY" },
-          "time": { "type": "string", "description": "Время начала, формат HH:MM" },
-          "location": { "type": "string" },
-          "price": { "type": "integer" },
-          "image": { "type": "string", "format": "uri" },
-          "organizer": { "type": "string" },
-          "status": { "type": "string", "enum": ["active", "hidden", "draft", "processed"] }
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "Дата проведения, формат DDMMYYYY"
+          },
+          "time": {
+            "type": "string",
+            "description": "Время начала, формат HH:MM"
+          },
+          "location": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
+          },
+          "organizer": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "hidden",
+              "draft",
+              "processed"
+            ]
+          }
         },
-        "required": ["name", "date", "time", "price", "status"]
+        "required": [
+          "name",
+          "date",
+          "time",
+          "price",
+          "status"
+        ]
       },
-
       "BoxUpdateRequest": {
         "description": "Частичное обновление коробочного решения.",
         "type": "object",
         "properties": {
-          "name": { "type": "string" },
-          "description": { "type": "string" },
-          "rules": { "type": "string" },
-          "date": { "type": "string", "description": "Дата проведения, формат DDMMYYYY" },
-          "time": { "type": "string", "description": "Время начала, формат HH:MM" },
-          "location": { "type": "string" },
-          "price": { "type": "integer" },
-          "image": { "type": "string", "format": "uri" },
-          "organizer": { "type": "string" },
-          "status": { "type": "string" }
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "Дата проведения, формат DDMMYYYY"
+          },
+          "time": {
+            "type": "string",
+            "description": "Время начала, формат HH:MM"
+          },
+          "location": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
+          },
+          "organizer": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
         }
       },
-
       "Event": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "box_id": { "type": "integer", "format": "int64" },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "box_id": {
+            "type": "integer",
+            "format": "int64"
+          },
           "date": {
             "type": "string",
             "format": "date",
             "description": "Реальная дата проведения конкретного слота (источник истины для расписания)"
           },
-          "time": { "type": "string", "description": "Реальное время начала слота" },
-          "total_slots": { "type": "integer" },
-          "occupied_slots": { "type": "integer" },
-          "available_slots": { "type": "integer" },
-          "status": { "type": "string" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time" }
+          "time": {
+            "type": "string",
+            "description": "Реальное время начала слота"
+          },
+          "total_slots": {
+            "type": "integer"
+          },
+          "occupied_slots": {
+            "type": "integer"
+          },
+          "available_slots": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
-
       "EventListItem": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "box_id": { "type": "integer", "format": "int64" },
-          "box_name": { "type": "string" },
-          "date": { "type": "string", "format": "date" },
-          "time": { "type": "string" },
-          "total_slots": { "type": "integer" },
-          "occupied_slots": { "type": "integer" },
-          "available_slots": { "type": "integer" },
-          "status": { "type": "string" },
-          "created_at": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "box_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "box_name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "type": "string"
+          },
+          "total_slots": {
+            "type": "integer"
+          },
+          "occupied_slots": {
+            "type": "integer"
+          },
+          "available_slots": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
-
       "EventCreateRequest": {
         "type": "object",
         "properties": {
-          "box_id": { "type": "integer", "format": "int64" },
-          "date": { "type": "string", "format": "date" },
-          "time": { "type": "string" },
-          "total_slots": { "type": "integer" }
+          "box_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "type": "string"
+          },
+          "total_slots": {
+            "type": "integer"
+          }
         },
-        "required": ["box_id", "date", "time", "total_slots"]
+        "required": [
+          "box_id",
+          "date",
+          "time",
+          "total_slots"
+        ]
       },
-
       "EventUpdateRequest": {
         "type": "object",
         "properties": {
-          "date": { "type": "string", "format": "date" },
-          "time": { "type": "string" },
-          "total_slots": { "type": "integer" }
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "type": "string"
+          },
+          "total_slots": {
+            "type": "integer"
+          }
         }
       },
-
       "EventWithBookings": {
         "allOf": [
-          { "$ref": "#/components/schemas/Event" },
+          {
+            "$ref": "#/components/schemas/Event"
+          },
           {
             "type": "object",
             "properties": {
               "box": {
                 "type": "object",
                 "properties": {
-                  "id": { "type": "integer", "format": "int64" },
-                  "name": { "type": "string" },
-                  "image": { "type": "string", "format": "uri" }
+                  "id": {
+                    "type": "integer",
+                    "format": "int64"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "uri"
+                  }
                 }
               },
               "bookings": {
                 "type": "array",
-                "items": { "$ref": "#/components/schemas/BookingShort" }
+                "items": {
+                  "$ref": "#/components/schemas/BookingShort"
+                }
               }
             }
           }
         ]
       },
-
       "BookingShort": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "user_id": { "type": "integer", "format": "int64" },
-          "user_name": { "type": "string" },
-          "telegram_nick": { "type": "string" },
-          "status": { "type": "string" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "telegram_nick": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
         }
       },
-
       "Application": {
         "description": "Заявка из бота или созданная вручную в админке.",
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "type": { "type": "string", "enum": ["box", "special_project"] },
-          "source": { "type": "string", "enum": ["telegram_bot", "manual"] },
-          "customer_name": { "type": "string" },
-          "project_name": { "type": "string" },
-          "contact_info": { "type": "string" },
-          "status": { "type": "string", "enum": ["queue", "in_progress", "done"] },
-          "box_id": { "type": "integer", "format": "int64", "nullable": true },
-          "special_project_id": { "type": "integer", "format": "int64", "nullable": true },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time" },
-          "created_by": { "type": "integer", "format": "int64", "nullable": true }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "box",
+              "special_project"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "telegram_bot",
+              "manual"
+            ]
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queue",
+              "in_progress",
+              "done"
+            ]
+          },
+          "box_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "special_project_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
         }
       },
-
       "ApplicationCreateRequest": {
         "type": "object",
         "properties": {
-          "type": { "type": "string", "enum": ["box", "special_project"] },
-          "source": { "type": "string", "enum": ["telegram_bot", "manual"], "default": "telegram_bot" },
-          "customer_name": { "type": "string" },
-          "project_name": { "type": "string" },
-          "contact_info": { "type": "string" },
-          "box_id": { "type": "integer", "format": "int64", "nullable": true },
-          "special_project_id": { "type": "integer", "format": "int64", "nullable": true }
+          "type": {
+            "type": "string",
+            "enum": [
+              "box",
+              "special_project"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "telegram_bot",
+              "manual"
+            ],
+            "default": "telegram_bot"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "box_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "special_project_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
         },
-        "required": ["type", "source", "customer_name", "contact_info"]
+        "required": [
+          "type",
+          "source",
+          "customer_name",
+          "contact_info"
+        ]
       },
-
       "ApplicationListItem": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "type": { "type": "string", "enum": ["box", "special_project"] },
-          "source": { "type": "string", "enum": ["telegram_bot", "manual"] },
-          "customer_name": { "type": "string" },
-          "project_name": { "type": "string" },
-          "contact_info": { "type": "string" },
-          "status": { "type": "string", "enum": ["queue", "in_progress", "done"] },
-          "created_at": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "box",
+              "special_project"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "telegram_bot",
+              "manual"
+            ]
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queue",
+              "in_progress",
+              "done"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
-
       "ApplicationUpdateRequest": {
         "type": "object",
         "properties": {
-          "status": { "type": "string", "enum": ["queue", "in_progress", "done"] },
-          "contact_info": { "type": "string" },
-          "box_id": { "type": "integer", "format": "int64", "nullable": true },
-          "special_project_id": { "type": "integer", "format": "int64", "nullable": true }
+          "status": {
+            "type": "string",
+            "enum": [
+              "queue",
+              "in_progress",
+              "done"
+            ]
+          },
+          "contact_info": {
+            "type": "string"
+          },
+          "box_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "special_project_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
         }
       },
-
       "CreateBoxFromApplicationRequest": {
         "type": "object",
         "properties": {
-          "name": { "type": "string" },
-          "description": { "type": "string" },
-          "rules": { "type": "string" },
-          "date": { "type": "string", "description": "Дата проведения, формат DDMMYYYY" },
-          "time": { "type": "string", "description": "Время начала, формат HH:MM" },
-          "location": { "type": "string" },
-          "price": { "type": "integer" },
-          "organizer": { "type": "string" }
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "Дата проведения, формат DDMMYYYY"
+          },
+          "time": {
+            "type": "string",
+            "description": "Время начала, формат HH:MM"
+          },
+          "location": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer"
+          },
+          "organizer": {
+            "type": "string"
+          }
         },
-        "required": ["name", "description", "date", "time", "location", "price"]
+        "required": [
+          "name",
+          "description",
+          "date",
+          "time",
+          "location",
+          "price"
+        ]
       },
-
       "CreateBoxFromApplicationResponse": {
         "type": "object",
         "properties": {
-          "application_id": { "type": "integer", "format": "int64" },
-          "box_id": { "type": "integer", "format": "int64" },
-          "box": { "$ref": "#/components/schemas/Box" },
-          "application_status": { "type": "string", "enum": ["queue", "in_progress", "done"] }
+          "application_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "box_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "box": {
+            "$ref": "#/components/schemas/Box"
+          },
+          "application_status": {
+            "type": "string",
+            "enum": [
+              "queue",
+              "in_progress",
+              "done"
+            ]
+          }
         }
       },
-
       "SpecialProject": {
         "description": "Спецпроект — отдельный тип мероприятия, отличающийся от стандартных коробок.",
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "title": { "type": "string" },
-          "description": { "type": "string" },
-          "image": { "type": "string", "format": "uri" },
-          "is_active_in_bot": { "type": "boolean" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
+          },
+          "is_active_in_bot": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
-
       "SpecialProjectListItem": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "title": { "type": "string" },
-          "is_active_in_bot": { "type": "boolean" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "is_active_in_bot": {
+            "type": "boolean"
+          }
         }
       },
-
       "SpecialProjectCreateRequest": {
         "type": "object",
         "properties": {
-          "title": { "type": "string" },
-          "description": { "type": "string" },
-          "image": { "type": "string", "format": "uri" },
-          "is_active_in_bot": { "type": "boolean", "default": false }
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
+          },
+          "is_active_in_bot": {
+            "type": "boolean",
+            "default": false
+          }
         },
-        "required": ["title"]
+        "required": [
+          "title"
+        ]
       },
-
       "SpecialProjectUpdateRequest": {
         "type": "object",
         "properties": {
-          "title": { "type": "string" },
-          "description": { "type": "string" },
-          "image": { "type": "string", "format": "uri" },
-          "is_active_in_bot": { "type": "boolean" }
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
+          },
+          "is_active_in_bot": {
+            "type": "boolean"
+          }
         }
       },
-
       "User": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "telegram_nick": { "type": "string" },
-          "name": { "type": "string" },
-          "email": { "type": "string" },
-          "role": { "type": "string" },
-          "status": { "type": "string" },
-          "permissions": { "type": "array", "items": { "type": "string" } },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "telegram_nick": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
-
       "UserListItem": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "telegram_nick": { "type": "string" },
-          "name": { "type": "string" },
-          "role": { "type": "string" },
-          "status": { "type": "string" },
-          "created_at": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "telegram_nick": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
-
       "UserCreateRequest": {
         "type": "object",
         "properties": {
-          "telegram_nick": { "type": "string" },
-          "name": { "type": "string" },
-          "email": { "type": "string" },
-          "role": { "type": "string" },
-          "status": { "type": "string" },
-          "permissions": { "type": "array", "items": { "type": "string" } }
+          "telegram_nick": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         },
-        "required": ["name", "email", "role"]
+        "required": [
+          "name",
+          "email",
+          "role"
+        ]
       },
-
       "UserUpdateRequest": {
         "type": "object",
         "properties": {
-          "telegram_nick": { "type": "string" },
-          "name": { "type": "string" },
-          "email": { "type": "string" },
-          "role": { "type": "string" },
-          "status": { "type": "string" },
-          "permissions": { "type": "array", "items": { "type": "string" } }
+          "telegram_nick": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       },
-
       "UserWithDetails": {
         "allOf": [
-          { "$ref": "#/components/schemas/User" },
+          {
+            "$ref": "#/components/schemas/User"
+          },
           {
             "type": "object",
             "properties": {
-              "bookings": { "type": "array", "items": { "$ref": "#/components/schemas/UserBookingItem" } },
+              "bookings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/UserBookingItem"
+                }
+              },
               "visit_history": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
-                    "box_name": { "type": "string" },
-                    "visited_at": { "type": "string", "format": "date-time" }
+                    "box_name": {
+                      "type": "string"
+                    },
+                    "visited_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
                   }
                 }
               },
-              "favorite_boxes": { "type": "array", "items": { "type": "integer", "format": "int64" } }
+              "favorite_boxes": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              }
             }
           }
         ]
       },
-
       "UserBookingItem": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "event_id": { "type": "integer", "format": "int64" },
-          "box_name": { "type": "string" },
-          "date": { "type": "string", "format": "date" },
-          "time": { "type": "string" },
-          "status": { "type": "string" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "event_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "box_name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
         }
       },
-
       "Settings": {
         "type": "object",
         "properties": {
           "notifications": {
             "type": "object",
             "properties": {
-              "telegram_bot_token": { "type": "string" },
-              "auto_reminders": { "type": "boolean" },
-              "reminder_hours_before": { "type": "integer" }
+              "telegram_bot_token": {
+                "type": "string"
+              },
+              "auto_reminders": {
+                "type": "boolean"
+              },
+              "reminder_hours_before": {
+                "type": "integer"
+              }
             }
           },
           "booking": {
             "type": "object",
             "properties": {
-              "max_slots_per_event": { "type": "integer" },
-              "allow_overbooking": { "type": "boolean" },
-              "cancellation_allowed_hours": { "type": "integer" }
+              "max_slots_per_event": {
+                "type": "integer"
+              },
+              "allow_overbooking": {
+                "type": "boolean"
+              },
+              "cancellation_allowed_hours": {
+                "type": "integer"
+              }
             }
           },
           "general": {
             "type": "object",
             "properties": {
-              "site_name": { "type": "string" },
-              "contact_email": { "type": "string" },
-              "contact_phone": { "type": "string" }
+              "site_name": {
+                "type": "string"
+              },
+              "contact_email": {
+                "type": "string"
+              },
+              "contact_phone": {
+                "type": "string"
+              }
             }
           }
         }
       },
-
       "SettingsUpdateRequest": {
         "type": "object",
         "properties": {
           "notifications": {
             "type": "object",
             "properties": {
-              "telegram_bot_token": { "type": "string" },
-              "auto_reminders": { "type": "boolean" },
-              "reminder_hours_before": { "type": "integer" }
+              "telegram_bot_token": {
+                "type": "string"
+              },
+              "auto_reminders": {
+                "type": "boolean"
+              },
+              "reminder_hours_before": {
+                "type": "integer"
+              }
             }
           },
           "booking": {
             "type": "object",
             "properties": {
-              "max_slots_per_event": { "type": "integer" },
-              "allow_overbooking": { "type": "boolean" },
-              "cancellation_allowed_hours": { "type": "integer" }
+              "max_slots_per_event": {
+                "type": "integer"
+              },
+              "allow_overbooking": {
+                "type": "boolean"
+              },
+              "cancellation_allowed_hours": {
+                "type": "integer"
+              }
             }
           },
           "general": {
             "type": "object",
             "properties": {
-              "site_name": { "type": "string" },
-              "contact_email": { "type": "string" },
-              "contact_phone": { "type": "string" }
+              "site_name": {
+                "type": "string"
+              },
+              "contact_email": {
+                "type": "string"
+              },
+              "contact_phone": {
+                "type": "string"
+              }
             }
           }
         }
       },
-
       "ResourcePageSummary": {
         "type": "object",
         "properties": {
-          "slug": { "type": "string" },
-          "title": { "type": "string" },
-          "updated_at": { "type": "string", "format": "date-time" }
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
-
       "ResourcePage": {
         "description": "Ресурсная страница (организация, полезные ссылки и т.д.)",
         "type": "object",
         "properties": {
-          "slug": { "type": "string" },
-          "title": { "type": "string" },
-          "content": { "type": "string" },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
           "links": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "title": { "type": "string" },
-                "url": { "type": "string", "format": "uri" }
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                }
               }
             }
           },
-          "updated_at": { "type": "string", "format": "date-time" }
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
-
       "ResourcePagePublic": {
         "description": "Публичное представление ресурсной страницы для бота.",
         "type": "object",
         "properties": {
-          "title": { "type": "string" },
-          "content": { "type": "string" },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
           "links": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "title": { "type": "string" },
-                "url": { "type": "string", "format": "uri" }
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                }
               }
             }
           }
         }
       },
-
       "ResourcePageUpdateRequest": {
         "type": "object",
         "properties": {
-          "title": { "type": "string" },
-          "content": { "type": "string" },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
           "links": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "title": { "type": "string" },
-                "url": { "type": "string", "format": "uri" }
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                }
               }
             }
           }
         }
       },
-
       "EventParticipantsResponse": {
         "type": "object",
         "properties": {
-          "event_id": { "type": "integer", "format": "int64" },
+          "event_id": {
+            "type": "integer",
+            "format": "int64"
+          },
           "participants": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "booking_id": { "type": "integer", "format": "int64" },
-                "user_id": { "type": "integer", "format": "int64" },
-                "name": { "type": "string" },
-                "telegram_nick": { "type": "string" },
-                "status": { "type": "string" },
-                "registered_at": { "type": "string", "format": "date-time" }
+                "booking_id": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "user_id": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "telegram_nick": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "registered_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
               }
             }
           },
-          "total": { "type": "integer" }
+          "total": {
+            "type": "integer"
+          }
         }
       },
-
       "AnalyticsOverview": {
         "type": "object",
         "properties": {
           "period": {
             "type": "object",
             "properties": {
-              "from": { "type": "string", "format": "date" },
-              "to": { "type": "string", "format": "date" }
+              "from": {
+                "type": "string",
+                "format": "date"
+              },
+              "to": {
+                "type": "string",
+                "format": "date"
+              }
             }
           },
-          "total_events": { "type": "integer" },
-          "total_bookings": { "type": "integer" },
-          "total_users": { "type": "integer" },
-          "attendance_rate": { "type": "number" },
-          "average_attendance": { "type": "number" },
+          "total_events": {
+            "type": "integer"
+          },
+          "total_bookings": {
+            "type": "integer"
+          },
+          "total_users": {
+            "type": "integer"
+          },
+          "attendance_rate": {
+            "type": "number"
+          },
+          "average_attendance": {
+            "type": "number"
+          },
           "revenue": {
             "type": "object",
             "properties": {
-              "total": { "type": "integer" },
-              "currency": { "type": "string" }
+              "total": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string"
+              }
             }
           }
         }
       },
-
       "AnalyticsBoxesResponse": {
         "type": "object",
         "properties": {
@@ -1715,33 +3280,63 @@
             "items": {
               "type": "object",
               "properties": {
-                "box_id": { "type": "integer", "format": "int64" },
-                "box_name": { "type": "string" },
-                "total_events": { "type": "integer" },
-                "total_bookings": { "type": "integer" },
-                "attendance_rate": { "type": "number" },
-                "average_attendance": { "type": "number" },
-                "revenue": { "type": "integer" },
-                "cancellation_rate": { "type": "number" }
+                "box_id": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "box_name": {
+                  "type": "string"
+                },
+                "total_events": {
+                  "type": "integer"
+                },
+                "total_bookings": {
+                  "type": "integer"
+                },
+                "attendance_rate": {
+                  "type": "number"
+                },
+                "average_attendance": {
+                  "type": "number"
+                },
+                "revenue": {
+                  "type": "integer"
+                },
+                "cancellation_rate": {
+                  "type": "number"
+                }
               }
             }
           }
         }
       },
-
       "AnalyticsUsers": {
         "type": "object",
         "properties": {
-          "total_users": { "type": "integer" },
-          "new_users": { "type": "integer" },
-          "active_users": { "type": "integer" },
+          "total_users": {
+            "type": "integer"
+          },
+          "new_users": {
+            "type": "integer"
+          },
+          "active_users": {
+            "type": "integer"
+          },
           "attendance_distribution": {
             "type": "object",
             "properties": {
-              "1_visit": { "type": "integer" },
-              "2_3_visits": { "type": "integer" },
-              "4_5_visits": { "type": "integer" },
-              "6_plus_visits": { "type": "integer" }
+              "1_visit": {
+                "type": "integer"
+              },
+              "2_3_visits": {
+                "type": "integer"
+              },
+              "4_5_visits": {
+                "type": "integer"
+              },
+              "6_plus_visits": {
+                "type": "integer"
+              }
             }
           },
           "favorite_boxes": {
@@ -1749,15 +3344,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "box_id": { "type": "integer", "format": "int64" },
-                "box_name": { "type": "string" },
-                "favorites_count": { "type": "integer" }
+                "box_id": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "box_name": {
+                  "type": "string"
+                },
+                "favorites_count": {
+                  "type": "integer"
+                }
               }
             }
           }
         }
       },
-
       "AnalyticsDashboard": {
         "type": "object",
         "properties": {
@@ -1766,10 +3367,19 @@
             "items": {
               "type": "object",
               "properties": {
-                "date": { "type": "string", "format": "date" },
-                "total_events": { "type": "integer" },
-                "total_bookings": { "type": "integer" },
-                "attendance_rate": { "type": "number" }
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "total_events": {
+                  "type": "integer"
+                },
+                "total_bookings": {
+                  "type": "integer"
+                },
+                "attendance_rate": {
+                  "type": "number"
+                }
               }
             }
           },
@@ -1778,47 +3388,72 @@
             "items": {
               "type": "object",
               "properties": {
-                "box_id": { "type": "integer", "format": "int64" },
-                "box_name": { "type": "string" },
-                "bookings_count": { "type": "integer" }
+                "box_id": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "box_name": {
+                  "type": "string"
+                },
+                "bookings_count": {
+                  "type": "integer"
+                }
               }
             }
           },
           "user_stats": {
             "type": "object",
             "properties": {
-              "total": { "type": "integer" },
-              "new_this_period": { "type": "integer" },
-              "active_this_period": { "type": "integer" }
+              "total": {
+                "type": "integer"
+              },
+              "new_this_period": {
+                "type": "integer"
+              },
+              "active_this_period": {
+                "type": "integer"
+              }
             }
           }
         }
       },
-
       "Pagination": {
         "type": "object",
         "properties": {
-          "limit": { "type": "integer" },
-          "offset": { "type": "integer" },
-          "total": { "type": "integer" }
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
         }
       },
-
       "ErrorResponse": {
         "type": "object",
         "properties": {
           "error": {
             "type": "object",
             "properties": {
-              "code": { "type": "string" },
-              "message": { "type": "string" },
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
               "details": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
-                    "field": { "type": "string" },
-                    "message": { "type": "string" }
+                    "field": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -1827,35 +3462,59 @@
         }
       }
     },
-
     "parameters": {
       "IdPathParam": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "integer", "format": "int64" }
+        "schema": {
+          "type": "integer",
+          "format": "int64"
+        }
       }
     },
-
     "responses": {
       "ValidationError": {
         "description": "Ошибка валидации входных данных",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        }
       },
       "UnauthorizedError": {
         "description": "Неавторизован",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        }
       },
       "ForbiddenError": {
         "description": "Недостаточно прав",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        }
       },
       "NotFoundError": {
         "description": "Ресурс не найден",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        }
       }
     },
-
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
@@ -1864,8 +3523,9 @@
       }
     }
   },
-
   "security": [
-    { "bearerAuth": [] }
+    {
+      "bearerAuth": []
+    }
   ]
 }
