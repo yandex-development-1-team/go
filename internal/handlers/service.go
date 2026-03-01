@@ -5,9 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"botm/internal/repository" // название пакета с запросом к ДБ
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	repository "github.com/yandex-development-1-team/go/internal/repository"
 )
 
 var (
@@ -18,7 +17,7 @@ var (
 
 // Service представляет собой услугу с полной информацией
 type Service struct {
-	ID          int         //Уникальный идентификатор услуги
+	ID          int         // Уникальный идентификатор услуги
 	Name        string      // название услуги
 	Description string      // описание
 	Rules       string      // правила
@@ -29,6 +28,7 @@ type Service struct {
 
 // ServiceHandler обрабатывает действия, связанные с услугами
 type ServiceHandler struct {
+	// repo            *repositsory.Repository
 	repo            *repository.Repository
 	bot             *tgbotapi.BotAPI
 	keyboardService *KeyboardService

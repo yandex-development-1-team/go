@@ -101,8 +101,8 @@ func createDB(container tc.Container) error {
 func TestCreateBooking(t *testing.T) {
 	var userID int64
 	err := db.QueryRow(`
-        INSERT INTO users (telegram_id, username) VALUES ($1, $2) 
-        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username 
+        INSERT INTO users (telegram_id, username) VALUES ($1, $2)
+        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
         RETURNING id`, 111, "test").Scan(&userID)
 	assert.NoError(t, err)
 
@@ -142,10 +142,10 @@ func TestCreateBooking(t *testing.T) {
 				GuestName:   "Other",
 			},
 			preAction: func() {
-				_, _ = db.Exec(`INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status) 
+				_, _ = db.Exec(`INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status)
                     VALUES ($1, 1, $2, $3, 'Owner', 'confirmed')`, userID, targetDate, targetTime)
 			},
-			wantErr: ErrSlotOccupied,
+			wantErr: models.ErrSlotOccupied,
 		},
 		{
 			name:            "request_canceled",
@@ -157,7 +157,7 @@ func TestCreateBooking(t *testing.T) {
 				BookingTime: targetTime,
 				GuestName:   "CanceledUser",
 			},
-			wantErr: ErrRequestCanceled,
+			wantErr: models.ErrRequestCanceled,
 		},
 		{
 			name:            "request_timeout",
@@ -169,7 +169,7 @@ func TestCreateBooking(t *testing.T) {
 				BookingDate: targetDate,
 				BookingTime: targetTime,
 			},
-			wantErr: ErrRequestTimeout,
+			wantErr: models.ErrRequestTimeout,
 		},
 	}
 
@@ -243,8 +243,8 @@ func TestGetAvailableSlots(t *testing.T) {
 
 	var userID int64
 	err := db.QueryRow(`
-        INSERT INTO users (telegram_id, username) VALUES (777, 'slot_tester') 
-        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username 
+        INSERT INTO users (telegram_id, username) VALUES (777, 'slot_tester')
+        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
         RETURNING id`).Scan(&userID)
 	assert.NoError(t, err)
 
@@ -255,7 +255,7 @@ func TestGetAvailableSlots(t *testing.T) {
 	slotConfirmed := "11:00:00"
 
 	_, err = db.Exec(`
-        INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status) 
+        INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status)
         VALUES ($1, $2, $3, $4, 'Guest Pending', 'pending'),
                ($1, $2, $3, $5, 'Guest Confirmed', 'confirmed')`,
 		userID, serviceID, targetDate, slotPending, slotConfirmed)

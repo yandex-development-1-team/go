@@ -7,7 +7,7 @@ import (
 )
 
 // SessionRepository defines the contract for session persistence.
-type SessionRepository interface {
+type SessionRepositoryInterface interface {
 	// SaveSession creates or fully replaces the session for the given user.
 	SaveSession(ctx context.Context, userID int64, state string, data map[string]interface{}) error
 
