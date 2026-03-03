@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 	"encoding/json"
-	"github.com/yandex-development-1-team/go/internal/repository/models"
+	"github.com/yandex-development-1-team/go/internal/database/repository/models"
 	"os"
 )
 
@@ -14,23 +14,23 @@ type MockClient struct {
 	mockLocalDir string
 }
 
-func NewMockClient() *MockClient {
+func NewMockClient(mockLocalDir string) *MockClient {
 	return &MockClient{
 		mockLocalDir: mockLocalDir,
 	}
 }
 
-func (m MockClient) GetBoxSolutions(ctx context.Context) ([]models.BoxSolution, error) {
-	var boxes []models.BoxSolution
+func (m MockClient) GetServices(ctx context.Context, telegramID int64) ([]models.Service, error) {
+	var boxes []models.Service
 
 	data, err := os.ReadFile(m.mockLocalDir)
 	if err != nil {
-		return []models.BoxSolution{}, err
+		return []models.Service{}, err
 	}
 
 	err = json.Unmarshal(data, &boxes)
 	if err != nil {
-		return []models.BoxSolution{}, err
+		return []models.Service{}, err
 	}
 
 	return boxes, nil
