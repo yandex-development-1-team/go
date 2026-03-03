@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	repository "github.com/yandex-development-1-team/go/internal/repository"
+	repository "github.com/yandex-development-1-team/go/internal/database/repository"
 )
 
 var (
@@ -17,18 +17,23 @@ var (
 
 // Service представляет собой услугу с полной информацией
 type Service struct {
-	ID          int         // Уникальный идентификатор услуги
-	Name        string      // название услуги
-	Description string      // описание
-	Rules       string      // правила
-	Schedule    string      // время проведения
-	Type        ServiceType // Тип услуги (музей, спорт и т.д.)
-	BoxID       int         // ID бокса/категории для кнопки "Назад"
+	ID             int64  //Уникальный идентификатор услуги
+	Name           string // название услуги
+	Description    string // описание
+	Rules          string // правила
+	Schedule       string // время проведения
+	AvailableSlots []AvailableSlot
+	Type           ServiceType // Тип услуги (музей, спорт и т.д.)
+	BoxID          int         // ID бокса/категории для кнопки "Назад" todo это поле не нужно
+}
+
+type AvailableSlot struct {
+	Date      string
+	TimeSlots []string
 }
 
 // ServiceHandler обрабатывает действия, связанные с услугами
 type ServiceHandler struct {
-	// repo            *repositsory.Repository
 	repo            *repository.Repository
 	bot             *tgbotapi.BotAPI
 	keyboardService *KeyboardService

@@ -24,10 +24,10 @@ type Handler struct {
 	bot                 Bot
 	msgRL               MsgRateLimiter
 	startHandler        StartHandler
-	boxSolutionsHandler BoxSolutionsHandler
+	boxSolutionsHandler *BoxSolutionsHandler
 }
 
-func NewHandler(bot Bot, msgRL MsgRateLimiter, startHandler StartHandler, boxSolutionsHandler BoxSolutionsHandler) *Handler {
+func NewHandler(bot Bot, msgRL MsgRateLimiter, startHandler StartHandler, boxSolutionsHandler *BoxSolutionsHandler) *Handler {
 	return &Handler{
 		bot:                 bot,
 		msgRL:               msgRL,

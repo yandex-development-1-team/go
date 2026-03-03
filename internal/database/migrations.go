@@ -6,6 +6,7 @@ import (
 
 	"github.com/pressly/goose/v3"
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"go.uber.org/zap"
 )
 
 // RunMigrations применяет миграции и логирует результат
@@ -20,7 +21,7 @@ func RunMigrations(db *sql.DB) error {
 		return fmt.Errorf("failed to get DB version: %w", err)
 	}
 	logger.Info("Current database version",
-		zap.Int("version", versionBefore),
+		zap.Int64("version", versionBefore),
 	)
 	// Собираем все миграции для подсчёта ожидающих
 	migrations, err := goose.CollectMigrations("migrations", 0, goose.MaxVersion)
@@ -61,12 +62,12 @@ func RunMigrations(db *sql.DB) error {
 		// Логируем точное количество применённых миграций
 		logger.Info("Migrations applied successfully",
 			zap.Int("applied_count", pendingCount),
-			zap.Int("version_before", versionBefore),
-			zap.Int("version_after", versionAfter),
+			zap.Int64("version_before", versionBefore),
+			zap.Int64("version_after", versionAfter),
 		)
 	} else {
 		logger.Info("Database is up to date",
-			zap.Int("version", versionBefore),
+			zap.Int64("version", versionBefore),
 		)
 	}
 

@@ -5,7 +5,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/logger"
-	dbmodels "github.com/yandex-development-1-team/go/internal/repository/models"
 	"github.com/yandex-development-1-team/go/internal/service"
 	service_models "github.com/yandex-development-1-team/go/internal/service/models"
 	"go.uber.org/zap"
@@ -13,21 +12,17 @@ import (
 )
 
 const (
-	TextForBoxSolutions              = "📦 Коробочные решения\n\nВыберите интересующее вас предложение:\n"
-	BoxSolutionsButtonBackToMainMenu = "back_to_main"
+	textForBoxSolutions              = "📦 Коробочные решения\n\nВыберите интересующее вас предложение:\n"
+	BoxSolutionsButtonBackToMainMenu = "box_solutions:main_menu"
 )
-
-type BoxSolutionsRepository interface {
-	GetBoxSolutions(ctx context.Context) ([]dbmodels.BoxSolution, error)
-}
 
 type BoxSolutionsHandler struct {
 	bot     *bot.TelegramBot
 	service *service.BoxSolutionsService
 }
 
-func NewBoxSolutions(bot *bot.TelegramBot, bsService *service.BoxSolutionsService) BoxSolutionsHandler {
-	return BoxSolutionsHandler{
+func NewBoxSolutions(bot *bot.TelegramBot, bsService *service.BoxSolutionsService) *BoxSolutionsHandler {
+	return &BoxSolutionsHandler{
 		bot:     bot,
 		service: bsService,
 	}
@@ -42,12 +37,12 @@ func (h *BoxSolutionsHandler) HandleBoxSolutions(ctx context.Context, query *tgb
 		zap.String("service", query.Data),
 	)
 
-	boxSolutionsButtons, err := h.service.GetBoxSolutions(ctxBoxSolutions)
+	boxSolutionsButtons, err := h.service.GetBoxSolutions(ctxBoxSolutions, query.Message.Chat.ID)
 	if err != nil {
 		logger.Error("failed to get inline buttons from service", zap.Int64("chat_id", query.Message.Chat.ID), zap.Error(err))
 	}
 
-	reply := tgbotapi.NewMessage(query.Message.Chat.ID, TextForBoxSolutions)
+	reply := tgbotapi.NewMessage(query.Message.Chat.ID, textForBoxSolutions)
 	reply.ReplyMarkup = getMenuBoxSolutions(boxSolutionsButtons)
 
 	if _, err := h.bot.Send(reply); err != nil {
@@ -65,6 +60,9 @@ func getMenuBoxSolutions(boxSolutionsButtons []service_models.BoxSolutionsButton
 		btn := tgbotapi.NewInlineKeyboardButtonData(boxSolution.Name, boxSolution.Alias)
 		rows = append(rows, tgbotapi.NewInlineKeyboardRow(btn))
 	}
+
+	btnBack := getBackButton(BoxSolutionsButtonBackToMainMenu)
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(btnBack))
 
 	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }
