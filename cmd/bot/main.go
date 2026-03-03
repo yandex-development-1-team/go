@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"github.com/yandex-development-1-team/go/internal/service"
 	"net/http"
 	"os"
@@ -12,14 +13,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/yandex-development-1-team/go/internal/repository"
-	"github.com/yandex-development-1-team/go/internal/repository/mocks"
+	"github.com/yandex-development-1-team/go/internal/database/repository"
+	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
 
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
-	sr "github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
@@ -64,8 +64,10 @@ func run() error {
 	if err := database.RunMigrations(db); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
+	// Оборачиваем sql.DB в sqlx.DB
+	dbSqlx := sqlx.NewDb(db, "postgres")
 
-	redisClient, err := sr.NewRedisClient(cfg.Redis)
+	redisClient, err := repository.NewRedisClient(cfg.Redis)
 	if err != nil {
 		return fmt.Errorf("init redis client: %w", err)
 	}
@@ -122,11 +124,18 @@ func run() error {
 		}
 	})
 
-	rep := repository.NewRepository()
-	repMock := mocks.NewMockClient()
+	rep := repository.NewRepository(dbSqlx)
+	repMock := mocks.NewMockClient(cfg.MockLocalDir)
+
+	var bsService *service.BoxSolutionsService
+	if cfg.MockClientEnabled {
+		bsService = service.NewBoxSolutionsService(repMock)
+	} else {
+		bsService = service.NewBoxSolutionsService(rep)
+	}
 
 	startHandler := handlers.NewStartHandler(bot, rep)
-	bsService := service.NewBoxSolutionsService(repMock)
+
 	boxSolutionsHandler := handlers.NewBoxSolutions(bot, bsService)
 
 	// init handler

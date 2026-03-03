@@ -3,12 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
-	dbmodels "github.com/yandex-development-1-team/go/internal/repository/models"
+	dbmodels "github.com/yandex-development-1-team/go/internal/database/repository/models"
 	"github.com/yandex-development-1-team/go/internal/service/models"
 )
 
 type BoxSolutionsRepository interface {
-	GetBoxSolutions(ctx context.Context) ([]dbmodels.BoxSolution, error)
+	GetServices(ctx context.Context, telegramID int64) ([]dbmodels.Service, error)
 }
 
 type BoxSolutionsService struct {
@@ -21,8 +21,8 @@ func NewBoxSolutionsService(repository BoxSolutionsRepository) *BoxSolutionsServ
 	}
 }
 
-func (h *BoxSolutionsService) GetBoxSolutions(ctx context.Context) ([]models.BoxSolutionsButton, error) {
-	boxesDB, err := h.database.GetBoxSolutions(ctx)
+func (h *BoxSolutionsService) GetBoxSolutions(ctx context.Context, telegramID int64) ([]models.BoxSolutionsButton, error) {
+	boxesDB, err := h.database.GetServices(ctx, telegramID)
 	if err != nil {
 		return []models.BoxSolutionsButton{}, fmt.Errorf("failed to retrieve boxed solutions from the database: %w", err)
 	}
@@ -33,7 +33,7 @@ func (h *BoxSolutionsService) GetBoxSolutions(ctx context.Context) ([]models.Box
 	return boxSolutionsButtons, nil
 }
 
-func getMenuBoxSolutionsButtons(boxSolutions []models.BoxSolution) []models.BoxSolutionsButton {
+func getMenuBoxSolutionsButtons(boxSolutions []models.Service) []models.BoxSolutionsButton {
 	var boxSolutionsButtons []models.BoxSolutionsButton
 
 	for _, boxSolution := range boxSolutions {
@@ -44,17 +44,11 @@ func getMenuBoxSolutionsButtons(boxSolutions []models.BoxSolution) []models.BoxS
 		boxSolutionsButtons = append(boxSolutionsButtons, button)
 	}
 
-	btnBack := models.BoxSolutionsButton{
-		Name:  "Назад",
-		Alias: "back_to_main",
-	}
-	boxSolutionsButtons = append(boxSolutionsButtons, btnBack)
-
 	return boxSolutionsButtons
 }
 
-func convertModelsDBToModels(boxesDB []dbmodels.BoxSolution) []models.BoxSolution {
-	var boxSolutions []models.BoxSolution
+func convertModelsDBToModels(boxesDB []dbmodels.Service) []models.Service {
+	var boxSolutions []models.Service
 
 	for _, boxDB := range boxesDB {
 		var availableSlots []models.AvailableSlot
@@ -66,7 +60,7 @@ func convertModelsDBToModels(boxesDB []dbmodels.BoxSolution) []models.BoxSolutio
 
 			availableSlots = append(availableSlots, availableSlot)
 		}
-		boxSolutions = append(boxSolutions, models.BoxSolution{
+		boxSolutions = append(boxSolutions, models.Service{
 			ID:             boxDB.ID,
 			Name:           boxDB.Name,
 			Description:    boxDB.Description,

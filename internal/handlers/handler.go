@@ -13,10 +13,10 @@ const cmdStart = "start"
 
 type Handler struct {
 	startHandler        StartHandler
-	boxSolutionsHandler BoxSolutionsHandler
+	boxSolutionsHandler *BoxSolutionsHandler
 }
 
-func NewHandler(startHandler StartHandler, boxSolutionsHandler BoxSolutionsHandler) *Handler {
+func NewHandler(startHandler StartHandler, boxSolutionsHandler *BoxSolutionsHandler) *Handler {
 	return &Handler{
 		startHandler:        startHandler,
 		boxSolutionsHandler: boxSolutionsHandler,

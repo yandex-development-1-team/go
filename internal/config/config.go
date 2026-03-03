@@ -19,6 +19,8 @@ type Config struct {
 	HostName          string        `mapstructure:"host_name"`
 	Redis             RedisConfig   `mapstructure:"redis"`
 	Session           SessionConfig `mapstructure:"session"`
+	MockClientEnabled bool          `mapstructure:"mock_client_enabled"`
+	MockLocalDir      string        `mapstructure:"mock_local_dir"`
 }
 
 type RedisConfig struct {
@@ -143,6 +145,8 @@ func bindEnvs(v *viper.Viper) {
 	v.BindEnv("prometheus_port", "PROMETHEUS_PORT")
 	v.BindEnv("log_level", "LOG_LEVEL")
 	v.BindEnv("host_name", "HOSTNAME")
+	v.BindEnv("mock_client_enabled", "MOCK_CLIENT_ENABLED")
+	v.BindEnv("mock_local_dir", "MOCK_LOCAL_DIR")
 
 }
 

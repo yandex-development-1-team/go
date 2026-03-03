@@ -33,7 +33,7 @@ func NewKeyboardService() *KeyboardService {
 }
 
 // ServiceDetailKeyboard создаёт клавиатуру для детального просмотра услуги
-func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, serviceID, boxID int) tgbotapi.InlineKeyboardMarkup {
+func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, serviceID int64) tgbotapi.InlineKeyboardMarkup {
 	var buttons [][]tgbotapi.InlineKeyboardButton
 
 	switch serviceType {
@@ -59,8 +59,12 @@ func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, servic
 	}
 
 	// Кнопка "Назад" всегда в отдельной строке
-	backButton := tgbotapi.NewInlineKeyboardButtonData(BackButtonsTitle, fmt.Sprintf("%s:%d", backButtons, boxID))
+	backButton := tgbotapi.NewInlineKeyboardButtonData(BackButtonsTitle, fmt.Sprintf("%s:%d", backButtons, serviceID))
 	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{backButton})
 
 	return tgbotapi.NewInlineKeyboardMarkup(buttons...)
+}
+
+func getBackButton(alias string) tgbotapi.InlineKeyboardButton {
+	return tgbotapi.NewInlineKeyboardButtonData("Назад", alias)
 }
