@@ -11,20 +11,32 @@ import (
 
 const cmdStart = "start"
 
+type Bot interface {
+	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
+	// новые методы для bot api добавлять сюда, а реализовывать в go/internal/bot/bot.go
+}
+
+type MsgRateLimiter interface {
+	Exec(ctx context.Context, chatID int64, f func() error) error
+}
+
 type Handler struct {
+	bot                 Bot
+	msgRL               MsgRateLimiter
 	startHandler        StartHandler
 	boxSolutionsHandler *BoxSolutionsHandler
 }
 
-func NewHandler(startHandler StartHandler, boxSolutionsHandler *BoxSolutionsHandler) *Handler {
+func NewHandler(bot Bot, msgRL MsgRateLimiter, startHandler StartHandler, boxSolutionsHandler *BoxSolutionsHandler) *Handler {
 	return &Handler{
+		bot:                 bot,
+		msgRL:               msgRL,
 		startHandler:        startHandler,
 		boxSolutionsHandler: boxSolutionsHandler,
 	}
 }
 
 func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
-
 	// Нужно получить количество активных пользователей
 	activeUsers := getActiveUsersCount(ctx) // Эту функцию нужно реализовать
 
@@ -33,30 +45,40 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 
 	if msg := update.Message; msg != nil {
 		if msg.IsCommand() {
-			switch msg.Command() {
-			case cmdStart:
-				if err := h.startHandler.HandleStart(msg); err != nil {
-					logger.Error("failed to handle /start", zap.Error(err))
-				}
-			// в новые ветки добавлять вызовы функций обработчиков команд
-			default:
-				// todo
-			}
+			h.handleCommand(ctx, msg)
 		}
 		// todo
+		return
 	}
 	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
-		switch callbackQuery.Data {
-		case CallbackBoxSolutions:
-			if err := h.boxSolutionsHandler.HandleBoxSolutions(ctx, callbackQuery); err != nil {
-				logger.Error("failed to handle callback BoxSolutions", zap.Error(err))
-			}
-		case BoxSolutionsButtonBackToMainMenu:
-			if err := h.startHandler.HandleStartBackToMainMenu(ctx, callbackQuery); err != nil {
-				logger.Error("failed to handle callback BoxSolutionsButtonBackToMainMenu", zap.Error(err))
-			}
-			//todo
+		h.handlCallback(ctx, callbackQuery)
+	}
+}
+
+func (h *Handler) handleCommand(ctx context.Context, msg *tgbotapi.Message) {
+	chatID := msg.Chat.ID
+	switch msg.Command() {
+	case cmdStart:
+		if err := h.msgRL.Exec(ctx, chatID, func() error { return h.startHandler.HandleStart(msg) }); err != nil {
+			logger.Error("failed to handle /start", zap.Error(err))
 		}
+	// в новые ветки добавлять вызовы функций обработчиков команд
+	default:
+		// todo
+	}
+}
+
+func (h *Handler) handlCallback(ctx context.Context, callbackQuery *tgbotapi.CallbackQuery) {
+	switch callbackQuery.Data {
+	case CallbackBoxSolutions:
+		if err := h.boxSolutionsHandler.HandleBoxSolutions(ctx, callbackQuery); err != nil {
+			logger.Error("failed to handle callback BoxSolutions", zap.Error(err))
+		}
+	case BoxSolutionsButtonBackToMainMenu:
+		if err := h.startHandler.HandleStartBackToMainMenu(ctx, callbackQuery); err != nil {
+			logger.Error("failed to handle callback BoxSolutionsButtonBackToMainMenu", zap.Error(err))
+		}
+		// todo
 	}
 }
 

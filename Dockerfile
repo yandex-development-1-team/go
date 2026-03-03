@@ -22,9 +22,9 @@ COPY migrations/ ./migrations/
 # -ldflags "-s -w" - удаляем отладочную информацию и таблицу символов (минификация)
 # -o /app/bot - выходной файл
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags "-s -w" \
-    -o /app/bot \
-    ./cmd/bot/main.go
+	-ldflags "-s -w" \
+	-o /app/bot \
+	./cmd/bot/main.go
 
 # ============================================
 # Runtime Stage - минимальный образ
@@ -36,7 +36,7 @@ RUN apk --no-cache add ca-certificates curl
 
 # Создаём non-root пользователя для безопасности
 RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
+	adduser -u 1001 -S appuser -G appgroup
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
