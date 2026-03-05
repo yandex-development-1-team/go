@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
 	"github.com/yandex-development-1-team/go/internal/repository/models"
 )
@@ -22,13 +23,18 @@ func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialPro
 	query := `
 		INSERT INTO special_projects (title, description, image, is_active_in_bot)
 		VALUES (:title, :description, :image, :is_active_in_bot)
-		RETURNING id, created_at, updated_at
+		RETURNING id, title, description, image, is_active_in_bot, created_at, updated_at
 	`
+
 	err := r.db.QueryRowxContext(ctx, query, proj).StructScan(proj)
 	if err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" { // duplicate key
+			return nil, fmt.Errorf("special project already exists: %w", err)
+		}
 		return nil, fmt.Errorf("repo create: %w", err)
 	}
 	return proj, nil
+
 }
 
 func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
@@ -46,53 +52,36 @@ func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*models.Spe
 }
 
 func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*models.SpecialProjectDB, error) {
-	// Базовый запрос
-	query := `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
+	// Base query selecting only required fields for the list endpoint
+	baseQuery := `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
 	args := make(map[string]interface{})
 
-	// Фильтр по статусу
+	// Apply status filter if provided
 	if statusFilter != nil {
-		query += " AND is_active_in_bot = :status"
+		baseQuery += " AND is_active_in_bot = :status"
 		args["status"] = *statusFilter
 	}
 
-	// Полнотекстовый поиск (упрощенная версия через ILIKE для примера,
-	// в продакшене лучше использовать to_tsvector как в индексе)
+	// Apply full-text search if query is provided
 	if searchQuery != "" {
-		query += " AND (title ILIKE :search OR description ILIKE :search)"
-		args["search"] = "%" + searchQuery + "%"
+		// Use PostgreSQL's built-in full-text search with to_tsvector
+		// This requires the GIN index created earlier
+		baseQuery += ` AND to_tsvector('russian', coalesce(title, '') || ' ' || coalesce(description, '')) @@ plainto_tsquery('russian', :search)`
+		args["search"] = searchQuery
 	}
 
-	// Добавляем ORDER BY
-	query += " ORDER BY created_at DESC"
+	// Order results by creation date descending
+	baseQuery += " ORDER BY updated_at DESC"
+
+	// Prepare the named query
+	stmt, err := r.db.PrepareNamedContext(ctx, baseQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare named query: %w", err)
+	}
+	defer stmt.Close()
 
 	var projects []*models.SpecialProjectDB
-	// Используем NamedQuery для безопасной подстановки аргументов
-	//namedQuery := sqlx.Rebind(sqlx.DOLLAR, query) // Rebind для Postgres ($1, $2)
-	// Для NamedQuery нужен особый подход, если используем map.
-	// Проще собрать args slice вручную для позиционных аргументов или использовать builder.
-	// Ниже вариант с ручным сбором аргументов для простоты понимания без_named_query сложностей:
-
-	finalQuery := `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
-	var finalArgs []interface{}
-	argCount := 0
-
-	if statusFilter != nil {
-		argCount++
-		finalQuery += fmt.Sprintf(" AND is_active_in_bot = $%d", argCount)
-		finalArgs = append(finalArgs, *statusFilter)
-	}
-
-	if searchQuery != "" {
-		argCount++
-		finalQuery += fmt.Sprintf(" AND (title ILIKE $%d OR description ILIKE $%d)", argCount, argCount)
-		searchParam := "%" + searchQuery + "%"
-		finalArgs = append(finalArgs, searchParam)
-	}
-
-	finalQuery += " ORDER BY created_at DESC"
-
-	err := r.db.SelectContext(ctx, &projects, finalQuery, finalArgs...)
+	err = stmt.SelectContext(ctx, &projects, args)
 	if err != nil {
 		return nil, fmt.Errorf("repo list: %w", err)
 	}
