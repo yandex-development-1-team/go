@@ -104,19 +104,28 @@ func run() error {
 	}
 	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
-	// TODO: init API server
-	/*apiMux := http.NewServeMux()
-	// apiMux.HandleFunc("/", handlers.APIHandler)
+	// init API server
+	appHandler := api.NewApplicationHandler(repository.NewApplicationRepository(dbSqlx))
+	apiMux := http.NewServeMux()
+	appHandler.RegisterRoutes(apiMux)
 	apiServer := &http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf(":%d", cfg.Port),
 		Handler: apiMux,
-	}*/
+	}
 
 	// run metrics server
 	go func() {
 		logger.Info("starting metrics and health server", zap.String("addr", metricsServer.Addr))
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("metrics server error", zap.Error(err))
+		}
+	}()
+
+	// run API server
+	go func() {
+		logger.Info("starting API server", zap.String("addr", apiServer.Addr))
+		if err := apiServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("API server error", zap.Error(err))
 		}
 	}()
 
@@ -166,6 +175,10 @@ func run() error {
 	shutdown := shutdown.NewShutdownHandler(tgBot, nil, metricsServer)
 	if err := shutdown.WaitForShutdown(ctxTimeout); err != nil {
 		return fmt.Errorf("failed to shutdown: %w", err)
+	}
+
+	if err := apiServer.Shutdown(ctxTimeout); err != nil {
+		logger.Error("API server shutdown error", zap.Error(err))
 	}
 
 	// wait for in-flight updates to finish

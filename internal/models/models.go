@@ -50,3 +50,89 @@ type UserSession struct {
 	CreatedAt    time.Time              `json:"created_at"`
 	UpdatedAt    time.Time              `json:"updated_at"`
 }
+
+type ApplicationType string
+type ApplicationSource string
+type ApplicationStatus string
+
+const (
+	ApplicationTypeBox            ApplicationType = "box"
+	ApplicationTypeSpecialProject ApplicationType = "special_project"
+
+	ApplicationSourceTelegramBot ApplicationSource = "telegram_bot"
+	ApplicationSourceManual      ApplicationSource = "manual"
+
+	ApplicationStatusQueue      ApplicationStatus = "queue"
+	ApplicationStatusInProgress ApplicationStatus = "in_progress"
+	ApplicationStatusDone       ApplicationStatus = "done"
+)
+
+func (t ApplicationType) Valid() bool {
+	switch t {
+	case ApplicationTypeBox, ApplicationTypeSpecialProject:
+		return true
+	}
+	return false
+}
+
+func (s ApplicationSource) Valid() bool {
+	switch s {
+	case ApplicationSourceTelegramBot, ApplicationSourceManual:
+		return true
+	}
+	return false
+}
+
+func (s ApplicationStatus) Valid() bool {
+	switch s {
+	case ApplicationStatusQueue, ApplicationStatusInProgress, ApplicationStatusDone:
+		return true
+	}
+	return false
+}
+
+type Application struct {
+	ID               int64             `db:"id"`
+	Type             ApplicationType   `db:"type"`
+	Source           ApplicationSource `db:"source"`
+	Status           ApplicationStatus `db:"status"`
+	CustomerName     string            `db:"customer_name"`
+	ContactInfo      string            `db:"contact_info"`
+	ProjectName      *string           `db:"project_name"`
+	BoxID            *int64            `db:"box_id"`
+	SpecialProjectID *int64            `db:"special_project_id"`
+	ManagerID        *int64            `db:"manager_id"`
+	CreatedAt        time.Time         `db:"created_at"`
+	UpdatedAt        time.Time         `db:"updated_at"`
+}
+
+type ApplicationCreateRequest struct {
+	Type             ApplicationType   `json:"type"`
+	Source           ApplicationSource `json:"source"`
+	CustomerName     string            `json:"customer_name"`
+	ContactInfo      string            `json:"contact_info"`
+	ProjectName      *string           `json:"project_name,omitempty"`
+	BoxID            *int64            `json:"box_id,omitempty"`
+	SpecialProjectID *int64            `json:"special_project_id,omitempty"`
+}
+
+type ApplicationFilter struct {
+	Type      *ApplicationType
+	Status    *ApplicationStatus
+	ManagerID *int64
+	DateFrom  *time.Time
+	DateTo    *time.Time
+	Limit     int
+	Offset    int
+}
+
+type Pagination struct {
+	Total  int `json:"total"`
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+}
+
+type ApplicationListResponse struct {
+	Items      []Application `json:"items"`
+	Pagination Pagination    `json:"pagination"`
+}
