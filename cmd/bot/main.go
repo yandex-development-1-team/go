@@ -193,6 +193,10 @@ func run() error {
 		return fmt.Errorf("failed to shutdown: %w", err)
 	}
 
+	if err := apiServer.Shutdown(ctxTimeout); err != nil {
+		logger.Error("API server shutdown error", zap.Error(err))
+	}
+
 	// wait for in-flight updates to finish
 	logger.Info("waiting for updates to finish...")
 	updatesDone := make(chan struct{})
