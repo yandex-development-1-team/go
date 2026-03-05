@@ -36,7 +36,6 @@ func toDomain(dto *dto.SpecialProjectCreateRequest) *models.SpecialProject {
 }
 
 func fromDomain(domain *models.SpecialProject) *dto.SpecialProjectResponse {
-
 	if domain == nil {
 		return nil
 	}
