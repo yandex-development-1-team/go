@@ -7,8 +7,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yandex-development-1-team/go/internal/dto"
-	repoErrs "github.com/yandex-development-1-team/go/internal/repository/models"
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/service/models"
+	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/service"
 )
@@ -66,10 +67,23 @@ func fromDomainList(domain []models.SpecialProject) []dto.SpecialProjectListItem
 }
 
 // POST /api/v1/special-projects
-func (h *SpecialProjectHandler) Create(c *gin.Context) {
+func (h *SpecialProjectHandler) CreateSpecialProject(c *gin.Context) {
 	var req dto.SpecialProjectCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_error", "details": err.Error()})
+		return
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Error("Validation error: %v", zap.Error(err))
+
+		response := ErrorResponse{
+			Error: ErrorObject{
+				Code:    http.StatusText(http.StatusBadRequest),
+				Message: "One or more fields failed validation.",
+			},
+		}
+		c.JSON(http.StatusBadRequest, response)
 		return
 	}
 
@@ -77,8 +91,13 @@ func (h *SpecialProjectHandler) Create(c *gin.Context) {
 
 	project, err := h.svc.Create(c.Request.Context(), proj)
 	if err != nil {
-		// Логирование ошибки
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal_server_error"})
+		response := ErrorResponse{
+			Error: ErrorObject{
+				Code:    http.StatusText(http.StatusInternalServerError),
+				Message: "internal_server_error",
+			},
+		}
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
@@ -87,7 +106,7 @@ func (h *SpecialProjectHandler) Create(c *gin.Context) {
 }
 
 // GET /api/v1/special-projects
-func (h *SpecialProjectHandler) List(c *gin.Context) {
+func (h *SpecialProjectHandler) ListSpecialProjects(c *gin.Context) {
 	status := c.Query("status") // active | inactive
 	search := c.Query("search")
 
@@ -98,7 +117,13 @@ func (h *SpecialProjectHandler) List(c *gin.Context) {
 
 	domainlist, err := h.svc.List(c.Request.Context(), status, search)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal_server_error"})
+		response := ErrorResponse{
+			Error: ErrorObject{
+				Code:    http.StatusText(http.StatusInternalServerError),
+				Message: "internal_server_error",
+			},
+		}
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
@@ -108,7 +133,7 @@ func (h *SpecialProjectHandler) List(c *gin.Context) {
 }
 
 // GET /api/v1/special-projects/{id}
-func (h *SpecialProjectHandler) GetByID(c *gin.Context) {
+func (h *SpecialProjectHandler) GetSpecialProjectByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -118,11 +143,24 @@ func (h *SpecialProjectHandler) GetByID(c *gin.Context) {
 
 	project, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, repoErrs.ErrSpecProjNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "not_found"})
+		if errors.Is(err, service.ErrNotFound) {
+
+			response := ErrorResponse{
+				Error: ErrorObject{
+					Code:    http.StatusText(http.StatusNotFound),
+					Message: "not_found",
+				},
+			}
+			c.JSON(http.StatusInternalServerError, response)
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal_server_error"})
+		response := ErrorResponse{
+			Error: ErrorObject{
+				Code:    http.StatusText(http.StatusInternalServerError),
+				Message: "internal_server_error",
+			},
+		}
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 

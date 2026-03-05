@@ -10,6 +10,10 @@ import (
 	"github.com/yandex-development-1-team/go/internal/service/models"
 )
 
+var (
+	ErrNotFound = errors.New("special project not found")
+)
+
 type SpecialProjectService struct {
 	repo repository.SpecialProjectRepository
 }
@@ -69,7 +73,7 @@ func (s *SpecialProjectService) GetByID(ctx context.Context, id int64) (*models.
 	dbModel, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, dbmodels.ErrSpecProjNotFound) {
-			return nil, err
+			return nil, ErrNotFound
 		}
 		return nil, err
 	}
