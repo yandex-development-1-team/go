@@ -6,13 +6,14 @@ import (
 )
 
 var (
-	ErrRequestTimeout  = errors.New("request timeout")
-	ErrRequestCanceled = errors.New("request canceled")
-	ErrDatabase        = errors.New("database error")
-	ErrSlotOccupied    = errors.New("slot is already occupied")
-	ErrInvalidInput    = errors.New("invalid input data")
-	ErrBookingNotFound = errors.New("booking not found")
-	ErrUserNotFound    = errors.New("user not found")
+	ErrRequestTimeout         = errors.New("request timeout")
+	ErrRequestCanceled        = errors.New("request canceled")
+	ErrDatabase               = errors.New("database error")
+	ErrSlotOccupied           = errors.New("slot is already occupied")
+	ErrInvalidInput           = errors.New("invalid input data")
+	ErrBookingNotFound        = errors.New("booking not found")
+	ErrUserNotFound           = errors.New("user not found")
+	ErrSpecialProjectNotFound = errors.New("special project not found")
 )
 
 type User struct {
@@ -51,9 +52,11 @@ type UserSession struct {
 	UpdatedAt    time.Time              `json:"updated_at"`
 }
 
-type ApplicationType string
-type ApplicationSource string
-type ApplicationStatus string
+type (
+	ApplicationType   string
+	ApplicationSource string
+	ApplicationStatus string
+)
 
 const (
 	ApplicationTypeBox            ApplicationType = "box"
@@ -135,4 +138,12 @@ type Pagination struct {
 type ApplicationListResponse struct {
 	Items      []Application `json:"items"`
 	Pagination Pagination    `json:"pagination"`
+}
+
+type SpecialProject struct {
+	Title            string `json:"title,omitempty" db:"title"`
+	Description      string `json:"description,omitempty" db:"description"`
+	Image            string `json:"image,omitempty" db:"image"`
+	Is_active_in_bot bool   `json:"is_active_in_bot,omitempty" db:"is_active_in_bot"`
+	// todo: добавить поле deleted_at при необходимости
 }

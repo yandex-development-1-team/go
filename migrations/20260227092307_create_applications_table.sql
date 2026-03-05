@@ -15,7 +15,7 @@ END $$;
 
 -- +goose StatementBegin
 DO $$ BEGIN
-    CREATE TYPE application_status AS ENUM ('queue', 'in_progress', 'done');
+    CREATE TYPE application_status AS ENUM ('queue', 'in_progress', 'done', 'cancelled');
 EXCEPTION WHEN duplicate_object THEN null;
 END $$;
 -- +goose StatementEnd
