@@ -78,7 +78,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to init telegram bot: %w", err)
 	}
-
+	
 	// init signal ctx
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
