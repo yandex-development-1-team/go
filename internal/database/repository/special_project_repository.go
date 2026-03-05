@@ -30,7 +30,6 @@ const (
     WHERE id = $1 AND deleted_at IS NULL`
 )
 
-
 type SpecialProjectRepository interface {
 	UpdateSpecialProject(ctx context.Context, id int, specialProject models.SpecialProject) error
 	DeleteSpecialProject(ctx context.Context, id int) error
@@ -68,8 +67,6 @@ func (sp *SpecialProjectRepo) DeleteSpecialProject(ctx context.Context, id int) 
 			logger.Error("failed to rollback transaction", zap.Error(rollbackErr))
 		}
 	}()
-
-	// todo: проверить что нет активных заявок с этим special_project_id (или разрешить, просто деактивировать)
 
 	if _, err = tx.ExecContext(ctx, deactivateApplicationsQuery, id); err != nil {
 		return fmt.Errorf("failed to deactivate special project in applications: %w", err)
