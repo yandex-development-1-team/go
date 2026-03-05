@@ -147,7 +147,11 @@ func run() error {
 	var wg sync.WaitGroup
 
 	// Creating an API server
-	apiServer := server.New(server.Config{BoxService: apiBoxService, Port: fmt.Sprintf(":%d", cfg.Port)})
+	apiServer := server.New(server.Config{
+		BoxService: apiBoxService,
+		Env:        cfg.Environment,
+		Port:       fmt.Sprintf(":%d", cfg.Port)},
+	)
 
 	// Registering routes
 	apiServer.RegisterRoutes()
