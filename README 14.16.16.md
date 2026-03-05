@@ -160,20 +160,36 @@ bot:
 
 ## Миграции базы данных
 
-Скрипты миграций находятся в `migrations/`. Инструмент миграций может отличаться (например, `golang-migrate` или `goose`). Ниже — универсальные варианты:
+Для управления миграциями используется [goose](https://github.com/pressly/goose). Миграции автоматически применяются при запуске приложения.
 
-- golang-migrate (пример):
+- Создание миграции: 
   ```bash
-  migrate -path ./migrations -database "$DB_DSN" up
-  migrate -path ./migrations -database "$DB_DSN" down 1
+  make migration-create NAME=название
+  make migration-create NAME=create_users_table
   ```
-- goose (пример):
+- Откат последней миграции:
   ```bash
-  goose -dir ./migrations postgres "$DB_DSN" up
-  goose -dir ./migrations postgres "$DB_DSN" down
+  make migration-rollback DB_DSN="postgres://user:pass@localhost:5432/db?sslmode=disable"
   ```
 
-После реализации функционала миграций, добавить в `Makefile` команду для быстрой накатки/отката миграций.
+- Структура файла миграции:
+
+-- +goose Up
+CREATE TABLE ...;
+
+-- +goose Down
+DROP TABLE ...;
+
+- Команды Makefile: 
+    - make migration — справка
+    - make migration-create NAME=<name> — создать миграцию
+    - make migration-rollback DB_DSN=<dsn> — откатить последнюю
+
+- Логи при запуске:
+    - Current database version: 20240321120000
+    - Found 2 pending migration(s)
+    - Applied 2 migration(s)
+    - Database version: 20240321120000 → 20240322123456
 
 ---
 
