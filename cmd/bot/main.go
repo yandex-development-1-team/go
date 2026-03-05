@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"log"
 	"net/http"
 	"os/signal"
@@ -12,6 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+
+	"github.com/yandex-development-1-team/go/internal/api/server"
 	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
 	"github.com/yandex-development-1-team/go/internal/service"
@@ -140,11 +142,30 @@ func run() error {
 		zap.String("log_level", cfg.LogLevel),
 	)
 
+	apiBoxService := service.NewAPIBoxService()
+
+	var wg sync.WaitGroup
+
+	// Creating an API server
+	apiServer := server.New(server.Config{BoxService: apiBoxService, Port: fmt.Sprintf(":%d", cfg.Port)})
+
+	// Registering routes
+	apiServer.RegisterRoutes()
+
+	// Launching API server
+	go func() {
+		wg.Go(func() {
+			if err := apiServer.Run(); err != nil {
+				logger.Error("failed to start the server", zap.Error(err))
+			}
+			logger.Info("server has been started", zap.Int("port", cfg.Port))
+		})
+	}()
+
 	// get channel with updates
 	updates := tgBot.GetUpdates(30 * time.Second) // TODO: перенести в конфиг
 
 	// handle updates
-	var wg sync.WaitGroup
 	go func() {
 		for update := range updates {
 			wg.Go(func() {

@@ -60,7 +60,7 @@ func (rl *MsgRateLimiter) Exec(ctx context.Context, chatID int64, f func() error
 			logger.Warn("message limit has been exceeded", zap.Int64("chatID", chatID))
 		}
 	}
-	
+
 	if err := l.Wait(ctx); err != nil {
 		return err
 	}
