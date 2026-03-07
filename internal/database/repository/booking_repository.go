@@ -81,7 +81,7 @@ func (r *BookingRepo) CreateBooking(ctx context.Context, b *models.Booking) (int
 		if err != nil {
 			return 0, err
 		}
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		if _, err := tx.ExecContext(ctx, advisoryLockQuery, b.ServiceID, b.BookingDate, b.BookingTime); err != nil {
 			return 0, err

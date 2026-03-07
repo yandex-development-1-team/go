@@ -3,7 +3,7 @@
   "info": {
     "title": "Yandex Razvitie Admin API",
     "version": "1.2.0",
-    "description": "CRM-система для интеграции с Telegram-ботом: админка для коробочных решений, спецпроектов, заявок, расписания, аналитики, прав доступа, системных настроек и ресурсных ссылок."
+    "description": "CRM-система для интеграции с Telegram-ботом: админка для коробочных решений, спецпроектов, заявок, расписания, аналитики, прав доступа, системных настроек и ресурсных ссылок.\n\n**Формат ошибок:** при любой ошибке со стороны сервиса ответ имеет единый формат — объект с полем `errors` (массив строк, человекочитаемые сообщения). Детали БД (SQL, стек, внутренние коды) клиенту не возвращаются. Коды ответа: 401 — не авторизован; 403 — доступ запрещён (недостаточно прав); 404 — ресурс не найден; 409 — конфликт (например, слот уже занят); 400 — невалидные данные; 5xx — внутренняя ошибка сервиса."
   },
   "paths": {
     "/api/v1/auth/login": {
@@ -3452,6 +3452,21 @@
             }
           }
         }
+      },
+      "ServiceErrorResponse": {
+        "description": "Единый формат ответа при любой ошибке со стороны сервиса (common error). Все 4xx/5xx возвращаются только в этом виде. Детали БД (SQL, стек, внутренние коды) клиенту не передаются. Доступ: 401 — не авторизован, 403 — доступ запрещён.",
+        "type": "object",
+        "required": ["errors"],
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Список человекочитаемых сообщений об ошибках (без технических деталей)"
+          }
+        },
+        "example": {
+          "errors": ["Выбранный слот уже занят"]
+        }
       }
     },
     "parameters": {
@@ -3467,31 +3482,31 @@
     },
     "responses": {
       "ValidationError": {
-        "description": "Ошибка валидации входных данных",
+        "description": "Ошибка валидации входных данных (400)",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/MessageResponse"
+              "$ref": "#/components/schemas/ServiceErrorResponse"
             }
           }
         }
       },
       "UnauthorizedError": {
-        "description": "Неавторизован",
+        "description": "Неавторизован (401)",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/MessageResponse"
+              "$ref": "#/components/schemas/ServiceErrorResponse"
             }
           }
         }
       },
       "ForbiddenError": {
-        "description": "Недостаточно прав",
+        "description": "Доступ запрещён — недостаточно прав (403)",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/MessageResponse"
+              "$ref": "#/components/schemas/ServiceErrorResponse"
             }
           }
         }
@@ -3501,7 +3516,27 @@
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/MessageResponse"
+              "$ref": "#/components/schemas/ServiceErrorResponse"
+            }
+          }
+        }
+      },
+      "ConflictError": {
+        "description": "Конфликт (например, слот уже занят)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ServiceErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Внутренняя ошибка сервиса",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ServiceErrorResponse"
             }
           }
         }

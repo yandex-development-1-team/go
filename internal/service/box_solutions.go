@@ -24,7 +24,7 @@ func NewBoxSolutionsService(repository BoxSolutionsRepository) *BoxSolutionsServ
 func (h *BoxSolutionsService) GetBoxSolutions(ctx context.Context, telegramID int64) ([]models.BoxSolutionsButton, error) {
 	boxesDB, err := h.database.GetServices(ctx, telegramID)
 	if err != nil {
-		return []models.BoxSolutionsButton{}, fmt.Errorf("failed to retrieve boxed solutions from the database: %w", err)
+		return nil, err
 	}
 
 	boxSolutions := convertModelsDBToModels(boxesDB)

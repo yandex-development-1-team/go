@@ -30,17 +30,17 @@ func (u *UserRepo) CreateUser(ctx context.Context, telegramID int64, userName, f
 	var operation = "create_user"
 	return withMetrics(operation, func() error {
 
-		tx, err := u.db.BeginTx(ctx, nil)
+		tx, err := u.db.BeginTxx(ctx, nil)
 		if err != nil {
 			return err
 		}
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		_, err = tx.ExecContext(ctx, `
-			INSERT INTO users (telegram_id, username, first_name, last_name) 
-			VALUES ($1, $2, $3, $4) 
-			ON CONFLICT (telegram_id) 
-			DO UPDATE SET username=EXCLUDED.username
+			INSERT INTO users (telegram_id, username, first_name, last_name, password_hash, role, status)
+			VALUES ($1, $2, $3, $4, '', 'manager', 'active')
+			ON CONFLICT (telegram_id)
+			DO UPDATE SET username=EXCLUDED.username, first_name=EXCLUDED.first_name, last_name=EXCLUDED.last_name
 			`, telegramID, userName, firstName, lastName)
 		if err != nil {
 			return err
@@ -62,7 +62,7 @@ func (u *UserRepo) GetUserByTelegramID(ctx context.Context, telegramID int64) (*
 	return withMetricsValue(operation, func() (*models.User, error) {
 
 		err := u.db.GetContext(ctx, &user, `
-		SELECT *
+		SELECT id, telegram_id, username, first_name, last_name, grade, is_admin, created_at, updated_at
 		FROM users
 		WHERE telegram_id=$1`, telegramID)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -80,11 +80,11 @@ func (u *UserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade 
 	var operation = "update_user_grade"
 	return withMetrics(operation, func() error {
 
-		tx, err := u.db.BeginTx(ctx, nil)
+		tx, err := u.db.BeginTxx(ctx, nil)
 		if err != nil {
 			return err
 		}
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		result, err := tx.ExecContext(ctx, `
 		UPDATE users
@@ -113,24 +113,21 @@ func (u *UserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade 
 }
 
 func (u *UserRepo) IsAdmin(ctx context.Context, telegramID int64) (bool, error) {
-	var isAdmin bool
-	var operation = "check_is_admin"
+	const operation = "check_is_admin"
 
 	return withMetricsValue(operation, func() (bool, error) {
-
-		err := u.db.QueryRowContext(ctx, `
-	SELECT is_admin
-	FROM users
-	WHERE telegram_id=$1`,
-			telegramID).Scan(&isAdmin)
-
+		var row struct {
+			IsAdmin bool `db:"is_admin"`
+		}
+		err := u.db.GetContext(ctx, &row, `
+			SELECT is_admin FROM users WHERE telegram_id = $1`,
+			telegramID)
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, models.ErrUserNotFound
 		}
 		if err != nil {
 			return false, err
 		}
-
-		return isAdmin, err
+		return row.IsAdmin, nil
 	})
 }

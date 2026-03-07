@@ -187,7 +187,7 @@ func initializeMetrics(cfg *config.Config) {
 		prometheus.HistogramOpts{
 			Name:    PREFIX + "redis_query_duration_seconds",
 			Help:    "Time spent on redis queries",
-			Buckets: []float64{0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1, 0.025, 0.05, 0.1},
+			Buckets: []float64{0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1},
 		},
 		redisLabelNames,
 	)

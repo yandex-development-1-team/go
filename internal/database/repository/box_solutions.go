@@ -27,7 +27,6 @@ func (r Repository) GetServices(ctx context.Context, telegramID int64) ([]dbmode
         ORDER BY s.id, a.slot_date
     `
 
-	// Промежуточная структура для сканирования результатов
 	type service struct {
 		ID          int64          `db:"id"`
 		Name        string         `db:"name"`
@@ -40,45 +39,41 @@ func (r Repository) GetServices(ctx context.Context, telegramID int64) ([]dbmode
 		TimeSlots   pq.StringArray `db:"time_slots"`
 	}
 
-	var bsServices []service
-	var boxSolutionServices []dbmodels.Service
+	return withMetricsValue("get_services", func() ([]dbmodels.Service, error) {
+		var bsServices []service
+		if err := r.client.SelectContext(ctx, &bsServices, query); err != nil {
+			logger.Error("failed to get box solutions from db", zap.Int64("chat_id", telegramID), zap.Error(err))
+			return nil, err
+		}
 
-	err := r.client.SelectContext(ctx, &bsServices, query)
-	if err != nil {
-		logger.Error("failed to get box solutions from db", zap.Int64("chat_id", telegramID), zap.Error(err))
-		return boxSolutionServices, err
-	}
-
-	bsServicesMap := make(map[int64]*dbmodels.Service)
-
-	for _, bsService := range bsServices {
-		boxSolutionService, exists := bsServicesMap[bsService.ID]
-		if !exists {
-			boxSolutionService = &dbmodels.Service{
-				ID:             bsService.ID,
-				Name:           bsService.Name,
-				Description:    bsService.Description.String,
-				Rules:          bsService.Rules.String,
-				Schedule:       bsService.Schedule.String,
-				Type:           bsService.Type.String,
-				BoxSolution:    bsService.BoxSolution,
-				AvailableSlots: []dbmodels.AvailableSlot{},
+		bsServicesMap := make(map[int64]*dbmodels.Service)
+		for _, bsService := range bsServices {
+			boxSolutionService, exists := bsServicesMap[bsService.ID]
+			if !exists {
+				boxSolutionService = &dbmodels.Service{
+					ID:             bsService.ID,
+					Name:           bsService.Name,
+					Description:    bsService.Description.String,
+					Rules:          bsService.Rules.String,
+					Schedule:       bsService.Schedule.String,
+					Type:           bsService.Type.String,
+					BoxSolution:    bsService.BoxSolution,
+					AvailableSlots: []dbmodels.AvailableSlot{},
+				}
+				bsServicesMap[bsService.ID] = boxSolutionService
 			}
-			bsServicesMap[bsService.ID] = boxSolutionService
+			if bsService.SlotDate.Valid {
+				boxSolutionService.AvailableSlots = append(boxSolutionService.AvailableSlots, dbmodels.AvailableSlot{
+					Date:      bsService.SlotDate.Time.Format("2006-01-02"),
+					TimeSlots: bsService.TimeSlots,
+				})
+			}
 		}
 
-		if bsService.SlotDate.Valid {
-			boxSolutionService.AvailableSlots = append(boxSolutionService.AvailableSlots, dbmodels.AvailableSlot{
-				Date:      bsService.SlotDate.Time.Format("2006-01-02"),
-				TimeSlots: bsService.TimeSlots,
-			})
+		services := make([]dbmodels.Service, 0, len(bsServicesMap))
+		for _, boxSolutionService := range bsServicesMap {
+			services = append(services, *boxSolutionService)
 		}
-	}
-
-	services := make([]dbmodels.Service, 0, len(bsServicesMap))
-	for _, boxSolutionService := range bsServicesMap {
-		services = append(services, *boxSolutionService)
-	}
-
-	return services, nil
+		return services, nil
+	})
 }
