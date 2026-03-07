@@ -25,9 +25,11 @@ CREATE TABLE IF NOT EXISTS users (
     grade SMALLINT DEFAULT 0,
     is_admin BOOLEAN DEFAULT FALSE,
     password_hash TEXT NOT NULL,
-    role user_role_type NOT NULL,
-    status user_status_type NOT NULL,
-    email VARCHAR(255),
+    role user_role_type  DEFAULT 'manager',
+    status user_status_type  DEFAULT 'invited',
+    invite_token TEXT,
+    permissions TEXT[] DEFAULT '{}',
+    email VARCHAR(255) NOT NULL UNIQUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
