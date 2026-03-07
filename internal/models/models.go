@@ -9,10 +9,13 @@ var (
 	ErrRequestTimeout  = errors.New("request timeout")
 	ErrRequestCanceled = errors.New("request canceled")
 	ErrDatabase        = errors.New("database error")
+	ErrCache           = errors.New("cache error")
 	ErrSlotOccupied    = errors.New("slot is already occupied")
 	ErrInvalidInput    = errors.New("invalid input data")
 	ErrBookingNotFound = errors.New("booking not found")
 	ErrUserNotFound    = errors.New("user not found")
+	ErrUnauthorized    = errors.New("unauthorized")
+	ErrForbidden       = errors.New("forbidden")
 )
 
 type User struct {

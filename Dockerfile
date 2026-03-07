@@ -12,7 +12,7 @@ COPY go.mod go.sum ./
 # Скачиваем зависимости (кешируется при неизменных go.mod/go.sum)
 RUN go mod download
 
-# Копируем исходный код
+# Копируем исходный код и конфиг для Docker
 COPY internal/ ./internal/
 COPY cmd/ ./cmd/
 COPY migrations/ ./migrations/
@@ -45,8 +45,10 @@ WORKDIR /app
 # Копируем скомпилированный бинарник из builder
 COPY --from=builder /app/bot /app/bot
 
-# Копируем миграции (могут понадобиться в runtime)
+# Копируем миграции и конфиг для Docker (CONFIG_FILE в compose указывает на docker.yaml)
 COPY --from=builder /build/migrations /app/migrations
+RUN mkdir -p /app/config
+COPY --from=builder /build/config/docker.yaml /app/config/docker.yaml
 
 # Копируем конфиг
 COPY --from=builder /build/config /app/config

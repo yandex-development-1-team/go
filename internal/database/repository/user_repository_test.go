@@ -1,4 +1,4 @@
-package repository_test
+package repository
 
 import (
 	"context"
@@ -7,14 +7,8 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
-	"github.com/yandex-development-1-team/go/internal/database/repository"
+	"github.com/stretchr/testify/require"
 	"github.com/yandex-development-1-team/go/internal/models"
-)
-
-var (
-	// db          *sqlx.DB
-	repoBooking repository.BookingRepository
-	repoUser    repository.UserRepository
 )
 
 // func TestMain(m *testing.M) {
@@ -205,7 +199,7 @@ func TestGetUser(t *testing.T) {
 			name:            "correct_data",
 			contextDuration: 2 * time.Second,
 			reqTelegramId:   123456,
-			wantUserId:      1,
+			wantUserId:      0, // any positive ID (order of tests varies)
 			wantUserName:    "test_name",
 			wantFirstName:   "test_first_name",
 			wantLastName:    "test_last_name",
@@ -245,10 +239,15 @@ func TestGetUser(t *testing.T) {
 		}
 		if tt.wantErr == nil {
 			assert.NoError(t, err, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantUserId, user.ID, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantFirstName, user.FirstName, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantFirstName, user.FirstName, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantLastName, user.LastName, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
+			require.NotNil(t, user)
+			if tt.wantUserId > 0 {
+				assert.Equal(t, tt.wantUserId, user.ID)
+			} else {
+				assert.Positive(t, user.ID)
+			}
+			assert.Equal(t, tt.wantUserName, user.Username)
+			assert.Equal(t, tt.wantFirstName, user.FirstName)
+			assert.Equal(t, tt.wantLastName, user.LastName)
 		}
 	}
 }

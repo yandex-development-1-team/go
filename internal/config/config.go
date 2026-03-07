@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +27,7 @@ type Config struct {
 	MsgRPS            float64        `mapstructure:"msg_rps"`
 	ApiRPS            float64        `mapstructure:"api_rps"`
 	CacheSizeRPS      int            `mapstructure:"cache_size_rps"`
+	GetUpdatesTimeout time.Duration  `mapstructure:"get_updates_timeout"`
 }
 
 type DatabaseConfig struct {
@@ -70,6 +73,9 @@ var (
 
 func GetConfig(paths []string) (Config, error) {
 	loadOnce.Do(func() {
+		if p := os.Getenv("CONFIG_FILE"); p != "" {
+			paths = []string{p}
+		}
 		cfg, err := loadConfig(paths)
 		if err != nil {
 			loadErr = err
@@ -82,15 +88,20 @@ func GetConfig(paths []string) (Config, error) {
 
 func loadConfig(paths []string) (*Config, error) {
 	v := viper.New()
-	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	if len(paths) > 0 {
-		for _, path := range paths {
-			v.AddConfigPath(path)
-		}
+	// Явный путь к файлу (например из CONFIG_FILE): один элемент, похож на файл
+	if len(paths) == 1 && (strings.Contains(paths[0], ".yaml") || strings.Contains(paths[0], ".yml")) {
+		v.SetConfigFile(paths[0])
 	} else {
-		v.AddConfigPath("config")
-		v.AddConfigPath(".")
+		v.SetConfigName("config")
+		if len(paths) > 0 {
+			for _, path := range paths {
+				v.AddConfigPath(path)
+			}
+		} else {
+			v.AddConfigPath("config")
+			v.AddConfigPath(".")
+		}
 	}
 
 	// Set defaults
@@ -111,7 +122,9 @@ func loadConfig(paths []string) (*Config, error) {
 		return nil, fmt.Errorf("error parsing config.yml: %w", err)
 	}
 
-	if config.DB.Name != "" {
+	if u := v.GetString("postgres_url"); u != "" {
+		config.DB.PostgresURL = u
+	} else if config.DB.Name != "" {
 		config.DB.PostgresURL = fmt.Sprintf("postgres://%s:%s@db:5432/%s?sslmode=%s",
 			config.DB.User, config.DB.Password, config.DB.Name, config.DB.SslMode)
 	}
@@ -151,6 +164,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("redis.max_retry_backoff", "512ms")
 
 	v.SetDefault("session.ttl", "24h")
+	v.SetDefault("get_updates_timeout", "30s")
 }
 
 func bindEnvs(v *viper.Viper) {
@@ -175,13 +189,13 @@ func bindEnvs(v *viper.Viper) {
 	v.BindEnv("host_name", "HOSTNAME")
 	v.BindEnv("mock_client_enabled", "MOCK_CLIENT_ENABLED")
 	v.BindEnv("mock_local_dir", "MOCK_LOCAL_DIR")
+	v.BindEnv("get_updates_timeout", "GET_UPDATES_TIMEOUT")
 }
 
 func validateConfig(config *Config) error {
-	if config.TelegramBotToken == "" {
+	if os.Getenv("RUN_MODE") != "api_only" && config.TelegramBotToken == "" {
 		return fmt.Errorf("telegram_bot_token is empty")
 	}
-
 	if config.DB.PostgresURL == "" {
 		return fmt.Errorf("postgres_url is empty")
 	}

@@ -95,11 +95,10 @@ func (r *SessionRepository) SaveSession(
 ) error {
 	now := time.Now().UTC()
 
-	// Preserve CreatedAt when overwriting an existing session.
 	createdAt := now
-	// if existing, err := r.getDTO(ctx, userID); err == nil {
-	// 	createdAt = existing.CreatedAt
-	// }
+	if existing, err := r.getDTO(ctx, userID); err == nil {
+		createdAt = existing.CreatedAt
+	}
 
 	dto := sessionDTO{
 		UserID:       userID,
@@ -129,7 +128,7 @@ func (r *SessionRepository) ClearSession(ctx context.Context, userID int64) erro
 
 		key := r.buildKey(userID)
 		if err := r.client.Del(ctx, key).Err(); err != nil {
-			return fmt.Errorf("redis DEL %s: %w", key, err)
+			return models.ErrCache
 		}
 		return nil
 	})
@@ -165,12 +164,12 @@ func (r *SessionRepository) getDTO(ctx context.Context, userID int64) (*sessionD
 			if errors.Is(err, redis.Nil) {
 				return nil, ErrSessionNotFound
 			}
-			return nil, fmt.Errorf("redis GET %s: %w", key, err)
+			return nil, models.ErrCache
 		}
 
 		var dto sessionDTO
 		if err := json.Unmarshal(raw, &dto); err != nil {
-			return nil, fmt.Errorf("unmarshal session %d: %w", userID, err)
+			return nil, models.ErrCache
 		}
 		return &dto, nil
 	})
@@ -183,11 +182,11 @@ func (r *SessionRepository) setDTO(ctx context.Context, userID int64, dto sessio
 
 		raw, err := json.Marshal(dto)
 		if err != nil {
-			return fmt.Errorf("marshal session %d: %w", userID, err)
+			return models.ErrCache
 		}
 
 		if err := r.client.Set(ctx, key, raw, r.ttl).Err(); err != nil {
-			return fmt.Errorf("redis SET %s: %w", key, err)
+			return models.ErrCache
 		}
 		return nil
 	})

@@ -12,9 +12,9 @@ import (
 )
 
 func withMetricsValue[T any](operation string, repo func() (T, error)) (T, error) {
-	srart := time.Now()
+	start := time.Now()
 	result, err := repo()
-	seconds := time.Since(srart).Minutes()
+	seconds := time.Since(start).Minutes()
 
 	metrics.ObserveDatabaseQueryDuration(operation, seconds)
 	if err != nil {
@@ -26,9 +26,9 @@ func withMetricsValue[T any](operation string, repo func() (T, error)) (T, error
 }
 
 func withMetrics(operation string, repo func() error) error {
-	srart := time.Now()
+	start := time.Now()
 	err := repo()
-	seconds := time.Since(srart).Minutes()
+	seconds := time.Since(start).Minutes()
 
 	metrics.ObserveDatabaseQueryDuration(operation, seconds)
 	if err != nil {
@@ -40,9 +40,9 @@ func withMetrics(operation string, repo func() error) error {
 }
 
 func withMetricsRedisValue[T any](operation string, repo func() (T, error)) (T, error) {
-	srart := time.Now()
+	start := time.Now()
 	result, err := repo()
-	seconds := time.Since(srart).Seconds()
+	seconds := time.Since(start).Seconds()
 
 	metrics.ObserveCacheSetDuration(operation, seconds)
 	if err != nil {
@@ -58,9 +58,9 @@ func withMetricsRedisValue[T any](operation string, repo func() (T, error)) (T, 
 }
 
 func withMetricsRedis(operation string, repo func() error) error {
-	srart := time.Now()
+	start := time.Now()
 	err := repo()
-	seconds := time.Since(srart).Seconds()
+	seconds := time.Since(start).Seconds()
 
 	metrics.ObserveCacheSetDuration(operation, seconds)
 	if err != nil {
@@ -73,6 +73,12 @@ func withMetricsRedis(operation string, repo func() error) error {
 }
 
 func checkError(operation string, err error) error {
+	if errors.Is(err, models.ErrUnauthorized) {
+		return models.ErrUnauthorized
+	}
+	if errors.Is(err, models.ErrForbidden) {
+		return models.ErrForbidden
+	}
 	if errors.Is(err, models.ErrBookingNotFound) {
 		logger.Info("booking_not_found", zap.Error(err), zap.String("operation", operation))
 		return models.ErrBookingNotFound

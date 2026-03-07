@@ -47,14 +47,16 @@ func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 	errChan := make(chan error, 3)
 
 	// bot shutdown
-	logger.Info("shutting down bot...")
-	wg.Go(func() {
-		if err := s.bot.Shutdown(ctx); err != nil {
-			errChan <- err
-		} else {
-			logger.Info("bot gracefully shutdown")
-		}
-	})
+	if s.bot != nil {
+		logger.Info("shutting down bot...")
+		wg.Go(func() {
+			if err := s.bot.Shutdown(ctx); err != nil {
+				errChan <- err
+			} else {
+				logger.Info("bot gracefully shutdown")
+			}
+		})
+	}
 
 	// redis shutdown
 	logger.Info("shutting down bot...")
@@ -77,14 +79,16 @@ func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 	})
 
 	// shutdown metrics server
-	logger.Info("shutting down metrics server...")
-	wg.Go(func() {
-		if err := s.metrics.Shutdown(ctx); err != nil {
-			errChan <- err
-		} else {
-			logger.Info("metrics server gracefully shutdown")
-		}
-	})
+	if s.metrics != nil {
+		logger.Info("shutting down metrics server...")
+		wg.Go(func() {
+			if err := s.metrics.Shutdown(ctx); err != nil {
+				errChan <- err
+			} else {
+				logger.Info("metrics server gracefully shutdown")
+			}
+		})
+	}
 
 	wg.Wait()
 	close(errChan)

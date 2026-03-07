@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -39,6 +40,8 @@ func main() {
 }
 
 func run() error {
+	apiOnly := os.Getenv("RUN_MODE") == "api_only"
+
 	// init config
 	cfg, err := config.GetConfig(nil)
 	if err != nil {
@@ -76,24 +79,9 @@ func run() error {
 	}
 	defer redisClient.Close()
 
-	// init telegram bot
-	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
-	if err != nil {
-		return fmt.Errorf("failed to init telegram bot: %w", err)
-	}
-
-	// init signal ctx
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	// init rate limiters
-	apiRL := bot.NewApiRateLimiter(cfg.ApiRPS)
-	msgRL, err := bot.NewMsgRateLimiter(cfg.CacheSizeRPS, cfg.MsgRPS)
-	if err != nil {
-		return fmt.Errorf("failed to init new messages rate limiter")
-	}
-
-	// init metrics server
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
 	metricsMux.HandleFunc("/health", api.NewHealthHandler(nil, cfg.TelegramBotAPIUrl))
@@ -102,27 +90,36 @@ func run() error {
 		Handler: metricsMux,
 	}
 
-	// Redis connection check — fail fast.
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("redis ping: %w", err)
 	}
 	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
-	// TODO: init API server
-	/*apiMux := http.NewServeMux()
-	// apiMux.HandleFunc("/", handlers.APIHandler)
-	apiServer := &http.Server{
-		Addr:    ":8080",
-		Handler: apiMux,
-	}*/
-
-	// run metrics server
 	go func() {
 		logger.Info("starting metrics and health server", zap.String("addr", metricsServer.Addr))
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("metrics server error", zap.Error(err))
 		}
 	}()
+
+	if apiOnly {
+		logger.Info("running in api_only mode (no bot)")
+		<-ctx.Done()
+		ctxTimeout, cancelShutdown := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelShutdown()
+		return shutdown.NewShutdownHandler(nil, nil, metricsServer).WaitForShutdown(ctxTimeout)
+	}
+
+	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
+	if err != nil {
+		return fmt.Errorf("failed to init telegram bot: %w", err)
+	}
+
+	apiRL := bot.NewApiRateLimiter(cfg.ApiRPS)
+	msgRL, err := bot.NewMsgRateLimiter(cfg.CacheSizeRPS, cfg.MsgRPS)
+	if err != nil {
+		return fmt.Errorf("failed to init new messages rate limiter")
+	}
 
 	rep := repository.NewRepository(dbSqlx)
 	repMock := mocks.NewMockClient(cfg.MockLocalDir)
@@ -166,7 +163,7 @@ func run() error {
 	}()
 
 	// get channel with updates
-	updates := tgBot.GetUpdates(30 * time.Second)
+	updates := tgBot.GetUpdates(cfg.GetUpdatesTimeout)
 
 	// handle updates
 	go func() {

@@ -6,6 +6,7 @@ prometheus_port: 9090
 msg_rps: 30 # per-chat message limit / sec
 api_rps: 10 # general message limit / sec
 cache_size_rps: 128 # total number of maximum limiters in cache
+get_updates_timeout: "30s" # long polling timeout для GetUpdates
 log_level: "info"
 host_name: "host"
 
