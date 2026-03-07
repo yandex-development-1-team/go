@@ -2,16 +2,16 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/yandex-development-1-team/go/internal/service"
+	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
 // BoxHandler handles HTTP requests for boxed solutions
 type BoxHandler struct {
-	boxService *service.APIBoxService
+	boxService *apiService.APIBoxService
 }
 
 // NewBoxHandler creates a new 'BoxHandler'
-func NewBoxHandler(boxService *service.APIBoxService) *BoxHandler {
+func NewBoxHandler(boxService *apiService.APIBoxService) *BoxHandler {
 	return &BoxHandler{
 		boxService: boxService,
 	}

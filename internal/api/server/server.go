@@ -2,30 +2,32 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yandex-development-1-team/go/internal/api/handlers"
-	"github.com/yandex-development-1-team/go/internal/service"
+	"github.com/yandex-development-1-team/go/internal/api/middleware"
+	"github.com/yandex-development-1-team/go/internal/config"
+	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
-// Config server config
-type Config struct {
-	Port       string
-	Env        string
-	BoxService *service.APIBoxService
+// APIServices contains API services
+type APIServices struct {
+	// Сервисов будет много, поэтому и обернул в структуру, иначе слишком много параметров получится
+	BoxService *apiService.APIBoxService
 }
 
 // Server server structure
 type Server struct {
-	router *gin.Engine
-	cfg    Config
-	srv    *http.Server
+	router   *gin.Engine
+	services *APIServices
+	srv      *http.Server
 }
 
 // New creates a new server
-func New(cfg Config) *Server {
-	if cfg.Env == "dev" {
+func New(env string) *Server {
+	if env == "dev" {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
@@ -33,28 +35,28 @@ func New(cfg Config) *Server {
 
 	router := gin.New()
 	router.Use(gin.Recovery())
-	// router.Use(middleware.Logger())
-	// router.Use(middleware.Metrics())
-	// router.Use(middleware.CORS())
+	router.Use(middleware.Logger())
+	router.Use(middleware.Metrics())
+	router.Use(middleware.CORS())
 
 	return &Server{
 		router: router,
-		cfg:    cfg,
 	}
 }
 
 // RegisterRoutes registers routes
-func (s *Server) RegisterRoutes() {
-	boxService := s.cfg.BoxService
+func (s *Server) RegisterRoutes(services *APIServices) {
+	s.services = services
+	boxService := s.services.BoxService
 	boxHandler := handlers.NewBoxHandler(boxService)
 
 	SetupRoutes(s.router, boxHandler)
 }
 
 // Run starts the server
-func (s *Server) Run() error {
+func (s *Server) Run(cfg *config.Config) error {
 	s.srv = &http.Server{
-		Addr:    s.cfg.Port,
+		Addr:    fmt.Sprintf(":%d", cfg.Port),
 		Handler: s.router,
 	}
 

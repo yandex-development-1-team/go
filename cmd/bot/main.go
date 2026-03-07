@@ -17,6 +17,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
 	"github.com/yandex-development-1-team/go/internal/service"
+	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
@@ -142,24 +143,21 @@ func run() error {
 		zap.String("log_level", cfg.LogLevel),
 	)
 
-	apiBoxService := service.NewAPIBoxService()
+	apiBoxService := apiService.NewAPIBoxService()
 
 	var wg sync.WaitGroup
 
 	// Creating an API server
-	apiServer := server.New(server.Config{
-		BoxService: apiBoxService,
-		Env:        cfg.Environment,
-		Port:       fmt.Sprintf(":%d", cfg.Port)},
-	)
+	apiServer := server.New(cfg.Environment)
 
 	// Registering routes
-	apiServer.RegisterRoutes()
+	// Сервисов будет много, поэтому и обернул в структуру, иначе слишком много параметров получится
+	apiServer.RegisterRoutes(&server.APIServices{BoxService: apiBoxService})
 
 	// Launching API server
 	go func() {
 		wg.Go(func() {
-			if err := apiServer.Run(); err != nil {
+			if err := apiServer.Run(&cfg); err != nil {
 				logger.Error("failed to start the server", zap.Error(err))
 			}
 			logger.Info("server has been started", zap.Int("port", cfg.Port))
@@ -167,7 +165,7 @@ func run() error {
 	}()
 
 	// get channel with updates
-	updates := tgBot.GetUpdates(30 * time.Second) // TODO: перенести в конфиг
+	updates := tgBot.GetUpdates(30 * time.Second)
 
 	// handle updates
 	go func() {
