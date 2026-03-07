@@ -5,11 +5,12 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/yandex-development-1-team/go/internal/logger"
 )
 
 type DB interface {
-	Close(ctx context.Context) error
+	Close() error
 }
 
 type Bot interface {
@@ -20,17 +21,23 @@ type MetricsServer interface {
 	Shutdown(ctx context.Context) error
 }
 
+type Redis interface {
+	Shutdown(ctx context.Context) *redis.StatusCmd
+}
+
 type ShutdownHandler struct {
 	bot     Bot
 	db      DB
 	metrics MetricsServer
+	redis   Redis
 }
 
-func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer) *ShutdownHandler {
+func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer, redis Redis) *ShutdownHandler {
 	return &ShutdownHandler{
 		bot:     bot,
 		db:      db,
 		metrics: metrics,
+		redis:   redis,
 	}
 }
 
@@ -49,15 +56,25 @@ func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 		}
 	})
 
+	// redis shutdown
+	logger.Info("shutting down bot...")
+	wg.Go(func() {
+		if err := s.redis.Shutdown(ctx).Err(); err != nil {
+			errChan <- err
+		} else {
+			logger.Info("redis gracefully shutdown")
+		}
+	})
+
 	// DB shutdown
-	// logger.Info("shutting down DB...")
-	// wg.Go(func() {
-	// 	if err := s.db.Close(ctx); err != nil {
-	// 		errChan <- err
-	// 	} else {
-	// 		logger.Info("DB gracefully shutdown")
-	// 	}
-	// })
+	logger.Info("shutting down DB...")
+	wg.Go(func() {
+		if err := s.db.Close(); err != nil {
+			errChan <- err
+		} else {
+			logger.Info("DB gracefully shutdown")
+		}
+	})
 
 	// shutdown metrics server
 	logger.Info("shutting down metrics server...")

@@ -16,6 +16,7 @@ RUN go mod download
 COPY internal/ ./internal/
 COPY cmd/ ./cmd/
 COPY migrations/ ./migrations/
+COPY config/ ./config/
 
 # Компилируем приложение
 # CGO_ENABLED=0 - статическая сборка без CGO
@@ -47,6 +48,9 @@ COPY --from=builder /app/bot /app/bot
 # Копируем миграции (могут понадобиться в runtime)
 COPY --from=builder /build/migrations /app/migrations
 
+# Копируем конфиг
+COPY --from=builder /build/config /app/config
+
 # Устанавливаем права на выполнение
 RUN chmod +x /app/bot
 
@@ -60,8 +64,6 @@ EXPOSE 9090
 # EXPOSE 8080
 
 # Health check (проверка каждые 30 секунд)
-# /health endpoint реализован в ветках: dev, feat/14, feat/17, feat/21
-# После мержа соответствующей ветки, раскомментируйте:
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
    CMD curl -f http://localhost:9090/health || exit 1
 # Примечание: порт зависит от конфигурации (обычно PrometheusPort: 9090)

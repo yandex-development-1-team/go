@@ -22,9 +22,12 @@ services:
     image: redis:7-alpine
     container_name: booking_bot_redis
     restart: unless-stopped
+    environment:
+      REDIS_DB: ${REDIS_DB} 
+      REDIS_PASSWORD: ${REDIS_PASSWORD} 
     command: >
       redis-server
-      --requirepass ${REDIS_PASSWORD}
+      --requirepass ${REDIS_PASSWORD} 
       --appendonly yes
       --appendfsync everysec
       --maxmemory 256mb
@@ -44,6 +47,12 @@ services:
     build: .
     container_name: booking_bot_server
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      REDIS_DB: ${REDIS_DB} 
+      REDIS_PASSWORD: ${REDIS_PASSWORD} 
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
     depends_on:
