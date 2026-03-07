@@ -4,14 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
+	"github.com/yandex-development-1-team/go/internal/api/handlers"
+	admin_repository "github.com/yandex-development-1-team/go/internal/repository/postgres"
+	admin_service "github.com/yandex-development-1-team/go/internal/service/api"
 	"log"
 	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/jmoiron/sqlx"
 
 	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
@@ -113,6 +116,26 @@ func run() error {
 		Handler: apiMux,
 	}*/
 
+	rep := repository.NewRepository(dbSqlx)
+	repMock := mocks.NewMockClient(cfg.MockLocalDir)
+
+	adminSettingsRep := admin_repository.NewSettingsRep(dbSqlx)
+	adminSettingsService := admin_service.NewSettingsService(adminSettingsRep)
+	adminSettingsHandler := admin.NewSettingsHandler(adminSettingsService)
+
+	//TODO когда будет сервер от Алексея, мой код с сервером под удаление. Использовала для отладки задачи. Начало кода:
+	r := gin.Default()
+
+	api := r.Group("/api/v1")
+	{
+		api.GET("/settings", adminSettingsHandler.Get)
+	}
+
+	if err := r.Run(fmt.Sprintf(":%d", cfg.Port)); err != nil {
+		log.Fatalf("failed to run server: %v", err)
+	}
+	//TODO конец кода для удаления
+
 	// run metrics server
 	go func() {
 		logger.Info("starting metrics and health server", zap.String("addr", metricsServer.Addr))
@@ -120,9 +143,6 @@ func run() error {
 			logger.Error("metrics server error", zap.Error(err))
 		}
 	}()
-
-	rep := repository.NewRepository(dbSqlx)
-	repMock := mocks.NewMockClient(cfg.MockLocalDir)
 
 	var bsService *service.BoxSolutionsService
 	if cfg.MockClientEnabled {
