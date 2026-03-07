@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -27,7 +28,6 @@ func NewTelegramBot(token string) (*TelegramBot, error) {
 
 	bot.Debug = true // TODO: брать из конфига
 
-	logger.Info("telegram bot has been initialized")
 	return &TelegramBot{
 		Api: bot,
 	}, nil
@@ -41,8 +41,18 @@ func (b *TelegramBot) GetUpdates(timeout time.Duration) tgbotapi.UpdatesChannel 
 	return updates
 }
 
-func (b *TelegramBot) Shutdown(ctx context.Context) {
-	b.Api.StopReceivingUpdates()
+func (b *TelegramBot) Shutdown(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		b.Api.StopReceivingUpdates()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		return fmt.Errorf("bot shutdown timeout: %w", ctx.Err())
+	}
+	return nil
 }
 
 func (b *TelegramBot) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {

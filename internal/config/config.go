@@ -19,6 +19,11 @@ type Config struct {
 	HostName          string        `mapstructure:"host_name"`
 	Redis             RedisConfig   `mapstructure:"redis"`
 	Session           SessionConfig `mapstructure:"session"`
+	MockClientEnabled bool          `mapstructure:"mock_client_enabled"`
+	MockLocalDir      string        `mapstructure:"mock_local_dir"`
+	MsgRPS            float64       `mapstructure:"msg_rps"`
+	ApiRPS            float64       `mapstructure:"api_rps"`
+	CacheSizeRPS      int           `mapstructure:"cache_size_rps"`
 }
 
 type RedisConfig struct {
@@ -67,7 +72,6 @@ func GetConfig(paths []string) (Config, error) {
 }
 
 func loadConfig(paths []string) (*Config, error) {
-
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
@@ -106,7 +110,6 @@ func loadConfig(paths []string) (*Config, error) {
 }
 
 func setDefaults(v *viper.Viper) {
-
 	v.SetDefault("telegram_bot_api_url", "https://api.telegram.org")
 	v.SetDefault("port", 8080)
 	v.SetDefault("environment", "dev")
@@ -135,7 +138,6 @@ func setDefaults(v *viper.Viper) {
 }
 
 func bindEnvs(v *viper.Viper) {
-
 	v.BindEnv("telegram_bot_token", "BOT_TOKEN")
 	v.BindEnv("postgres_url", "POSTGRES_URL")
 	v.BindEnv("port", "PORT")
@@ -143,6 +145,8 @@ func bindEnvs(v *viper.Viper) {
 	v.BindEnv("prometheus_port", "PROMETHEUS_PORT")
 	v.BindEnv("log_level", "LOG_LEVEL")
 	v.BindEnv("host_name", "HOSTNAME")
+	v.BindEnv("mock_client_enabled", "MOCK_CLIENT_ENABLED")
+	v.BindEnv("mock_local_dir", "MOCK_LOCAL_DIR")
 
 }
 

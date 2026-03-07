@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yandex-development-1-team/go/internal/repository/models"
+	"github.com/yandex-development-1-team/go/internal/database/repository/models"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/logger"
@@ -61,7 +61,6 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 	keyboard := h.keyboardService.ServiceDetailKeyboard(
 		service.Type,
 		service.ID,
-		service.BoxID,
 	)
 
 	// ШАГ 6: Отправка сообщения
@@ -77,15 +76,25 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 	// ШАГ 7: Логирование успешного показа
 	logger.Info("service_detail_shown",
 		zap.Int("service_id", serviceID),
-		zap.String("service_name", service.Name),
+		// zap.String("service_name", service.Name),
 		zap.Int64("user_id", userID),
-		zap.String("service_type", string(service.Type)),
+		// zap.String("service_type", string(service.Type)),
 	)
 
 	return nil
 }
 
 func convertDBServiceModelToHandlerModel(dbServiceModel models.Service) Service {
+	var scheduleSlots []AvailableSlot
+	for _, availableSlotDB := range dbServiceModel.AvailableSlots {
+		availableSlot := AvailableSlot{
+			Date:      availableSlotDB.Date,
+			TimeSlots: availableSlotDB.TimeSlots,
+		}
+
+		scheduleSlots = append(scheduleSlots, availableSlot)
+	}
+
 	return Service{
 		ID:          dbServiceModel.ID,
 		Name:        dbServiceModel.Name,
@@ -93,7 +102,6 @@ func convertDBServiceModelToHandlerModel(dbServiceModel models.Service) Service 
 		Rules:       dbServiceModel.Rules,
 		Schedule:    dbServiceModel.Schedule,
 		Type:        ServiceType(dbServiceModel.Type),
-		BoxID:       dbServiceModel.BoxID,
 	}
 }
 
