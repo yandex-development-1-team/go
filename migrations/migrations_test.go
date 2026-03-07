@@ -23,7 +23,6 @@ func TestBookingsMigration(t *testing.T) {
 	db := setupTestDatabase(t, ctx)
 	defer db.Close()
 
-
 	migrations := []string{
 		"001_create_users_table.sql",
 		"002_create_bookings_table.sql",
