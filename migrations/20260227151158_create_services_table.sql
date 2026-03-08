@@ -31,5 +31,6 @@ CREATE INDEX IF NOT EXISTS idx_available_slots_service_date
     ON service_available_slots (service_id, slot_date);
 
 -- +goose Down
+DROP INDEX IF EXISTS idx_available_slots_service_date;
 DROP TABLE IF EXISTS service_available_slots;
 DROP TABLE IF EXISTS services;

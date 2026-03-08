@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
 
 -- +goose Down
+DROP INDEX IF EXISTS idx_users_telegram_id;
 DROP TABLE IF EXISTS users;
 DROP TYPE IF EXISTS user_status_type;
 DROP TYPE IF EXISTS user_role_type;

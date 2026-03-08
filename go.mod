@@ -1,6 +1,6 @@
 module github.com/yandex-development-1-team/go
 
-go 1.25.6
+go 1.25.0
 
 require (
 	github.com/docker/go-connections v0.6.0

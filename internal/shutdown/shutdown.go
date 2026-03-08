@@ -43,50 +43,59 @@ func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer, redis Redis) *Shu
 
 func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 	var wg sync.WaitGroup
-
 	errChan := make(chan error, 3)
+
+	run := func(fn func() error) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := fn(); err != nil {
+				errChan <- err
+			}
+		}()
+	}
 
 	// bot shutdown
 	if s.bot != nil {
 		logger.Info("shutting down bot...")
-		wg.Go(func() {
-			if err := s.bot.Shutdown(ctx); err != nil {
-				errChan <- err
-			} else {
+		run(func() error {
+			err := s.bot.Shutdown(ctx)
+			if err == nil {
 				logger.Info("bot gracefully shutdown")
 			}
+			return err
 		})
 	}
 
 	// redis shutdown
-	logger.Info("shutting down bot...")
-	wg.Go(func() {
-		if err := s.redis.Shutdown(ctx).Err(); err != nil {
-			errChan <- err
-		} else {
+	logger.Info("shutting down redis...")
+	run(func() error {
+		err := s.redis.Shutdown(ctx).Err()
+		if err == nil {
 			logger.Info("redis gracefully shutdown")
 		}
+		return err
 	})
 
 	// DB shutdown
 	logger.Info("shutting down DB...")
-	wg.Go(func() {
-		if err := s.db.Close(); err != nil {
-			errChan <- err
-		} else {
+	run(func() error {
+		err := s.db.Close()
+		if err == nil {
 			logger.Info("DB gracefully shutdown")
 		}
+		return err
 	})
 
 	// shutdown metrics server
 	if s.metrics != nil {
 		logger.Info("shutting down metrics server...")
-		wg.Go(func() {
-			if err := s.metrics.Shutdown(ctx); err != nil {
-				errChan <- err
-			} else {
+		run(func() error {
+			err := s.metrics.Shutdown(ctx)
+			if err == nil {
 				logger.Info("metrics server gracefully shutdown")
 			}
+			return err
 		})
 	}
 

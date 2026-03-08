@@ -8,12 +8,17 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
+// Пакет предназначен для использования из middleware: middleware восстанавливает
+// error из контекста или из recover и вызывает WriteError(w, err), получая код
+// через HTTPStatus(err) и тело в формате ServiceErrorResponse.
+
 // ServiceErrorResponse — единый формат тела ответа при ошибке (список сообщений).
 type ServiceErrorResponse struct {
 	Errors []string `json:"errors"`
 }
 
-// HTTPStatus возвращает HTTP-код для доменной ошибки. Неизвестные ошибки → 500.
+// HTTPStatus возвращает HTTP-код для доменной ошибки. Вызывается из middleware
+// при обработке ошибки хендлера. Неизвестные ошибки → 500.
 func HTTPStatus(err error) int {
 	if err == nil {
 		return http.StatusOK
@@ -78,7 +83,8 @@ func messageFor(err error) string {
 }
 
 // WriteError записывает в w ответ с единым форматом { "errors": ["..."] } и корректным статус-кодом.
-// Используется для любых ошибок сервиса; детали БД/SQL не возвращаются.
+// Предполагается вызов из middleware: middleware вызывает WriteError(w, err) для ошибки,
+// полученной от хендлера. Детали БД/SQL не возвращаются.
 func WriteError(w http.ResponseWriter, err error) {
 	code := HTTPStatus(err)
 	messages := Messages(err)
