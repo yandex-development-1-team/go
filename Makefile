@@ -12,7 +12,7 @@ GORUN=$(GO) run
 SRC_DIR=./cmd/bot
 BUILD_DIR=./bin
 
-.PHONY: migration migration-create generate-mocks
+.PHONY: migration migration-create migration-rollback generate-mocks
 
 all: build
 
@@ -48,10 +48,12 @@ lint:
 
 migration:
 	@echo "Migration commands:"
-	@echo "  make migration-create NAME=<name>  Create new migration file"
+	@echo "  make migration-create NAME=<name>    Create new migration file"
+	@echo "  make migration-rollback DB_DSN=<dsn> Rollback last migration"
 	@echo ""
-	@echo "Example:"
+	@echo "Examples:"
 	@echo "  make migration-create NAME=create_users_table"
+	@echo "  make migration-rollback DB_DSN=<dsn>"
 
 migration-create:
 	@if [ -z "$(NAME)" ]; then \
@@ -67,7 +69,15 @@ migration-create:
 	echo "-- +goose Down" >> $$FILENAME; \
 	echo "Created migration: $$FILENAME"
 
-generate-mocks:
-	mkdir -p internal/mocks
-		mockgen -package=mocks -destination=internal/mocks/session_repository_mock.go -source=internal/database/session_repository_interface.go
+migration-rollback:
+	@if [ -z "$(DB_DSN)" ]; then \
+		echo "Error: DB_DSN is required"; \
+		echo "Usage: make migration-rollback DB_DSN=<dsn>"; \
+		exit 1; \
+	fi
+	@echo "Rolling back last migration..."
+	goose -dir migrations postgres "$(DB_DSN)" down
 
+generate-mocks:
+	@mkdir -p internal/mocks
+	mockgen -package=mocks -destination=internal/mocks/session_repository_mock.go -source=internal/database/session_repository_interface.go
