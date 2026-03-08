@@ -3,31 +3,46 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/yandex-development-1-team/go/internal/repository/models"
 	"strings"
 
+	"github.com/yandex-development-1-team/go/internal/database/repository/models"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"go.uber.org/zap"
 )
 
-// ServiceType определяет тип услуги для выбора правильного набора кнопок
-type ServiceType string
-
-const (
-	ServiceTypeMuseum  ServiceType = "museum"
-	ServiceTypeSport   ServiceType = "sport"
-	ServiceTypeDefault ServiceType = "default"
-)
+const VessagesErrData = "❌ К сожалению, не удалось загрузить информацию об услуге. Пожалуйста, попробуйте позже."
 
 // internal/handlers/service_detail.go
-func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int, userID int64) error {
-	// ШАГ 1: Логирование запроса
-	h.logger.Info("service_detail_requested",
+func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.CallbackQuery) error {
+	// ШАГ 1: Получаем ID пользователя и номер чата
+	userID := tg.From.ID
+	chatID := tg.Message.Chat.ID
+	callbackData := tg.Data
+	serviceID, err := parseServiceID(callbackData)
+	if err != nil {
+		logger.Error("failed_to_parse_service_id",
+			zap.String("callback_data", callbackData),
+			zap.Int64("user_id", userID),
+			zap.Int64("chat_id", chatID),
+			zap.Error(err),
+		)
+		// Отправляем сообщение об ошибке В ЧАТ
+		errorMsg := tgbotapi.NewMessage(chatID, VessagesErrData)
+		errorMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+		if _, sendErr := h.bot.Send(errorMsg); sendErr != nil {
+			logger.Error("failed_to_send_error_message", zap.Error(sendErr))
+		}
+		return err
+	}
+	// ШАГ 2: Логирование запроса
+	logger.Info("service_detail_requested",
 		zap.Int("service_id", serviceID),
 		zap.Int64("user_id", userID),
 	)
 
-	// ШАГ 2: Получение данных из репозитория
+	// ШАГ 3: Получение данных из репозитория
 	serviceDBModel, err := h.repo.GetServiceByID(ctx, serviceID)
 	if err != nil {
 		return h.handleError(userID, serviceID, err)
@@ -39,19 +54,18 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int,
 		serviceName = "Прочее"
 	}
 
-	// ШАГ 3: Формирование сообщения (чистая функция)
+	// ШАГ 4: Формирование сообщения (чистая функция)
 	messageText := buildServiceMessage(&service, serviceName)
 
-	// ШАГ 4: Генерация клавиатуры (сервис)
+	// ШАГ 5: Генерация клавиатуры (сервис)
 	keyboard := h.keyboardService.ServiceDetailKeyboard(
 		service.Type,
 		service.ID,
-		service.BoxID,
 	)
 
-	// ШАГ 5: Отправка сообщения
-	if err := h.sendMessage(userID, messageText, keyboard); err != nil {
-		h.logger.Error("failed_to_send_service_detail",
+	// ШАГ 6: Отправка сообщения
+	if err := h.sendMessage(chatID, messageText, keyboard); err != nil {
+		logger.Error("failed_to_send_service_detail",
 			zap.Int("service_id", serviceID),
 			zap.Int64("user_id", userID),
 			zap.Error(err),
@@ -59,18 +73,28 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, serviceID int,
 		return fmt.Errorf("failed to send service detail: %w", err)
 	}
 
-	// ШАГ 6: Логирование успешного показа
-	h.logger.Info("service_detail_shown",
+	// ШАГ 7: Логирование успешного показа
+	logger.Info("service_detail_shown",
 		zap.Int("service_id", serviceID),
-		zap.String("service_name", service.Name),
+		// zap.String("service_name", service.Name),
 		zap.Int64("user_id", userID),
-		zap.String("service_type", string(service.Type)),
+		// zap.String("service_type", string(service.Type)),
 	)
 
 	return nil
 }
 
 func convertDBServiceModelToHandlerModel(dbServiceModel models.Service) Service {
+	var scheduleSlots []AvailableSlot
+	for _, availableSlotDB := range dbServiceModel.AvailableSlots {
+		availableSlot := AvailableSlot{
+			Date:      availableSlotDB.Date,
+			TimeSlots: availableSlotDB.TimeSlots,
+		}
+
+		scheduleSlots = append(scheduleSlots, availableSlot)
+	}
+
 	return Service{
 		ID:          dbServiceModel.ID,
 		Name:        dbServiceModel.Name,
@@ -78,7 +102,6 @@ func convertDBServiceModelToHandlerModel(dbServiceModel models.Service) Service 
 		Rules:       dbServiceModel.Rules,
 		Schedule:    dbServiceModel.Schedule,
 		Type:        ServiceType(dbServiceModel.Type),
-		BoxID:       dbServiceModel.BoxID,
 	}
 }
 
@@ -86,7 +109,7 @@ func convertDBServiceModelToHandlerModel(dbServiceModel models.Service) Service 
 func (h *ServiceHandler) handleError(userID int64, serviceID int, err error) error {
 	// Отправка сообщения об ошибке + логирование
 	if err != nil {
-		h.logger.Error("failed_to_get_service",
+		logger.Error("failed_to_get_service",
 			zap.Int("service_id", serviceID),
 			zap.Int64("user_id", userID),
 			zap.Error(err),
@@ -96,7 +119,7 @@ func (h *ServiceHandler) handleError(userID int64, serviceID int, err error) err
 		msg := tgbotapi.NewMessage(userID, "❌ К сожалению, не удалось загрузить информацию об услуге. Пожалуйста, попробуйте позже.")
 		_, sendErr := h.bot.Send(msg)
 		if sendErr != nil {
-			h.logger.Error("failed_to_send_error_message",
+			logger.Error("failed_to_send_error_message",
 				zap.Int64("user_id", userID),
 				zap.Error(sendErr),
 			)

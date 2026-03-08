@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -25,13 +26,16 @@ func TestBookingsMigration(t *testing.T) {
 
 
 	migrations := []string{
-		"001_create_users_table.sql",
-		"002_create_bookings_table.sql",
+		"20260209150247_create_users_table.sql",
+		"20260227151158_create_services_table.sql",
+		"20260227151751_create_bookings_table.sql",
 	}
 
 	for _, migration := range migrations {
 		applyMigration(t, ctx, db, migration)
 	}
+
+	_, _ = db.ExecContext(ctx, `INSERT INTO services (name) SELECT 'Test' WHERE NOT EXISTS (SELECT 1 FROM services LIMIT 1)`)
 
 	t.Run("Indexes", func(t *testing.T) {
 		expectedIndexes := []string{
@@ -81,11 +85,20 @@ func setupTestDatabase(t *testing.T, ctx context.Context) *sql.DB {
 }
 
 func applyMigration(t *testing.T, ctx context.Context, db *sql.DB, filename string) {
-	migrationSQL, err := os.ReadFile(filepath.Join(".", filename))
-	require.NoError(t, err)
-
-	_, err = db.ExecContext(ctx, string(migrationSQL))
-	require.NoError(t, err)
+	for _, base := range []string{"migrations", "."} {
+		path := filepath.Join(base, filename)
+		migrationSQL, err := os.ReadFile(path)
+		if err == nil {
+			upSQL := string(migrationSQL)
+			if idx := strings.Index(upSQL, "-- +goose Down"); idx != -1 {
+				upSQL = strings.TrimSpace(upSQL[:idx])
+			}
+			_, err = db.ExecContext(ctx, upSQL)
+			require.NoError(t, err, "apply migration %s", path)
+			return
+		}
+	}
+	t.Fatalf("migration file not found: %s (tried migrations/ and .)", filename)
 }
 
 func indexExists(t *testing.T, ctx context.Context, db *sql.DB, indexName string) bool {
@@ -98,7 +111,7 @@ func indexExists(t *testing.T, ctx context.Context, db *sql.DB, indexName string
 func createTestUser(t *testing.T, ctx context.Context, db *sql.DB) int64 {
 	var userID int64
 	err := db.QueryRowContext(ctx,
-		`INSERT INTO users (telegram_id) VALUES (123456789) RETURNING id;`,
+		`INSERT INTO users (telegram_id, password_hash, role, status) VALUES (123456789, '', 'manager', 'active') RETURNING id;`,
 	).Scan(&userID)
 	require.NoError(t, err)
 	return userID

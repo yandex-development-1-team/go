@@ -12,19 +12,20 @@ COPY go.mod go.sum ./
 # Скачиваем зависимости (кешируется при неизменных go.mod/go.sum)
 RUN go mod download
 
-# Копируем исходный код
+# Копируем исходный код и конфиг для Docker
 COPY internal/ ./internal/
 COPY cmd/ ./cmd/
 COPY migrations/ ./migrations/
+COPY config/ ./config/
 
 # Компилируем приложение
 # CGO_ENABLED=0 - статическая сборка без CGO
 # -ldflags "-s -w" - удаляем отладочную информацию и таблицу символов (минификация)
 # -o /app/bot - выходной файл
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags "-s -w" \
-    -o /app/bot \
-    ./cmd/bot/main.go
+	-ldflags "-s -w" \
+	-o /app/bot \
+	./cmd/bot/main.go
 
 # ============================================
 # Runtime Stage - минимальный образ
@@ -36,7 +37,7 @@ RUN apk --no-cache add ca-certificates curl
 
 # Создаём non-root пользователя для безопасности
 RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
+	adduser -u 1001 -S appuser -G appgroup
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
@@ -44,8 +45,10 @@ WORKDIR /app
 # Копируем скомпилированный бинарник из builder
 COPY --from=builder /app/bot /app/bot
 
-# Копируем миграции (могут понадобиться в runtime)
+# Копируем миграции и конфиг для Docker (CONFIG_FILE в compose указывает на docker.yaml)
 COPY --from=builder /build/migrations /app/migrations
+RUN mkdir -p /app/config
+COPY --from=builder /build/config/docker.yaml /app/config/docker.yaml
 
 # Устанавливаем права на выполнение
 RUN chmod +x /app/bot

@@ -1,6 +1,6 @@
 package models
 
-type BoxSolution struct {
+type Service struct {
 	ID             int64
 	Name           string
 	Description    string
@@ -10,4 +10,9 @@ type BoxSolution struct {
 type AvailableSlot struct {
 	Date      string
 	TimeSlots []string
+}
+
+type BoxSolutionsButton struct {
+	Name  string
+	Alias string
 }

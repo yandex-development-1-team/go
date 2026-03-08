@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$ROOT_DIR"
+
+MODE="${1:-api_only}"
+
+if [[ -f .env ]]; then
+  set -a
+  source .env
+  set +a
+fi
+
+if [[ "$MODE" == "bot" ]]; then
+  if [[ ! -f .env ]] || ! grep -q '^BOT_TOKEN=.\+' .env 2>/dev/null; then
+    echo "Для режима bot нужен .env с BOT_TOKEN. Скопируйте .env.example в .env и укажите BOT_TOKEN."
+    exit 1
+  fi
+  echo "Запуск в режиме с ботом (postgres, redis, api, bot)..."
+  docker compose --profile bot up -d --build
+  echo "Готово. Логи бота: docker compose logs -f bot"
+else
+  echo "Запуск в режиме api_only (postgres, redis, api, без бота)..."
+  docker compose --profile api_only up -d --build
+  echo "Готово. Сервисы: postgres:5432, redis:6379, api (health/metrics):9090"
+  echo "Логи API: docker compose logs -f api"
+fi

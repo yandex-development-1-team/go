@@ -4,14 +4,19 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/yandex-development-1-team/go/internal/repository"
-	"github.com/yandex-development-1-team/go/internal/repository/mocks"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+
+	"github.com/yandex-development-1-team/go/internal/database/repository"
+	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
+	"github.com/yandex-development-1-team/go/internal/service"
 
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
@@ -20,6 +25,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
+	"github.com/yandex-development-1-team/go/internal/shutdown"
 
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
@@ -27,12 +33,13 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Printf("error:%v\n", err)
-		os.Exit(1)
+		log.Fatalf("error:%v\n", err)
 	}
 }
 
 func run() error {
+	apiOnly := os.Getenv("RUN_MODE") == "api_only"
+
 	// init config
 	cfg, err := config.GetConfig(nil)
 	if err != nil {
@@ -61,21 +68,17 @@ func run() error {
 	if err := database.RunMigrations(db); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
+	// Оборачиваем sql.DB в sqlx.DB
+	dbSqlx := sqlx.NewDb(db, "postgres")
 
-	// init telegram bot
-	bot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
+	redisClient, err := repository.NewRedisClient(cfg.Redis)
 	if err != nil {
-		return fmt.Errorf("failed to init telegram bot: %w", err)
+		return fmt.Errorf("init redis client: %w", err)
 	}
 
-	// get channel with updates
-	updates := bot.GetUpdates(30 * time.Second) // TODO: перенести в конфиг
-
-	// init signal ctx
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	// init metrics server
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
 	metricsMux.HandleFunc("/health", api.NewHealthHandler(nil, cfg.TelegramBotAPIUrl))
@@ -84,79 +87,99 @@ func run() error {
 		Handler: metricsMux,
 	}
 
-	// TODO: init API server
-	/*apiMux := http.NewServeMux()
-	// apiMux.HandleFunc("/", handlers.APIHandler)
-	apiServer := &http.Server{
-		Addr:    ":8080",
-		Handler: apiMux,
-	}*/
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("redis ping: %w", err)
+	}
+	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
-	var wg sync.WaitGroup
-
-	// run metrics server
-	wg.Go(func() {
+	go func() {
 		logger.Info("starting metrics and health server", zap.String("addr", metricsServer.Addr))
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("metrics server error", zap.Error(err))
 		}
-	})
+	}()
 
-	rep := repository.NewRepository()
-	repMock := mocks.NewMockClient()
+	if apiOnly {
+		logger.Info("running in api_only mode (no bot)")
+		<-ctx.Done()
+		ctxTimeout, cancelShutdown := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelShutdown()
+		return shutdown.NewShutdownHandler(nil, nil, metricsServer).WaitForShutdown(ctxTimeout)
+	}
 
-	startHandler := handlers.NewStartHandler(bot, rep)
-	boxSolutionsHandler := handlers.NewBoxSolutions(bot, repMock)
+	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
+	if err != nil {
+		return fmt.Errorf("failed to init telegram bot: %w", err)
+	}
+
+	apiRL := bot.NewApiRateLimiter(cfg.ApiRPS)
+	msgRL, err := bot.NewMsgRateLimiter(cfg.CacheSizeRPS, cfg.MsgRPS)
+	if err != nil {
+		return fmt.Errorf("failed to init new messages rate limiter")
+	}
+
+	rep := repository.NewRepository(dbSqlx)
+	repMock := mocks.NewMockClient(cfg.MockLocalDir)
+
+	var bsService *service.BoxSolutionsService
+	if cfg.MockClientEnabled {
+		bsService = service.NewBoxSolutionsService(repMock)
+	} else {
+		bsService = service.NewBoxSolutionsService(rep)
+	}
+
+	startHandler := handlers.NewStartHandler(tgBot, rep)
+	boxSolutionsHandler := handlers.NewBoxSolutions(tgBot, bsService)
+
 	// init handler
-	handler := handlers.NewHandler(startHandler, boxSolutionsHandler)
+	handler := handlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
+	logger.Info("bot has been started",
+		zap.String("environment", cfg.Environment),
+		zap.String("log_level", cfg.LogLevel),
+	)
+
+	// get channel with updates
+	updates := tgBot.GetUpdates(cfg.GetUpdatesTimeout)
 
 	// handle updates
+	var wg sync.WaitGroup
 	go func() {
 		for update := range updates {
-			handler.Handle(ctx, update) // TODO: ассинхронный вызов
+			wg.Go(func() {
+				if err := apiRL.Exec(ctx, func() { handler.Handle(ctx, update) }); err != nil {
+					logger.Error("failed to handle update", zap.Error(err))
+				}
+			})
 		}
 	}()
 
 	// wait for shutdown signal
 	<-ctx.Done()
-	logger.Info("shutting down server...")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second) // TODO: вынести в конфиг ???
+	// init ctx timeout
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	ch := make(chan struct{})
+	// shutdown bot and servers (this closes updates channel)
+	shutdown := shutdown.NewShutdownHandler(tgBot, nil, metricsServer)
+	if err := shutdown.WaitForShutdown(ctxTimeout); err != nil {
+		return fmt.Errorf("failed to shutdown: %w", err)
+	}
+
+	// wait for in-flight updates to finish
+	logger.Info("waiting for updates to finish...")
+	updatesDone := make(chan struct{})
 	go func() {
-		bot.Shutdown(shutdownCtx)
-		close(ch)
+		wg.Wait()
+		close(updatesDone)
 	}()
 
-	// shutdown servers concurrently
-	errCh := make(chan error, 1) // metrics errors + TODO: API server
-
-	wg.Go(func() {
-		if err := metricsServer.Shutdown(shutdownCtx); err != nil {
-			errCh <- fmt.Errorf("metrics server shutdown error: %w", err)
-		} else {
-			errCh <- nil
-		}
-	})
-
-	// collect shutdown errors
-	shutdownErrors := 0
-	for i := 0; i < 1; i++ {
-		if err := <-errCh; err != nil {
-			logger.Error("server shutdown error", zap.Error(err))
-			shutdownErrors++
-		}
+	select {
+	case <-updatesDone:
+		logger.Info("all updates processed")
+	case <-ctxTimeout.Done():
+		logger.Warn("timeout waiting for updates to finish")
 	}
 
-	// wait for all goroutines to finish
-	wg.Wait()
-
-	if shutdownErrors > 0 {
-		return fmt.Errorf("encountered %d shutdown errors", shutdownErrors)
-	}
-
-	logger.Info("servers exited gracefully")
 	return nil
 }

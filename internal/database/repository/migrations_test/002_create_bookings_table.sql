@@ -1,6 +1,7 @@
 -- Migration: 002_create_bookings_table
 -- Создание таблицы бронирований для управления заказами услуг через телеграм-бот
 
+-- +goose Up
 CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'cancelled');
 
 CREATE TABLE bookings (

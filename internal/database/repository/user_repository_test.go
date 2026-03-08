@@ -2,131 +2,119 @@ package repository
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"log"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
-	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/stretchr/testify/require"
+	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-var (
-	db   *sqlx.DB
-	repo UserRepository
-)
+// func TestMain(m *testing.M) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+// 	defer cancel()
 
-func TestMain(m *testing.M) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+// 	container, err := startContainer()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	container, err := startContainer()
-	if err != nil {
-		log.Fatal(err)
-	}
+// 	err = createDB(container)
+// 	if err != nil {
+// 		log.Fatalf("failed to connect to db: %s", err.Error())
+// 	}
 
-	err = createDB(container)
-	if err != nil {
-		log.Fatalf("failed to connect to db: %s", err.Error())
-	}
+// 	repoBooking = repository.NewBookingRepository(db)
+// 	repoUser = repository.NewUserRepository(db)
 
-	repo = NewUserRepository(db)
+// 	code := m.Run()
 
-	code := m.Run()
+// 	err = container.Terminate(ctx)
+// 	if err != nil {
+// 		log.Fatalf("failed to terminate db container: %s", err.Error())
+// 	}
 
-	err = container.Terminate(ctx)
-	if err != nil {
-		log.Fatalf("failed to terminate db container: %s", err.Error())
-	}
+// 	os.Exit(code)
+// }
 
-	os.Exit(code)
-}
+// func startContainer() (tc.Container, error) {
+// 	// настройка testcontainers postgres
+// 	req := tc.ContainerRequest{
+// 		Image:        "postgres:latest",
+// 		ExposedPorts: []string{"5432/tcp"},
+// 		Env: map[string]string{
+// 			"POSTGRES_PASSWORD": "password",
+// 			"POSTGRES_DB":       "testdb",
+// 		},
+// 		WaitingFor: wait.ForSQL(
+// 			nat.Port("5432/tcp"),
+// 			"postgres",
+// 			func(host string, port nat.Port) string {
+// 				return fmt.Sprintf(
+// 					"host=%s port=%s user=postgres password=password dbname=postgres sslmode=disable connect_timeout=5",
+// 					host, port.Port())
+// 			}).
+// 			WithStartupTimeout(120 * time.Second),
+// 	}
 
-func startContainer() (tc.Container, error) {
-	// настройка testcontainers postgres
-	req := tc.ContainerRequest{
-		Image:        "postgres:latest",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_PASSWORD": "password",
-			"POSTGRES_DB":       "testdb",
-		},
-		WaitingFor: wait.ForSQL(
-			nat.Port("5432/tcp"),
-			"postgres",
-			func(host string, port nat.Port) string {
-				return fmt.Sprintf(
-					"host=%s port=%s user=postgres password=password dbname=postgres sslmode=disable connect_timeout=5",
-					host, port.Port())
-			}).
-			WithStartupTimeout(120 * time.Second),
-	}
+// 	// генерация контейнера
+// 	dbContainer, err := tc.GenericContainer(
+// 		context.Background(),
+// 		tc.GenericContainerRequest{
+// 			ContainerRequest: req,
+// 			Started:          true,
+// 		})
+// 	if err != nil {
+// 		fmt.Printf("Container logs: %v\n", err)
+// 		return nil, err
+// 	}
 
-	// генерация контейнера
-	dbContainer, err := tc.GenericContainer(
-		context.Background(),
-		tc.GenericContainerRequest{
-			ContainerRequest: req,
-			Started:          true,
-		})
-	if err != nil {
-		fmt.Printf("Container logs: %v\n", err)
-		return nil, err
-	}
+// 	return dbContainer, err
+// }
 
-	return dbContainer, err
-}
+// func createDB(container tc.Container) error {
+// 	var err error
 
-func createDB(container tc.Container) error {
-	var err error
+// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+// 	defer cancel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+// 	host, _ := container.Host(context.Background())
+// 	port, _ := container.MappedPort(context.Background(), "5432")
 
-	host, _ := container.Host(context.Background())
-	port, _ := container.MappedPort(context.Background(), "5432")
+// 	dbURI := fmt.Sprintf(
+// 		"host=%s port=%s user=postgres password=password dbname=testdb sslmode=disable",
+// 		host, port.Port())
+// 	db, err = sqlx.Connect("postgres", dbURI)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	dbURI := fmt.Sprintf(
-		"host=%s port=%s user=postgres password=password dbname=testdb sslmode=disable",
-		host, port.Port())
-	db, err = sqlx.Connect("postgres", dbURI)
-	if err != nil {
-		return err
-	}
+// 	if err := goose.SetDialect("postgres"); err != nil {
+// 		return err
+// 	}
 
-	if err := goose.SetDialect("postgres"); err != nil {
-		return err
-	}
+// 	_, err = goose.GetDBVersion(db.DB)
+// 	if !errors.Is(err, goose.ErrNoMigrations) {
+// 		_, err := db.Exec("DROP TABLE IF EXISTS goose_db_version")
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
 
-	_, err = goose.GetDBVersion(db.DB)
-	if !errors.Is(err, goose.ErrNoMigrations) {
-		_, err := db.Exec("DROP TABLE IF EXISTS goose_db_version")
-		if err != nil {
-			return err
-		}
-	}
+// 	if err := goose.UpContext(ctx, db.DB, "./migrations_test"); err != nil {
+// 		return err
+// 	}
 
-	if err := goose.UpContext(ctx, db.DB, "../../../migrations"); err != nil {
-		return err
-	}
+// 	_, err = goose.GetDBVersion(db.DB)
+// 	if errors.Is(err, goose.ErrNoMigrations) {
+// 		return err
+// 	}
 
-	_, err = goose.GetDBVersion(db.DB)
-	if errors.Is(err, goose.ErrNoMigrations) {
-		return err
-	}
-
-	return nil
-}
+// 	return nil
+// }
 
 func TestCreateUser(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		contextDuration time.Duration
@@ -161,7 +149,7 @@ func TestCreateUser(t *testing.T) {
 			reqUserName:     "",
 			reqFirstName:    "",
 			reqLastName:     "",
-			wantErr:         ErrRequestCanceled,
+			wantErr:         models.ErrRequestCanceled,
 		},
 		{
 			name:            "request_timeout",
@@ -170,16 +158,16 @@ func TestCreateUser(t *testing.T) {
 			reqUserName:     "test_name",
 			reqFirstName:    "test_first_name",
 			reqLastName:     "test_last_name",
-			wantErr:         ErrRequestTimeout,
+			wantErr:         models.ErrRequestTimeout,
 		},
 	}
 
-	err := db.Ping()
-	if err != nil {
-		log.Println("Нет соединения с базой данных:", err)
-	} else {
-		log.Println("Соединение с базой успешно установлено")
-	}
+	// err := db.Ping()
+	// if err != nil {
+	// 	log.Println("Нет соединения с базой данных:", err)
+	// } else {
+	// 	log.Println("Соединение с базой успешно установлено")
+	// }
 
 	for _, tt := range tests {
 
@@ -191,7 +179,7 @@ func TestCreateUser(t *testing.T) {
 			cancel()
 		}
 
-		err := repo.CreateUser(ctx, tt.reqTelegramId, tt.reqUserName, tt.reqFirstName, tt.reqLastName)
+		err := repoUser.CreateUser(ctx, tt.reqTelegramId, tt.reqUserName, tt.reqFirstName, tt.reqLastName)
 		assert.ErrorIs(t, err, tt.wantErr, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
 	}
 }
@@ -211,7 +199,7 @@ func TestGetUser(t *testing.T) {
 			name:            "correct_data",
 			contextDuration: 2 * time.Second,
 			reqTelegramId:   123456,
-			wantUserId:      1,
+			wantUserId:      0, // any positive ID (order of tests varies)
 			wantUserName:    "test_name",
 			wantFirstName:   "test_first_name",
 			wantLastName:    "test_last_name",
@@ -221,19 +209,19 @@ func TestGetUser(t *testing.T) {
 			name:            "user_not_found",
 			contextDuration: 2 * time.Second,
 			reqTelegramId:   222222,
-			wantErr:         ErrUserNotFound,
+			wantErr:         models.ErrUserNotFound,
 		},
 		{
 			name:            "request_canceled",
 			contextDuration: 2 * time.Second,
 			reqTelegramId:   123456,
-			wantErr:         ErrRequestCanceled,
+			wantErr:         models.ErrRequestCanceled,
 		},
 		{
 			name:            "request_timeout",
 			contextDuration: 1 * time.Nanosecond,
 			reqTelegramId:   123456,
-			wantErr:         ErrRequestTimeout,
+			wantErr:         models.ErrRequestTimeout,
 		},
 	}
 
@@ -245,16 +233,21 @@ func TestGetUser(t *testing.T) {
 			cancel()
 		}
 
-		user, err := repo.GetUserByTelegramID(ctx, tt.reqTelegramId)
+		user, err := repoUser.GetUserByTelegramID(ctx, tt.reqTelegramId)
 		if tt.wantErr != nil {
 			assert.ErrorIs(t, err, tt.wantErr, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
 		}
 		if tt.wantErr == nil {
 			assert.NoError(t, err, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantUserId, user.ID, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantFirstName, user.FirstName, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantFirstName, user.FirstName, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
-			assert.Equal(t, tt.wantLastName, user.LastName, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
+			require.NotNil(t, user)
+			if tt.wantUserId > 0 {
+				assert.Equal(t, tt.wantUserId, user.ID)
+			} else {
+				assert.Positive(t, user.ID)
+			}
+			assert.Equal(t, tt.wantUserName, user.Username)
+			assert.Equal(t, tt.wantFirstName, user.FirstName)
+			assert.Equal(t, tt.wantLastName, user.LastName)
 		}
 	}
 }
@@ -279,21 +272,21 @@ func TestUpdateUserGrade(t *testing.T) {
 			contextDuration: 2 * time.Second,
 			reqTelegramId:   222222,
 			reqGrade:        2,
-			wantErr:         ErrUserNotFound,
+			wantErr:         models.ErrUserNotFound,
 		},
 		{
 			name:            "context_canceled",
 			contextDuration: 2 * time.Second,
 			reqTelegramId:   123456,
 			reqGrade:        2,
-			wantErr:         ErrRequestCanceled,
+			wantErr:         models.ErrRequestCanceled,
 		},
 		{
 			name:            "context_timeout",
 			contextDuration: 1 * time.Nanosecond,
 			reqTelegramId:   123456,
 			reqGrade:        2,
-			wantErr:         ErrRequestTimeout,
+			wantErr:         models.ErrRequestTimeout,
 		},
 	}
 
@@ -305,7 +298,7 @@ func TestUpdateUserGrade(t *testing.T) {
 			cancel()
 		}
 
-		err := repo.UpdateUserGrade(ctx, tt.reqTelegramId, tt.reqGrade)
+		err := repoUser.UpdateUserGrade(ctx, tt.reqTelegramId, tt.reqGrade)
 		assert.ErrorIs(t, err, tt.wantErr, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
 	}
 }
@@ -330,21 +323,21 @@ func TestIsAdmin(t *testing.T) {
 			contextDuration: 2 * time.Second,
 			reqTelegramId:   222222,
 			wantAdmin:       false,
-			wantErr:         ErrUserNotFound,
+			wantErr:         models.ErrUserNotFound,
 		},
 		{
 			name:            "context_canceled",
 			contextDuration: 2 * time.Second,
 			reqTelegramId:   222222,
 			wantAdmin:       false,
-			wantErr:         ErrRequestCanceled,
+			wantErr:         models.ErrRequestCanceled,
 		},
 		{
 			name:            "context_timeout",
 			contextDuration: 1 * time.Nanosecond,
 			reqTelegramId:   222222,
 			wantAdmin:       false,
-			wantErr:         ErrRequestCanceled,
+			wantErr:         models.ErrRequestCanceled,
 		},
 	}
 
@@ -356,7 +349,7 @@ func TestIsAdmin(t *testing.T) {
 			cancel()
 		}
 
-		isAdmin, err := repo.IsAdmin(ctx, tt.reqTelegramId)
+		isAdmin, err := repoUser.IsAdmin(ctx, tt.reqTelegramId)
 		if tt.wantErr == nil {
 			assert.ErrorIs(t, err, tt.wantErr, "%s: actual: %v, expected: %v", tt.name, err, tt.wantErr)
 		} else {

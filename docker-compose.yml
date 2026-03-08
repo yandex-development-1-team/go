@@ -1,27 +1,69 @@
-version: '3.8'
+# Все сервисы в network_mode: host — без отдельной Docker-сети, всё на localhost (5432, 6379, 9090).
+# На Linux работает как ожидается; на macOS/Windows host-режим может отличаться.
 services:
   postgres:
     image: postgres:15-alpine
     container_name: bot_postgres
     restart: unless-stopped
-
+    network_mode: host
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-bot_db}
       POSTGRES_USER: ${POSTGRES_USER:-bot_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bot_password}
-
-    ports:
-      - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bot_user} -h 127.0.0.1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: bot_redis
+    restart: unless-stopped
+    network_mode: host
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  api:
+    build: .
+    image: request-bot:latest
+    container_name: bot_api
+    restart: unless-stopped
+    network_mode: host
+    profiles:
+      - api_only
+    environment:
+      RUN_MODE: api_only
+      CONFIG_FILE: /app/config/docker.yaml
+      POSTGRES_URL: "postgres://${POSTGRES_USER:-bot_user}:${POSTGRES_PASSWORD:-bot_password}@127.0.0.1:5432/${POSTGRES_DB:-bot_db}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  bot:
+    image: request-bot:latest
+    container_name: bot_app
+    restart: unless-stopped
+    network_mode: host
+    profiles:
+      - bot
+    environment:
+      CONFIG_FILE: /app/config/docker.yaml
+      BOT_TOKEN: ${BOT_TOKEN}
+      POSTGRES_URL: "postgres://${POSTGRES_USER:-bot_user}:${POSTGRES_PASSWORD:-bot_password}@127.0.0.1:5432/${POSTGRES_DB:-bot_db}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

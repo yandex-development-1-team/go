@@ -26,19 +26,26 @@ var (
 	apiRequests       *prometheus.CounterVec
 	bookingsTotal     *prometheus.CounterVec
 	databaseErrors    *prometheus.CounterVec
+	botRateLimit      prometheus.Counter
+	callbacksReceived *prometheus.CounterVec
+	callbacksErrors   *prometheus.CounterVec
+	redisErrors       *prometheus.CounterVec
 
 	// Histogram metrics
-	messageProcessingDuration *prometheus.HistogramVec
-	databaseQueryDuration     *prometheus.HistogramVec
+	messageProcessingDuration  *prometheus.HistogramVec
+	databaseQueryDuration      *prometheus.HistogramVec
+	callbackProcessingDuration *prometheus.HistogramVec
+	redisQueryDuration         *prometheus.HistogramVec
 
 	// Gauge metrics
 	activeUsers prometheus.GaugeVec
 
 	// Global app labels
-	appLabels     prometheus.Labels
-	labelNames    []string
-	dbLabelNames  []string
-	apiLabelNames []string
+	appLabels       prometheus.Labels
+	labelNames      []string
+	dbLabelNames    []string
+	redisLabelNames []string
+	apiLabelNames   []string
 
 	initOnce sync.Once
 )
@@ -59,6 +66,7 @@ func initializeMetrics(cfg *config.Config) {
 	}
 	labelNames = []string{"environment", "instance"}
 	dbLabelNames = append(labelNames, "operation")
+	redisLabelNames = append(labelNames, "operation")
 	apiLabelNames = append(labelNames, "method", "endpoint", "status")
 
 	// init Counter metrics
@@ -86,6 +94,22 @@ func initializeMetrics(cfg *config.Config) {
 		labelNames,
 	)
 
+	callbacksReceived = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: PREFIX + "callbacks_received_total",
+			Help: "Total callbacks received",
+		},
+		labelNames,
+	)
+
+	callbacksErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: PREFIX + "callbacks_errors_total",
+			Help: "Total errors during callback processing",
+		},
+		labelNames,
+	)
+
 	databaseQueries = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PREFIX + "database_queries_total",
@@ -100,6 +124,14 @@ func initializeMetrics(cfg *config.Config) {
 			Help: "Total database errors",
 		},
 		dbLabelNames,
+	)
+
+	redisErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: PREFIX + "redis_errors_total",
+			Help: "Total redis errors",
+		},
+		redisLabelNames,
 	)
 
 	apiRequests = prometheus.NewCounterVec(
@@ -118,11 +150,25 @@ func initializeMetrics(cfg *config.Config) {
 		labelNames,
 	)
 
+	botRateLimit = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: PREFIX + "rate_limit_hits_total",
+		Help: "Total hits of the bot request limit",
+	})
+
 	// init Histogram metrics
 	messageProcessingDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    PREFIX + "message_processing_duration_seconds",
 			Help:    "Time spent processing messages",
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		labelNames,
+	)
+
+	callbackProcessingDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    PREFIX + "callback_processing_duration_seconds",
+			Help:    "Time spent processing callbacks",
 			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		},
 		labelNames,
@@ -137,6 +183,15 @@ func initializeMetrics(cfg *config.Config) {
 		dbLabelNames,
 	)
 
+	redisQueryDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    PREFIX + "redis_query_duration_seconds",
+			Help:    "Time spent on redis queries",
+			Buckets: []float64{0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1},
+		},
+		redisLabelNames,
+	)
+
 	// init Gauge metrics
 	activeUsers = *prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -148,13 +203,18 @@ func initializeMetrics(cfg *config.Config) {
 	registry.MustRegister(messagesReceived)
 	registry.MustRegister(messagesProcessed)
 	registry.MustRegister(messagesErrors)
+	registry.MustRegister(callbacksReceived)
+	registry.MustRegister(callbacksErrors)
 	registry.MustRegister(databaseQueries)
 	registry.MustRegister(apiRequests)
 	registry.MustRegister(bookingsTotal)
 	registry.MustRegister(messageProcessingDuration)
+	registry.MustRegister(callbackProcessingDuration)
 	registry.MustRegister(databaseQueryDuration)
 	registry.MustRegister(databaseErrors)
 	registry.MustRegister(activeUsers)
+	registry.MustRegister(redisQueryDuration)
+	registry.MustRegister(redisErrors)
 
 	// standart metrics
 	registry.MustRegister(collectors.NewGoCollector())
@@ -167,7 +227,6 @@ func initializeMetrics(cfg *config.Config) {
 	})
 	up.Set(1)
 	registry.MustRegister(up)
-
 }
 
 func NewHandler() http.Handler {
@@ -198,6 +257,12 @@ func IncDatabaseErrors(operation string) {
 	databaseErrors.With(labels).Inc()
 }
 
+func IncCacheErrors(operation string) {
+	labels := maps.Clone(appLabels)
+	labels["operation"] = operation
+	redisErrors.With(labels).Inc()
+}
+
 func IncAPIRequests(method, endpoint, status string) {
 	labels := maps.Clone(appLabels)
 	labels["method"] = method
@@ -210,6 +275,10 @@ func IncBookingsTotal() {
 	bookingsTotal.With(appLabels).Inc()
 }
 
+func IncBotRateLimit() {
+	botRateLimit.Inc()
+}
+
 func ObserveMessageProcessingDuration(seconds float64) {
 	messageProcessingDuration.With(appLabels).Observe(seconds)
 }
@@ -220,6 +289,24 @@ func ObserveDatabaseQueryDuration(operation string, seconds float64) {
 	databaseQueryDuration.With(labels).Observe(seconds)
 }
 
+func ObserveCacheSetDuration(operation string, seconds float64) {
+	labels := maps.Clone(appLabels)
+	labels["operation"] = operation
+	redisQueryDuration.With(labels).Observe(seconds)
+}
+
 func SetActiveUsers(count int) {
 	activeUsers.With(appLabels).Set(float64(count))
+}
+
+func IncCallbacksReceived() {
+	callbacksReceived.With(appLabels).Inc()
+}
+
+func IncCallbacksErrors() {
+	callbacksErrors.With(appLabels).Inc()
+}
+
+func ObserveCallbackProcessingDuration(seconds float64) {
+	callbackProcessingDuration.With(appLabels).Observe(seconds)
 }

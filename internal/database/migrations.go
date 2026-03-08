@@ -3,41 +3,73 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/pressly/goose/v3"
+	"github.com/yandex-development-1-team/go/internal/logger"
+	"go.uber.org/zap"
 )
 
 // RunMigrations применяет миграции и логирует результат
 func RunMigrations(db *sql.DB) error {
-
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("failed to set goose dialect: %w", err)
 	}
 
-	// Логируем текущую версию БД
+	// Получаем текущую версию БД
 	versionBefore, err := goose.GetDBVersion(db)
 	if err != nil {
 		return fmt.Errorf("failed to get DB version: %w", err)
 	}
-	log.Printf("Current database version: %d", versionBefore)
-
-	// Применяем миграции
-	err = goose.Up(db, "migrations")
+	logger.Info("Current database version",
+		zap.Int64("version", versionBefore),
+	)
+	// Собираем все миграции для подсчёта ожидающих
+	migrations, err := goose.CollectMigrations("migrations", 0, goose.MaxVersion)
 	if err != nil {
-		return fmt.Errorf("failed to apply migrations: %w", err)
+		return fmt.Errorf("failed to collect migrations: %w", err)
 	}
 
-	// Логируем финальную версию и считаем применённые миграции
-	versionAfter, err := goose.GetDBVersion(db)
-	if err != nil {
-		return fmt.Errorf("failed to get DB version: %w", err)
+	// Считаем количество миграций, которые новее текущей версии
+	pendingCount := 0
+	for _, m := range migrations {
+		if m.Version > versionBefore {
+			pendingCount++
+		}
 	}
 
-	// Количество применённых миграций = разница версий
-	appliedCount := versionAfter - versionBefore
-	log.Printf("Applied %d migration(s)", appliedCount)
-	log.Printf("Final database version: %d", versionAfter)
+	// Если есть ожидающие миграции — применяем и логируем
+	if pendingCount > 0 {
+		logger.Info("Found pending migrations",
+			zap.Int("count", pendingCount),
+		)
+
+		if err := goose.Up(db, "migrations"); err != nil {
+			logger.Error("Failed to apply migrations",
+				zap.Error(err),
+			)
+			return fmt.Errorf("failed to apply migrations: %w", err)
+		}
+
+		// Получаем новую версию
+		versionAfter, err := goose.GetDBVersion(db)
+		if err != nil {
+			logger.Error("Failed to get DB version after migration",
+				zap.Error(err),
+			)
+			return fmt.Errorf("failed to get DB version: %w", err)
+		}
+
+		// Логируем точное количество применённых миграций
+		logger.Info("Migrations applied successfully",
+			zap.Int("applied_count", pendingCount),
+			zap.Int64("version_before", versionBefore),
+			zap.Int64("version_after", versionAfter),
+		)
+	} else {
+		logger.Info("Database is up to date",
+			zap.Int64("version", versionBefore),
+		)
+	}
 
 	return nil
 }
