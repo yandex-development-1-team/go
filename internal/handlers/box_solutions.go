@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"context"
+	"time"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/service"
 	service_models "github.com/yandex-development-1-team/go/internal/service/models"
 	"go.uber.org/zap"
-	"time"
 )
 
 const (

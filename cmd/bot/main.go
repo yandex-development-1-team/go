@@ -4,11 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/jmoiron/sqlx"
-	"github.com/yandex-development-1-team/go/internal/api/handlers"
-	admin_repository "github.com/yandex-development-1-team/go/internal/repository/postgres"
-	admin_service "github.com/yandex-development-1-team/go/internal/service/api"
+	apiRepository "github.com/yandex-development-1-team/go/internal/repository/postgres"
 	"log"
 	"net/http"
 	"os/signal"
@@ -16,15 +12,19 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+
+	"github.com/yandex-development-1-team/go/internal/api/server"
 	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
 	"github.com/yandex-development-1-team/go/internal/service"
+	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
-	"github.com/yandex-development-1-team/go/internal/handlers"
+	apiHandlers "github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
 	"github.com/yandex-development-1-team/go/internal/shutdown"
@@ -54,7 +54,7 @@ func run() error {
 	metrics.Initialize(cfg)
 
 	// init database connection for migrations
-	db, err := sql.Open("postgres", cfg.PostgresURL)
+	db, err := sql.Open("postgres", cfg.DB.PostgresURL)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -75,6 +75,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("init redis client: %w", err)
 	}
+	defer redisClient.Close()
 
 	// init telegram bot
 	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
@@ -108,33 +109,24 @@ func run() error {
 	}
 	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
-	// TODO: init API server
-	/*apiMux := http.NewServeMux()
-	// apiMux.HandleFunc("/", handlers.APIHandler)
-	apiServer := &http.Server{
-		Addr:    ":8080",
-		Handler: apiMux,
-	}*/
-
 	rep := repository.NewRepository(dbSqlx)
 	repMock := mocks.NewMockClient(cfg.MockLocalDir)
 
-	adminSettingsRep := admin_repository.NewSettingsRep(dbSqlx)
-	adminSettingsService := admin_service.NewSettingsService(adminSettingsRep)
-	adminSettingsHandler := admin.NewSettingsHandler(adminSettingsService)
+	adminSettingsRep := apiRepository.NewSettingsRep(dbSqlx)
+	adminSettingsService := apiService.NewSettingsService(adminSettingsRep)
 
-	//TODO когда будет сервер от Алексея, мой код с сервером под удаление. Использовала для отладки задачи. Начало кода:
-	r := gin.Default()
-
-	api := r.Group("/api/v1")
-	{
-		api.GET("/settings", adminSettingsHandler.Get)
-	}
-
-	if err := r.Run(fmt.Sprintf(":%d", cfg.Port)); err != nil {
-		log.Fatalf("failed to run server: %v", err)
-	}
-	//TODO конец кода для удаления
+	////TODO когда будет сервер от Алексея, мой код с сервером под удаление. Использовала для отладки задачи. Начало кода:
+	//r := gin.Default()
+	//
+	//api := r.Group("/api/v1")
+	//{
+	//	api.GET("/settings", adminSettingsHandler.Get)
+	//}
+	//
+	//if err := r.Run(fmt.Sprintf(":%d", cfg.Port)); err != nil {
+	//	log.Fatalf("failed to run server: %v", err)
+	//}
+	////TODO конец кода для удаления
 
 	// run metrics server
 	go func() {
@@ -151,21 +143,44 @@ func run() error {
 		bsService = service.NewBoxSolutionsService(rep)
 	}
 
-	startHandler := handlers.NewStartHandler(tgBot, rep)
-	boxSolutionsHandler := handlers.NewBoxSolutions(tgBot, bsService)
+	startHandler := apiHandlers.NewStartHandler(tgBot, rep)
+	boxSolutionsHandler := apiHandlers.NewBoxSolutions(tgBot, bsService)
 
 	// init handler
-	handler := handlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
+	handler := apiHandlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
 	logger.Info("bot has been started",
 		zap.String("environment", cfg.Environment),
 		zap.String("log_level", cfg.LogLevel),
 	)
 
+	apiBoxService := apiService.NewAPIBoxService()
+
+	var wg sync.WaitGroup
+
+	// Creating an API server
+	apiServer := server.New(cfg.Environment, &server.APIServices{
+		BoxService:      apiBoxService,
+		SettingsService: adminSettingsService,
+	})
+
+	// Registering routes
+	// Сервисов будет много, поэтому и обернул в структуру, иначе слишком много параметров получится
+	apiServer.RegisterRoutes()
+
+	// Launching API server
+	go func() {
+		wg.Go(func() {
+			if err := apiServer.Run(&cfg); err != nil {
+				logger.Error("failed to start the server", zap.Error(err))
+			}
+			logger.Info("server has been started", zap.Int("port", cfg.Port))
+		})
+	}()
+
 	// get channel with updates
-	updates := tgBot.GetUpdates(30 * time.Second) // TODO: перенести в конфиг
+	updates := tgBot.GetUpdates(30 * time.Second)
 
 	// handle updates
-	var wg sync.WaitGroup
 	go func() {
 		for update := range updates {
 			wg.Go(func() {
@@ -184,7 +199,7 @@ func run() error {
 	defer cancel()
 
 	// shutdown bot and servers (this closes updates channel)
-	shutdown := shutdown.NewShutdownHandler(tgBot, nil, metricsServer)
+	shutdown := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient)
 	if err := shutdown.WaitForShutdown(ctxTimeout); err != nil {
 		return fmt.Errorf("failed to shutdown: %w", err)
 	}

@@ -1,6 +1,5 @@
 telegram_bot_token:  # будет переопределено BOT_TOKEN
 telegram_bot_api_url: "https://api.telegram.org"
-postgres_url: "postgres://user:pass@localhost:5432/bot_db"
 port: 8080
 environment: "dev"
 prometheus_port: 9090
@@ -10,8 +9,15 @@ cache_size_rps: 128 # total number of maximum limiters in cache
 log_level: "info"
 host_name: "host"
 
+db:
+  name: "postgres"
+  user: "postgres"
+  password: "postgres"
+  ssl_mode: "disable"
+  host_port: "localhost:5432"
+
 redis:
-  addr: "localhost:6379"
+  addr: "redis:6379" # Redis address: 'localhost:6379' for local, or '<docker_service_name>:6379' for Docker
   password: ""
   db: 0
 
