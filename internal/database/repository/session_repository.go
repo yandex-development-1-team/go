@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/models"
 )

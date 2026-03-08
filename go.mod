@@ -1,3 +1,5 @@
+// Прямые зависимости (без // indirect) используются в коде или тестах.
+// indirect — транзитивные (подтягиваются другими пакетами). После изменений: go mod tidy
 module github.com/yandex-development-1-team/go
 
 go 1.26

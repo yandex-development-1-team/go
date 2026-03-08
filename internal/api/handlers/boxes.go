@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
+
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 

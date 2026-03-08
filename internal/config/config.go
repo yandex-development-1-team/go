@@ -28,6 +28,17 @@ type Config struct {
 	ApiRPS            float64        `mapstructure:"api_rps"`
 	CacheSizeRPS      int            `mapstructure:"cache_size_rps"`
 	GetUpdatesTimeout time.Duration  `mapstructure:"get_updates_timeout"`
+	CORS              CORSConfig     `mapstructure:"cors"`
+}
+
+// CORSConfig — настройки CORS для HTTP API.
+type CORSConfig struct {
+	AllowOrigin      string `mapstructure:"allow_origin"`      // например "*" или "https://app.example.com"
+	AllowMethods     string `mapstructure:"allow_methods"`     // "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+	AllowHeaders     string `mapstructure:"allow_headers"`     // заголовки запроса
+	ExposeHeaders    string `mapstructure:"expose_headers"`    // заголовки, доступные клиенту в ответе
+	AllowCredentials string `mapstructure:"allow_credentials"` // "true" / "false"
+	MaxAge           string `mapstructure:"max_age"`           // кэш preflight в секундах, например "86400"
 }
 
 type DatabaseConfig struct {
@@ -65,16 +76,22 @@ type SessionConfig struct {
 	TTL time.Duration `mapstructure:"ttl"`
 }
 
+// DefaultConfigPaths — каталоги поиска конфига, если не задан CONFIG_FILE.
+var DefaultConfigPaths = []string{"config", "."}
+
 var (
 	appCfg   Config
 	loadOnce sync.Once
 	loadErr  error
 )
 
+// GetConfig загружает конфиг. paths — каталоги или путь к файлу; если пусто, берётся CONFIG_FILE или DefaultConfigPaths.
 func GetConfig(paths []string) (Config, error) {
 	loadOnce.Do(func() {
 		if p := os.Getenv("CONFIG_FILE"); p != "" {
 			paths = []string{p}
+		} else if len(paths) == 0 {
+			paths = DefaultConfigPaths
 		}
 		cfg, err := loadConfig(paths)
 		if err != nil {
@@ -165,6 +182,13 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("session.ttl", "24h")
 	v.SetDefault("get_updates_timeout", "30s")
+
+	v.SetDefault("cors.allow_origin", "*")
+	v.SetDefault("cors.allow_methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+	v.SetDefault("cors.allow_headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+	v.SetDefault("cors.expose_headers", "Content-Length, Content-Type, Date, X-Total-Count")
+	v.SetDefault("cors.allow_credentials", "true")
+	v.SetDefault("cors.max_age", "86400")
 }
 
 func bindEnvs(v *viper.Viper) {
@@ -190,6 +214,13 @@ func bindEnvs(v *viper.Viper) {
 	v.BindEnv("mock_client_enabled", "MOCK_CLIENT_ENABLED")
 	v.BindEnv("mock_local_dir", "MOCK_LOCAL_DIR")
 	v.BindEnv("get_updates_timeout", "GET_UPDATES_TIMEOUT")
+
+	v.BindEnv("cors.allow_origin", "CORS_ALLOW_ORIGIN")
+	v.BindEnv("cors.allow_methods", "CORS_ALLOW_METHODS")
+	v.BindEnv("cors.allow_headers", "CORS_ALLOW_HEADERS")
+	v.BindEnv("cors.expose_headers", "CORS_EXPOSE_HEADERS")
+	v.BindEnv("cors.allow_credentials", "CORS_ALLOW_CREDENTIALS")
+	v.BindEnv("cors.max_age", "CORS_MAX_AGE")
 }
 
 func validateConfig(config *Config) error {

@@ -29,21 +29,44 @@ clean:
 	$(GOCLEAN)
 	rm -rf $(SRC_DIR)/bin
 	
-## test: running tests
+## test: running unit tests (без интеграционных)
 test:
-	$(GOTEST) ./... -v -cover -count=1
+	$(GOTEST) ./... -v -count=1
 
-## fmt: Format the source code
+## test-integration: интеграционные тесты (testcontainers: Postgres и т.д.). То же вызывается в CI.
+test-integration:
+	$(GOTEST) -tags=integration ./... -v -count=1 -timeout=15m
+
+# Local module path for goimports grouping
+IMPORT_LOCAL=github.com/yandex-development-1-team/go
+
+GO_FILES=$(shell find . -name '*.go' -not -path './bot/*' 2>/dev/null)
+
+## fmt: Format the source code (gofmt)
 fmt:
-	$(GO) fmt ./...
+	@gofmt -w $(GO_FILES)
+
+## imports: Sort and group imports (goimports)
+imports:
+	@$(GORUN) golang.org/x/tools/cmd/goimports@latest -w -local $(IMPORT_LOCAL) $(GO_FILES)
 
 ## vet: Check the code for suspicious structures
 vet:
 	$(GO) vet ./...
 
-## lint: Launch the linter (golangci-lint)
+## lint: Run golangci-lint (нужна сборка под Go 1.26; в CI используется action с нужной версией)
 lint:
-	golangci-lint run ./...
+	golangci-lint run ./... --timeout=5m
+
+## check: Verify formatting and imports (CI check, fails if not applied)
+check: check-fmt check-imports vet
+	@echo "check: fmt, imports, vet OK"
+
+check-fmt:
+	@out=$$(gofmt -l $(GO_FILES)); [ -z "$$out" ] || { echo "gofmt -l: unformatted files:"; echo "$$out"; exit 1; }
+
+check-imports:
+	@out=$$($(GORUN) golang.org/x/tools/cmd/goimports@latest -l -local $(IMPORT_LOCAL) $(GO_FILES)); [ -z "$$out" ] || { echo "goimports -l: files with import issues:"; echo "$$out"; exit 1; }
 
 
 migration:

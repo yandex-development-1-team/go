@@ -4,28 +4,29 @@ import (
 	"context"
 	"database/sql"
 	"github.com/lib/pq"
-	dbmodels "github.com/yandex-development-1-team/go/internal/database/repository/models"
-	"github.com/yandex-development-1-team/go/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-func (r Repository) GetServices(ctx context.Context, telegramID int64) ([]dbmodels.Service, error) {
-	query := `
-        SELECT 
-            s.id,
-            s.name,
-            s.description,
-            s.rules,
-            s.schedule,
-            s.type,
-            s.box_solution,
-            a.slot_date,
-            COALESCE(a.time_slots, '{}') as time_slots
-        FROM services s
-        LEFT JOIN service_available_slots a ON s.id = a.service_id
-        WHERE s.box_solution = true
-        ORDER BY s.id, a.slot_date
-    `
+const getServicesQuery = `
+SELECT
+    s.id,
+    s.name,
+    s.description,
+    s.rules,
+    s.schedule,
+    s.type,
+    s.box_solution,
+    a.slot_date,
+    COALESCE(a.time_slots, '{}') AS time_slots
+FROM services s
+LEFT JOIN service_available_slots a ON s.id = a.service_id
+WHERE s.box_solution = true
+ORDER BY s.id, a.slot_date`
+
+func (r Repository) GetServices(ctx context.Context, telegramID int64) ([]models.Service, error) {
 
 	type service struct {
 		ID          int64          `db:"id"`
@@ -39,18 +40,18 @@ func (r Repository) GetServices(ctx context.Context, telegramID int64) ([]dbmode
 		TimeSlots   pq.StringArray `db:"time_slots"`
 	}
 
-	return withMetricsValue("get_services", func() ([]dbmodels.Service, error) {
+	return withMetricsValue("get_services", func() ([]models.Service, error) {
 		var bsServices []service
-		if err := r.client.SelectContext(ctx, &bsServices, query); err != nil {
+		if err := r.client.SelectContext(ctx, &bsServices, getServicesQuery); err != nil {
 			logger.Error("failed to get box solutions from db", zap.Int64("chat_id", telegramID), zap.Error(err))
 			return nil, err
 		}
 
-		bsServicesMap := make(map[int64]*dbmodels.Service)
+		bsServicesMap := make(map[int64]*models.Service)
 		for _, bsService := range bsServices {
 			boxSolutionService, exists := bsServicesMap[bsService.ID]
 			if !exists {
-				boxSolutionService = &dbmodels.Service{
+				boxSolutionService = &models.Service{
 					ID:             bsService.ID,
 					Name:           bsService.Name,
 					Description:    bsService.Description.String,
@@ -58,19 +59,19 @@ func (r Repository) GetServices(ctx context.Context, telegramID int64) ([]dbmode
 					Schedule:       bsService.Schedule.String,
 					Type:           bsService.Type.String,
 					BoxSolution:    bsService.BoxSolution,
-					AvailableSlots: []dbmodels.AvailableSlot{},
+					AvailableSlots: []models.AvailableSlot{},
 				}
 				bsServicesMap[bsService.ID] = boxSolutionService
 			}
 			if bsService.SlotDate.Valid {
-				boxSolutionService.AvailableSlots = append(boxSolutionService.AvailableSlots, dbmodels.AvailableSlot{
+				boxSolutionService.AvailableSlots = append(boxSolutionService.AvailableSlots, models.AvailableSlot{
 					Date:      bsService.SlotDate.Time.Format("2006-01-02"),
 					TimeSlots: bsService.TimeSlots,
 				})
 			}
 		}
 
-		services := make([]dbmodels.Service, 0, len(bsServicesMap))
+		services := make([]models.Service, 0, len(bsServicesMap))
 		for _, boxSolutionService := range bsServicesMap {
 			services = append(services, *boxSolutionService)
 		}

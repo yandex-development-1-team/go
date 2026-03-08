@@ -7,8 +7,15 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/yandex-development-1-team/go/internal/models"
 )
+
+const getUserByEmailQuery = `
+SELECT id, username, first_name, last_name, email,
+       role, status, permissions, password_hash, created_at, updated_at
+FROM users
+WHERE email = $1`
 
 type UserRepo struct {
 	db *sqlx.DB
@@ -21,17 +28,8 @@ func NewUserRepo(db *sqlx.DB) *UserRepo {
 }
 
 func (u *UserRepo) GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error) {
-	//operation := "get_user"
-	//return withMetricsValue(operation, func() (*models.UserWithAuth, error) {
-
-	query := `
-    SELECT id, username, first_name, last_name, email, 
-           role, status, permissions, password_hash, created_at, updated_at
-    FROM users
-    WHERE email = $1`
-
 	var user userRow
-	err := u.db.GetContext(ctx, &user, query, email)
+	err := u.db.GetContext(ctx, &user, getUserByEmailQuery, email)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, models.ErrUserNotFound
 	}

@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/yandex-development-1-team/go/internal/models"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/yandex-development-1-team/go/internal/models"
 )
 
 type Claims struct {

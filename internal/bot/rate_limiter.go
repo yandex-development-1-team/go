@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/yandex-development-1-team/go/internal/logger"
-	"github.com/yandex-development-1-team/go/internal/metrics"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
+
+	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/metrics"
 )
 
 type ApiRateLimiter struct {

@@ -4,8 +4,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yandex-development-1-team/go/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/yandex-development-1-team/go/internal/logger"
 )
 
 // Logger logs incoming HTTP requests

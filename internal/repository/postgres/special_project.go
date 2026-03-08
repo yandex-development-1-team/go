@@ -8,7 +8,19 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
-	"github.com/yandex-development-1-team/go/internal/repository/models"
+
+	"github.com/yandex-development-1-team/go/internal/models"
+)
+
+const (
+	insertSpecialProjectQuery = `
+		INSERT INTO special_projects (title, description, image, is_active_in_bot)
+		VALUES (:title, :description, :image, :is_active_in_bot)
+		RETURNING id, title, description, image, is_active_in_bot, created_at, updated_at`
+
+	getSpecialProjectByIDQuery = `SELECT * FROM special_projects WHERE id = $1`
+
+	listSpecialProjectsBaseQuery = `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
 )
 
 type specialProjectRepo struct {
@@ -20,13 +32,7 @@ func NewSpecialProjectRepository(db *sqlx.DB) *specialProjectRepo {
 }
 
 func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
-	query := `
-		INSERT INTO special_projects (title, description, image, is_active_in_bot)
-		VALUES (:title, :description, :image, :is_active_in_bot)
-		RETURNING id, title, description, image, is_active_in_bot, created_at, updated_at
-	`
-
-	err := r.db.QueryRowxContext(ctx, query, proj).StructScan(proj)
+	err := r.db.QueryRowxContext(ctx, insertSpecialProjectQuery, proj).StructScan(proj)
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" { // duplicate key
 			return nil, fmt.Errorf("special project already exists: %w", err)
@@ -38,10 +44,8 @@ func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialPro
 }
 
 func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
-	query := `SELECT * FROM special_projects WHERE id = $1`
 	var proj models.SpecialProjectDB
-
-	err := r.db.GetContext(ctx, &proj, query, id)
+	err := r.db.GetContext(ctx, &proj, getSpecialProjectByIDQuery, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrSpecProjNotFound
@@ -52,8 +56,7 @@ func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*models.Spe
 }
 
 func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*models.SpecialProjectDB, error) {
-	// Base query selecting only required fields for the list endpoint
-	baseQuery := `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
+	baseQuery := listSpecialProjectsBaseQuery
 	args := make(map[string]interface{})
 
 	// Apply status filter if provided

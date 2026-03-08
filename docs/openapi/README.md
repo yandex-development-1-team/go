@@ -12,4 +12,4 @@
 - **Восстановление пароля:** `POST /api/v1/auth/forgot-password` (email), `POST /api/v1/auth/reset-password` (token + new_password).
 - **Пользователи:** `role`: `admin` | `manager`; `status`: `active` | `blocked` | `invited`.
 
-Исходная спецификация в JSON: `../box.json`.
+- **Спецификация API:** `../openapi.json` — полная OAS 3.0 в одном файле; по ней сверяются роуты и типы в коде.

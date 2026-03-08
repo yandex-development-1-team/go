@@ -1,16 +1,14 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yandex-development-1-team/go/internal/dto"
-	"github.com/yandex-development-1-team/go/internal/logger"
-	"github.com/yandex-development-1-team/go/internal/service/models"
-	"go.uber.org/zap"
 
+	"github.com/yandex-development-1-team/go/internal/apierrors"
+	"github.com/yandex-development-1-team/go/internal/dto"
+	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/service"
 )
 
@@ -69,34 +67,14 @@ func fromDomainList(domain []models.SpecialProject) []dto.SpecialProjectListItem
 func (h *SpecialProjectHandler) CreateSpecialProject(c *gin.Context) {
 	var req dto.SpecialProjectCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_error", "details": err.Error()})
-		return
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.Error("Validation error: %v", zap.Error(err))
-
-		response := ErrorResponse{
-			Error: ErrorObject{
-				Code:    http.StatusText(http.StatusBadRequest),
-				Message: "One or more fields failed validation.",
-			},
-		}
-		c.JSON(http.StatusBadRequest, response)
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректные данные"})
 		return
 	}
 
 	proj := toDomain(&req)
-
 	project, err := h.svc.Create(c.Request.Context(), proj)
 	if err != nil {
-		response := ErrorResponse{
-			Error: ErrorObject{
-				Code:    http.StatusText(http.StatusInternalServerError),
-				Message: "internal_server_error",
-			},
-		}
-		c.JSON(http.StatusInternalServerError, response)
+		apierrors.WriteErrorGin(c, err)
 		return
 	}
 
@@ -110,19 +88,13 @@ func (h *SpecialProjectHandler) ListSpecialProjects(c *gin.Context) {
 	search := c.Query("search")
 
 	if status != "" && status != "active" && status != "inactive" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_status"})
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Недопустимый статус"})
 		return
 	}
 
 	domainlist, err := h.svc.List(c.Request.Context(), status, search)
 	if err != nil {
-		response := ErrorResponse{
-			Error: ErrorObject{
-				Code:    http.StatusText(http.StatusInternalServerError),
-				Message: "internal_server_error",
-			},
-		}
-		c.JSON(http.StatusInternalServerError, response)
+		apierrors.WriteErrorGin(c, err)
 		return
 	}
 
@@ -136,30 +108,13 @@ func (h *SpecialProjectHandler) GetSpecialProjectByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_id"})
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный идентификатор"})
 		return
 	}
 
 	project, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-
-			response := ErrorResponse{
-				Error: ErrorObject{
-					Code:    http.StatusText(http.StatusNotFound),
-					Message: "not_found",
-				},
-			}
-			c.JSON(http.StatusInternalServerError, response)
-			return
-		}
-		response := ErrorResponse{
-			Error: ErrorObject{
-				Code:    http.StatusText(http.StatusInternalServerError),
-				Message: "internal_server_error",
-			},
-		}
-		c.JSON(http.StatusInternalServerError, response)
+		apierrors.WriteErrorGin(c, err)
 		return
 	}
 

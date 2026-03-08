@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yandex-development-1-team/go/internal/database/repository/models"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/yandex-development-1-team/go/internal/logger"
+
 	"go.uber.org/zap"
+
+	"github.com/yandex-development-1-team/go/internal/models"
+
+	"github.com/yandex-development-1-team/go/internal/logger"
 )
 
 const VessagesErrData = "❌ К сожалению, не удалось загрузить информацию об услуге. Пожалуйста, попробуйте позже."
@@ -86,22 +88,20 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 
 func convertDBServiceModelToHandlerModel(dbServiceModel models.Service) Service {
 	var scheduleSlots []AvailableSlot
-	for _, availableSlotDB := range dbServiceModel.AvailableSlots {
-		availableSlot := AvailableSlot{
-			Date:      availableSlotDB.Date,
-			TimeSlots: availableSlotDB.TimeSlots,
-		}
-
-		scheduleSlots = append(scheduleSlots, availableSlot)
+	for _, slot := range dbServiceModel.AvailableSlots {
+		scheduleSlots = append(scheduleSlots, AvailableSlot{
+			Date:      slot.Date,
+			TimeSlots: slot.TimeSlots,
+		})
 	}
-
 	return Service{
-		ID:          dbServiceModel.ID,
-		Name:        dbServiceModel.Name,
-		Description: dbServiceModel.Description,
-		Rules:       dbServiceModel.Rules,
-		Schedule:    dbServiceModel.Schedule,
-		Type:        ServiceType(dbServiceModel.Type),
+		ID:             dbServiceModel.ID,
+		Name:           dbServiceModel.Name,
+		Description:    dbServiceModel.Description,
+		Rules:          dbServiceModel.Rules,
+		Schedule:       dbServiceModel.Schedule,
+		Type:           ServiceType(dbServiceModel.Type),
+		AvailableSlots: scheduleSlots,
 	}
 }
 

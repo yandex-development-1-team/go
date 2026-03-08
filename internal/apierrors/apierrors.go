@@ -5,86 +5,84 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/service"
 )
 
-// Пакет предназначен для использования из middleware: middleware восстанавливает
-// error из контекста или из recover и вызывает WriteError(w, err), получая код
-// через HTTPStatus(err) и тело в формате ServiceErrorResponse.
+// Пакет предназначен для использования из Gin-хендлеров и middleware.
+// В хендлерах удобнее вызывать WriteErrorGin(c, err) / WriteErrorMessagesGin(c, code, messages) —
+// они делают c.Abort() и пишут ответ в формате ServiceErrorResponse.
+// Middleware или код без *gin.Context могут использовать WriteError(w, err), передавая w (например c.Writer).
 
 // ServiceErrorResponse — единый формат тела ответа при ошибке (список сообщений).
 type ServiceErrorResponse struct {
 	Errors []string `json:"errors"`
 }
 
-// HTTPStatus возвращает HTTP-код для доменной ошибки. Вызывается из middleware
-// при обработке ошибки хендлера. Неизвестные ошибки → 500.
+// errMapping связывает доменную ошибку с HTTP-кодом и сообщением для клиента.
+type errMapping struct {
+	err     error
+	status  int
+	message string
+}
+
+// errMappings — единая таблица «ошибка → статус + сообщение». Порядок важен: первое совпадение.
+var errMappings = []errMapping{
+	{models.ErrUnauthorized, http.StatusUnauthorized, "Требуется авторизация"},
+	{models.ErrForbidden, http.StatusForbidden, "Недостаточно прав"},
+	{models.ErrUserBlocked, http.StatusForbidden, "Учётная запись заблокирована"},
+	{models.ErrInvalidCredentials, http.StatusUnauthorized, "Неверный логин или пароль"},
+	{models.ErrUserNotFound, http.StatusNotFound, "Пользователь не найден"},
+	{models.ErrBookingNotFound, http.StatusNotFound, "Заявка не найдена"},
+	{models.ErrSpecProjNotFound, http.StatusNotFound, "Спецпроект не найден"},
+	{service.ErrNotFound, http.StatusNotFound, "Спецпроект не найден"},
+	{models.ErrSlotOccupied, http.StatusConflict, "Выбранный слот уже занят"},
+	{models.ErrInvalidInput, http.StatusBadRequest, "Некорректные данные"},
+	{models.ErrRequestCanceled, 499, "Запрос отменён"},
+	{models.ErrRequestTimeout, http.StatusGatewayTimeout, "Превышено время ожидания"},
+	{models.ErrDatabase, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
+	{models.ErrCache, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
+}
+
+const defaultMessage = "Произошла ошибка. Попробуйте позже."
+
+// HTTPStatus возвращает HTTP-код для доменной ошибки. Неизвестные ошибки → 500.
 func HTTPStatus(err error) int {
 	if err == nil {
 		return http.StatusOK
 	}
-	switch {
-	case errors.Is(err, models.ErrUnauthorized):
-		return http.StatusUnauthorized // 401
-	case errors.Is(err, models.ErrForbidden):
-		return http.StatusForbidden // 403
-	case errors.Is(err, models.ErrUserNotFound), errors.Is(err, models.ErrBookingNotFound):
-		return http.StatusNotFound // 404
-	case errors.Is(err, models.ErrSlotOccupied):
-		return http.StatusConflict // 409
-	case errors.Is(err, models.ErrInvalidInput):
-		return http.StatusBadRequest // 400
-	case errors.Is(err, models.ErrRequestCanceled):
-		return 499 // Client Closed Request
-	case errors.Is(err, models.ErrRequestTimeout):
-		return http.StatusGatewayTimeout // 504
-	case errors.Is(err, models.ErrDatabase), errors.Is(err, models.ErrCache):
-		return http.StatusInternalServerError // 500
-	default:
-		return http.StatusInternalServerError
+	for _, m := range errMappings {
+		if errors.Is(err, m.err) {
+			return m.status
+		}
 	}
+	return http.StatusInternalServerError
 }
 
-// Messages возвращает список человекочитаемых сообщений для ответа. SQL и внутренние детали не включаются.
+// Messages возвращает список человекочитаемых сообщений для ответа.
 func Messages(err error) []string {
 	if err == nil {
 		return nil
 	}
 	msg := messageFor(err)
 	if msg == "" {
-		msg = "Произошла ошибка. Попробуйте позже."
+		msg = defaultMessage
 	}
 	return []string{msg}
 }
 
 func messageFor(err error) string {
-	switch {
-	case errors.Is(err, models.ErrUnauthorized):
-		return "Требуется авторизация"
-	case errors.Is(err, models.ErrForbidden):
-		return "Недостаточно прав"
-	case errors.Is(err, models.ErrUserNotFound):
-		return "Пользователь не найден"
-	case errors.Is(err, models.ErrBookingNotFound):
-		return "Заявка не найдена"
-	case errors.Is(err, models.ErrSlotOccupied):
-		return "Выбранный слот уже занят"
-	case errors.Is(err, models.ErrInvalidInput):
-		return "Некорректные данные"
-	case errors.Is(err, models.ErrRequestCanceled):
-		return "Запрос отменён"
-	case errors.Is(err, models.ErrRequestTimeout):
-		return "Превышено время ожидания"
-	case errors.Is(err, models.ErrDatabase), errors.Is(err, models.ErrCache):
-		return "Внутренняя ошибка сервиса"
-	default:
-		return ""
+	for _, m := range errMappings {
+		if errors.Is(err, m.err) {
+			return m.message
+		}
 	}
+	return ""
 }
 
-// WriteError записывает в w ответ с единым форматом { "errors": ["..."] } и корректным статус-кодом.
-// Предполагается вызов из middleware: middleware вызывает WriteError(w, err) для ошибки,
-// полученной от хендлера. Детали БД/SQL не возвращаются.
+// WriteError записывает в w ответ с форматом { "errors": ["..."] } и корректным статус-кодом.
 func WriteError(w http.ResponseWriter, err error) {
 	code := HTTPStatus(err)
 	messages := Messages(err)
@@ -94,9 +92,26 @@ func WriteError(w http.ResponseWriter, err error) {
 // WriteErrorMessages записывает в w ответ с заданным кодом и списком сообщений.
 func WriteErrorMessages(w http.ResponseWriter, code int, messages []string) {
 	if len(messages) == 0 {
-		messages = []string{"Произошла ошибка. Попробуйте позже."}
+		messages = []string{defaultMessage}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(ServiceErrorResponse{Errors: messages})
+}
+
+// WriteErrorGin прерывает цепочку Gin и отправляет ошибку в формате ServiceErrorResponse.
+// Для использования в Gin-хендлерах: apierrors.WriteErrorGin(c, err); return
+func WriteErrorGin(c *gin.Context, err error) {
+	c.Abort()
+	WriteError(c.Writer, err)
+}
+
+// WriteErrorMessagesGin прерывает цепочку Gin и отправляет ответ с заданным кодом и списком сообщений.
+// Пустой messages обрабатывается так же, как в WriteErrorMessages — подставляется defaultMessage.
+func WriteErrorMessagesGin(c *gin.Context, code int, messages []string) {
+	c.Abort()
+	if len(messages) == 0 {
+		messages = []string{defaultMessage}
+	}
+	WriteErrorMessages(c.Writer, code, messages)
 }

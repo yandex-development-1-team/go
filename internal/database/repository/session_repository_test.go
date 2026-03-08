@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -11,7 +12,15 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/yandex-development-1-team/go/internal/config"
+	"github.com/yandex-development-1-team/go/internal/metrics"
 )
+
+func TestMain(m *testing.M) {
+	metrics.Initialize(config.Config{Environment: "test", HostName: "session-test"})
+	os.Exit(m.Run())
+}
 
 // newTestRepo spins up an isolated miniredis instance and returns a ready-to-use repository.
 // Each test gets a clean instance — no shared state between tests.

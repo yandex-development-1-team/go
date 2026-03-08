@@ -1,7 +1,7 @@
 # ============================================
 # Builder Stage - компиляция Go приложения
 # ============================================
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Устанавливаем рабочую директорию
 WORKDIR /build

@@ -5,10 +5,11 @@ import (
 	"errors"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
 	"github.com/yandex-development-1-team/go/internal/models"
-	"go.uber.org/zap"
 )
 
 func withMetricsValue[T any](operation string, repo func() (T, error)) (T, error) {

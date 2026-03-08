@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	repository "github.com/yandex-development-1-team/go/internal/database/repository"
 )
 

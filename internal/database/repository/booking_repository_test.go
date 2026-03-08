@@ -1,3 +1,5 @@
+//go:build integration
+
 package repository
 
 import (
@@ -16,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
@@ -62,6 +65,12 @@ func TestMain(m *testing.M) {
 	repoUser = NewUserRepository(db)
 	repoBooking = repo
 
+	// Пользователь 123456 для тестов UserRepo (GetUser, IsAdmin, UpdateUserGrade).
+	_, _ = db.Exec(`
+		INSERT INTO users (telegram_id, username, first_name, last_name, email, password_hash, role, status, is_admin)
+		VALUES (123456, 'test_name', 'test_first_name', 'test_last_name', 'tg123456@telegram.bot', '', 'manager', 'active', true)
+		ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username, first_name=EXCLUDED.first_name, last_name=EXCLUDED.last_name, is_admin = true
+	`)
 	_, _ = db.Exec("INSERT INTO services (name) SELECT 'service_'||g FROM generate_series(1, 50) AS g")
 
 	code := m.Run()

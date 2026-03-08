@@ -5,9 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/yandex-development-1-team/go/internal/models"
 	repository "github.com/yandex-development-1-team/go/internal/repository"
-	dbmodels "github.com/yandex-development-1-team/go/internal/repository/models"
-	"github.com/yandex-development-1-team/go/internal/service/models"
 )
 
 var (
@@ -23,7 +22,7 @@ func NewSpecialProjectService(repo repository.SpecialProjectRepository) *Special
 }
 
 // Converters
-func toDomain(db *dbmodels.SpecialProjectDB) *models.SpecialProject {
+func toDomain(db *models.SpecialProjectDB) *models.SpecialProject {
 	if db == nil {
 		return nil
 	}
@@ -38,13 +37,11 @@ func toDomain(db *dbmodels.SpecialProjectDB) *models.SpecialProject {
 	}
 }
 
-func fromDomain(domain *models.SpecialProject) *dbmodels.SpecialProjectDB {
-
+func fromDomain(domain *models.SpecialProject) *models.SpecialProjectDB {
 	if domain == nil {
 		return nil
 	}
-
-	return &dbmodels.SpecialProjectDB{
+	return &models.SpecialProjectDB{
 		ID:            domain.ID,
 		Title:         domain.Title,
 		Description:   domain.Description,
@@ -72,7 +69,7 @@ func (s *SpecialProjectService) Create(ctx context.Context, proj *models.Special
 func (s *SpecialProjectService) GetByID(ctx context.Context, id int64) (*models.SpecialProject, error) {
 	dbModel, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, dbmodels.ErrSpecProjNotFound) {
+		if errors.Is(err, models.ErrSpecProjNotFound) {
 			return nil, ErrNotFound
 		}
 		return nil, err

@@ -3,8 +3,9 @@ package mocks
 import (
 	"context"
 	"encoding/json"
-	"github.com/yandex-development-1-team/go/internal/database/repository/models"
 	"os"
+
+	"github.com/yandex-development-1-team/go/internal/models"
 )
 
 // Этот путь лучше получать из энвов

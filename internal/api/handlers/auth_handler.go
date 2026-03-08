@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/yandex-development-1-team/go/internal/apierrors"
+	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
@@ -24,37 +26,30 @@ func NewAuthHandler(service AuthorisationService) *AuthHandler {
 }
 
 func (ah *AuthHandler) HandleLogin(c *gin.Context) {
-	var loginData LoginData
-	if err := c.ShouldBindJSON(&loginData); err != nil {
-		// logger.Error("bad_request", zap.Error(err), zap.String("operation", "HandleLogin"))
-		errorWriter(c, models.ErrInvalidInput)
+	var req dto.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректные данные"})
 		return
-		// if err := json.NewDecoder(r.Body).Decode(&loginData); err != nil {
-		// 	// logger.Info("") // дописать
-		// 	BadRequestError(w, err.Error())
-		// 	return
 	}
 
-	authResult, err := ah.service.Login(c.Request.Context(), loginData.Login, loginData.Password)
+	authResult, err := ah.service.Login(c.Request.Context(), req.Login, req.Password)
 	if err != nil {
-		// обработка и логирование ошибок должны быть в middleware
-		errorWriter(c, err)
+		apierrors.WriteErrorGin(c, err)
 		return
 	}
 
-	userResponse := toUserResponse(authResult.User)
-
-	response := LoginSuccessful{
+	c.JSON(http.StatusOK, dto.LoginResponse{
 		Token:        authResult.Token,
 		RefreshToken: authResult.RefreshToken,
-		User:         userResponse,
-	}
-
-	c.JSON(http.StatusOK, response)
+		User:         toUserResponse(authResult.User),
+	})
 }
 
-func toUserResponse(user *models.UserAPI) UserResponse {
-	userResponse := UserResponse{
+func toUserResponse(user *models.UserAPI) dto.UserResponse {
+	if user == nil {
+		return dto.UserResponse{}
+	}
+	return dto.UserResponse{
 		ID:           user.ID,
 		TelegramNick: user.TelegramNick,
 		Name:         user.Name,
@@ -64,27 +59,5 @@ func toUserResponse(user *models.UserAPI) UserResponse {
 		Permissions:  user.Permissions,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
-	}
-
-	return userResponse
-}
-
-func errorWriter(c *gin.Context, err error) {
-	switch {
-	case errors.Is(err, models.ErrInvalidCredentials),
-		errors.Is(err, models.ErrUserNotFound):
-		// logger.Info("wrong_credentials", zap.Error(err), zap.String("operation", "HandleLogin"))
-		c.JSON(http.StatusUnauthorized, UnauthorizedError("неверный логин или пароль"))
-
-	case errors.Is(err, models.ErrInvalidInput):
-		c.JSON(http.StatusBadRequest, BadRequestError())
-
-	case errors.Is(err, models.ErrUserBlocked):
-		// logger.Info("user_blocked", zap.Error(err), zap.String("operation", "HandleLogin"))
-		c.JSON(http.StatusForbidden, ForbiddenError())
-
-	default:
-		// logger.Info("internal_error", zap.Error(err), zap.String("operation", "HandleLogin"))
-		c.JSON(http.StatusInternalServerError, InternalServerError())
 	}
 }

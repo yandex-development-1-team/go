@@ -1,3 +1,5 @@
+//go:build integration
+
 package repository
 
 import (
@@ -6,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 

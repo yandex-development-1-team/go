@@ -6,7 +6,20 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/yandex-development-1-team/go/internal/models"
+)
+
+const (
+	createApplicationQuery = `
+		INSERT INTO applications (type, source, customer_name, contact_info, project_name, box_id, special_project_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, type, source, status, customer_name, contact_info,
+		          project_name, box_id, special_project_id, manager_id, created_at, updated_at`
+
+	countApplicationsBaseQuery = `SELECT COUNT(*) FROM applications`
+	listApplicationsColumns    = `id, type, source, status, customer_name, contact_info,
+		project_name, box_id, special_project_id, manager_id, created_at, updated_at`
 )
 
 type ApplicationRepository interface {
@@ -31,14 +44,8 @@ func (r *ApplicationRepo) CreateApplication(ctx context.Context, req *models.App
 		return nil, models.ErrInvalidInput
 	}
 
-	const query = `
-		INSERT INTO applications (type, source, customer_name, contact_info, project_name, box_id, special_project_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, type, source, status, customer_name, contact_info,
-		          project_name, box_id, special_project_id, manager_id, created_at, updated_at`
-
 	var app models.Application
-	err := r.db.QueryRowxContext(ctx, query,
+	err := r.db.QueryRowxContext(ctx, createApplicationQuery,
 		req.Type, req.Source, req.CustomerName, req.ContactInfo,
 		req.ProjectName, req.BoxID, req.SpecialProjectID,
 	).StructScan(&app)
@@ -61,16 +68,12 @@ func (r *ApplicationRepo) GetApplications(ctx context.Context, filter models.App
 	where, args := buildApplicationWhere(filter)
 
 	var total int
-	if err := r.db.QueryRowContext(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM applications %s`, where), args...).Scan(&total); err != nil {
+	if err := r.db.QueryRowContext(ctx, countApplicationsBaseQuery+" "+where, args...).Scan(&total); err != nil {
 		return nil, 0, checkError(operation, err)
 	}
 
-	listQuery := fmt.Sprintf(`
-		SELECT id, type, source, status, customer_name, contact_info,
-		       project_name, box_id, special_project_id, manager_id, created_at, updated_at
-		FROM applications %s
-		ORDER BY created_at DESC
-		LIMIT $%d OFFSET $%d`, where, len(args)+1, len(args)+2)
+	listQuery := fmt.Sprintf("SELECT %s FROM applications %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d",
+		listApplicationsColumns, where, len(args)+1, len(args)+2)
 
 	var apps []models.Application
 	if err := r.db.SelectContext(ctx, &apps, listQuery, append(args, filter.Limit, filter.Offset)...); err != nil {

@@ -1,3 +1,5 @@
+//go:build integration
+
 package migrations
 
 // Integration test for 002_create_bookings_table.sql migration.
