@@ -46,6 +46,44 @@
       }
     },
 
+    "/api/v1/auth/logout": {
+      "post": {
+        "summary": "Выход (отзыв refresh токена)",
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refresh_token": {"type": "string"}
+                },
+                "required": ["refresh_token"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успешный выход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {"type": "string"}
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/UnauthorizedError"}
+        }
+      }
+    },
+
     "/api/v1/auth/refresh": {
       "post": {
         "summary": "Обновление access токена",
