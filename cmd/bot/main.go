@@ -53,7 +53,7 @@ func run() error {
 	metrics.Initialize(cfg)
 
 	// init database connection for migrations
-	db, err := sql.Open("postgres", cfg.PostgresURL)
+	db, err := sql.Open("postgres", cfg.DB.PostgresURL)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -74,6 +74,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("init redis client: %w", err)
 	}
+	defer redisClient.Close()
 
 	// init telegram bot
 	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
@@ -186,7 +187,7 @@ func run() error {
 	defer cancel()
 
 	// shutdown bot and servers (this closes updates channel)
-	shutdown := shutdown.NewShutdownHandler(tgBot, nil, metricsServer)
+	shutdown := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient)
 	if err := shutdown.WaitForShutdown(ctxTimeout); err != nil {
 		return fmt.Errorf("failed to shutdown: %w", err)
 	}
