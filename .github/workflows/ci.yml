@@ -31,7 +31,8 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          # v2.x собран с Go 1.25, нужен для проектов с go 1.25+
+          version: v2.4.0
           args: --timeout=5m
 
   test:

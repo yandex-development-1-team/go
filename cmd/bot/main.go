@@ -154,12 +154,13 @@ func run() error {
 
 	// Launching API server
 	go func() {
-		wg.Go(func() {
-			if err := apiServer.Run(&cfg); err != nil {
-				logger.Error("failed to start the server", zap.Error(err))
-			}
+		wg.Add(1)
+		defer wg.Done()
+		if err := apiServer.Run(&cfg); err != nil {
+			logger.Error("failed to start the server", zap.Error(err))
+		} else {
 			logger.Info("server has been started", zap.Int("port", cfg.Port))
-		})
+		}
 	}()
 
 	// get channel with updates
@@ -168,11 +169,14 @@ func run() error {
 	// handle updates
 	go func() {
 		for update := range updates {
-			wg.Go(func() {
-				if err := apiRL.Exec(ctx, func() { handler.Handle(ctx, update) }); err != nil {
+			u := update
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := apiRL.Exec(ctx, func() { handler.Handle(ctx, u) }); err != nil {
 					logger.Error("failed to handle update", zap.Error(err))
 				}
-			})
+			}()
 		}
 	}()
 
