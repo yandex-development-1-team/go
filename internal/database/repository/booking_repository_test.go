@@ -123,8 +123,8 @@ func createDB(container tc.Container) error {
 func TestCreateBooking(t *testing.T) {
 	var userID int64
 	err := db.QueryRow(`
-        INSERT INTO users (telegram_id, username, password_hash, role, status) VALUES ($1, $2, '', 'manager', 'active')
-        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
+        INSERT INTO users (telegram_id, username, email, password_hash, role, status) VALUES ($1, $2, 'booking-test-111@example.com', '', 'manager', 'active')
+        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username, email=EXCLUDED.email
         RETURNING id`, 111, "test").Scan(&userID)
 	assert.NoError(t, err)
 
@@ -225,7 +225,7 @@ func TestCreateBooking_RaceCondition(t *testing.T) {
 	slot := mustParseTime("15:04:05", "12:00:00")
 
 	var userID int64
-	_ = db.QueryRow("INSERT INTO users (telegram_id, username, password_hash, role, status) VALUES (999, 'racer', '', 'manager', 'active') ON CONFLICT (telegram_id) DO NOTHING RETURNING id").Scan(&userID)
+	_ = db.QueryRow("INSERT INTO users (telegram_id, username, email, password_hash, role, status) VALUES (999, 'racer', 'racer@example.com', '', 'manager', 'active') ON CONFLICT (telegram_id) DO NOTHING RETURNING id").Scan(&userID)
 	if userID == 0 {
 		_ = db.Get(&userID, "SELECT id FROM users WHERE telegram_id = 999")
 	}
@@ -265,8 +265,8 @@ func TestGetAvailableSlots(t *testing.T) {
 
 	var userID int64
 	err := db.QueryRow(`
-        INSERT INTO users (telegram_id, username, password_hash, role, status) VALUES (777, 'slot_tester', '', 'manager', 'active')
-        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
+        INSERT INTO users (telegram_id, username, email, password_hash, role, status) VALUES (777, 'slot_tester', 'slot_tester@example.com', '', 'manager', 'active')
+        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username, email=EXCLUDED.email
         RETURNING id`).Scan(&userID)
 	assert.NoError(t, err)
 

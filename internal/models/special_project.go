@@ -1,6 +1,11 @@
 package models
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var ErrSpecProjNotFound = errors.New("special project not found")
 
 // SpecialProject — доменная модель спецпроекта (сервисный слой, API).
 type SpecialProject struct {

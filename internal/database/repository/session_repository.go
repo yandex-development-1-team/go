@@ -32,7 +32,8 @@ type sessionDTO struct {
 	UpdatedAt    time.Time              `json:"updated_at"`
 }
 
-// SessionRepository is a Redis-backed implementation of repository.SessionRepository.
+// SessionRepository — хранилище сессий (Redis). Используется из bot/handlers;
+// при инъекции в слой выше объявите там свой интерфейс (порт), например SessionStore.
 type SessionRepository struct {
 	client redis.Cmdable
 	ttl    time.Duration

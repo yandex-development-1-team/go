@@ -8,15 +8,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/yandex-development-1-team/go/internal/api/server"
 	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
+	postgresRepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 	"github.com/yandex-development-1-team/go/internal/service"
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 
@@ -107,7 +108,7 @@ func run() error {
 		<-ctx.Done()
 		ctxTimeout, cancelShutdown := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancelShutdown()
-		return shutdown.NewShutdownHandler(nil, nil, metricsServer).WaitForShutdown(ctxTimeout)
+		return shutdown.NewShutdownHandler(nil, dbSqlx, metricsServer, redisClient, nil).WaitForShutdown(ctxTimeout)
 	}
 
 	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
@@ -142,26 +143,29 @@ func run() error {
 	)
 
 	apiBoxService := apiService.NewAPIBoxService()
+	specProjRepo := postgresRepo.NewSpecialProjectRepository(dbSqlx)
+	specProjSvc := service.NewSpecialProjectService(specProjRepo)
 
-	var wg sync.WaitGroup
+	var wg errgroup.Group
 
 	// Creating an API server
-	apiServer := server.New(cfg.Environment)
+	apiServer := server.New(&cfg)
 
 	// Registering routes
-	// Сервисов будет много, поэтому и обернул в структуру, иначе слишком много параметров получится
-	apiServer.RegisterRoutes(&server.APIServices{BoxService: apiBoxService})
+	apiServer.RegisterRoutes(&server.APIServices{
+		BoxService:        apiBoxService,
+		SpecialProjectSvc: specProjSvc,
+	})
 
 	// Launching API server
-	go func() {
-		wg.Add(1)
-		defer wg.Done()
+	wg.Go(func() error {
 		if err := apiServer.Run(&cfg); err != nil {
 			logger.Error("failed to start the server", zap.Error(err))
-		} else {
-			logger.Info("server has been started", zap.Int("port", cfg.Port))
+			return err
 		}
-	}()
+		logger.Info("server has been started", zap.Int("port", cfg.Port))
+		return nil
+	})
 
 	// get channel with updates
 	updates := tgBot.GetUpdates(cfg.GetUpdatesTimeout)
@@ -170,13 +174,13 @@ func run() error {
 	go func() {
 		for update := range updates {
 			u := update
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() error {
 				if err := apiRL.Exec(ctx, func() { handler.Handle(ctx, u) }); err != nil {
 					logger.Error("failed to handle update", zap.Error(err))
+					return err
 				}
-			}()
+				return nil
+			})
 		}
 	}()
 
@@ -187,26 +191,18 @@ func run() error {
 	ctxTimeout, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// shutdown bot and servers (this closes updates channel)
-	shutdown := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient)
-	if err := shutdown.WaitForShutdown(ctxTimeout); err != nil {
+	// shutdown bot, API server, and infra (this closes updates channel)
+	shutdownHandler := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient, apiServer)
+	if err := shutdownHandler.WaitForShutdown(ctxTimeout); err != nil {
 		return fmt.Errorf("failed to shutdown: %w", err)
 	}
 
 	// wait for in-flight updates to finish
 	logger.Info("waiting for updates to finish...")
-	updatesDone := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(updatesDone)
-	}()
-
-	select {
-	case <-updatesDone:
-		logger.Info("all updates processed")
-	case <-ctxTimeout.Done():
-		logger.Warn("timeout waiting for updates to finish")
+	if err := wg.Wait(); err != nil {
+		logger.Warn("some goroutines finished with error", zap.Error(err))
 	}
+	logger.Info("all updates processed")
 
 	return nil
 }

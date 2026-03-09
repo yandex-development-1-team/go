@@ -25,25 +25,32 @@ type Redis interface {
 	Shutdown(ctx context.Context) *redis.StatusCmd
 }
 
-type ShutdownHandler struct {
-	bot     Bot
-	db      DB
-	metrics MetricsServer
-	redis   Redis
+// APIServer — HTTP API (Gin), останавливается через Shutdown.
+type APIServer interface {
+	Shutdown(ctx context.Context) error
 }
 
-func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer, redis Redis) *ShutdownHandler {
+type ShutdownHandler struct {
+	bot       Bot
+	db        DB
+	metrics   MetricsServer
+	redis     Redis
+	apiServer APIServer
+}
+
+func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer, redis Redis, apiServer APIServer) *ShutdownHandler {
 	return &ShutdownHandler{
-		bot:     bot,
-		db:      db,
-		metrics: metrics,
-		redis:   redis,
+		bot:       bot,
+		db:        db,
+		metrics:   metrics,
+		redis:     redis,
+		apiServer: apiServer,
 	}
 }
 
 func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 	var wg sync.WaitGroup
-	errChan := make(chan error, 3)
+	errChan := make(chan error, 5)
 
 	run := func(fn func() error) {
 		wg.Add(1)
@@ -94,6 +101,18 @@ func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 			err := s.metrics.Shutdown(ctx)
 			if err == nil {
 				logger.Info("metrics server gracefully shutdown")
+			}
+			return err
+		})
+	}
+
+	// shutdown API server (Gin)
+	if s.apiServer != nil {
+		logger.Info("shutting down API server...")
+		run(func() error {
+			err := s.apiServer.Shutdown(ctx)
+			if err == nil {
+				logger.Info("API server gracefully shutdown")
 			}
 			return err
 		})

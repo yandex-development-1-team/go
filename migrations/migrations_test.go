@@ -26,7 +26,6 @@ func TestBookingsMigration(t *testing.T) {
 	db := setupTestDatabase(t, ctx)
 	defer db.Close()
 
-
 	migrations := []string{
 		"20260209150247_create_users_table.sql",
 		"20260227151158_create_services_table.sql",
@@ -113,7 +112,7 @@ func indexExists(t *testing.T, ctx context.Context, db *sql.DB, indexName string
 func createTestUser(t *testing.T, ctx context.Context, db *sql.DB) int64 {
 	var userID int64
 	err := db.QueryRowContext(ctx,
-		`INSERT INTO users (telegram_id, password_hash, role, status) VALUES (123456789, '', 'manager', 'active') RETURNING id;`,
+		`INSERT INTO users (telegram_id, email, password_hash, role, status) VALUES (123456789, 'migration-test@example.com', '', 'manager', 'active') RETURNING id;`,
 	).Scan(&userID)
 	require.NoError(t, err)
 	return userID

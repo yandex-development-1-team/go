@@ -6,16 +6,18 @@ import (
 )
 
 var (
-	ErrRequestTimeout  = errors.New("request timeout")
-	ErrRequestCanceled = errors.New("request canceled")
-	ErrDatabase        = errors.New("database error")
-	ErrCache           = errors.New("cache error")
-	ErrSlotOccupied    = errors.New("slot is already occupied")
-	ErrInvalidInput    = errors.New("invalid input data")
-	ErrBookingNotFound = errors.New("booking not found")
-	ErrUserNotFound    = errors.New("user not found")
-	ErrUnauthorized    = errors.New("unauthorized")
-	ErrForbidden       = errors.New("forbidden")
+	ErrRequestTimeout     = errors.New("request timeout")
+	ErrRequestCanceled    = errors.New("request canceled")
+	ErrDatabase           = errors.New("database error")
+	ErrCache              = errors.New("cache error")
+	ErrSlotOccupied       = errors.New("slot is already occupied")
+	ErrInvalidInput       = errors.New("invalid input data")
+	ErrBookingNotFound    = errors.New("booking not found")
+	ErrUserNotFound       = errors.New("user not found")
+	ErrUnauthorized       = errors.New("unauthorized")
+	ErrForbidden          = errors.New("forbidden")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUserBlocked        = errors.New("user blocked")
 )
 
 type User struct {
@@ -43,6 +45,32 @@ type Booking struct {
 	TrackerTicketID   string     `db:"tracker_ticket_id"`
 	CreatedAt         time.Time  `db:"created_at"`
 	UpdatedAt         time.Time  `db:"updated_at"`
+}
+
+// UserAPI — пользователь для API (без пароля).
+type UserAPI struct {
+	ID           int64     `json:"id"`
+	TelegramNick string    `json:"telegram_nick"`
+	Name         string    `json:"name"`
+	Email        string    `json:"email"`
+	Role         string    `json:"role"`
+	Status       string    `json:"status"`
+	Permissions  []string  `json:"permissions"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// UserWithAuth — пользователь с хешем пароля (репозиторий → сервис).
+type UserWithAuth struct {
+	User     *UserAPI
+	PassHash string
+}
+
+// AuthResult — результат успешного логина.
+type AuthResult struct {
+	User         *UserAPI
+	Token        string
+	RefreshToken string
 }
 
 type UserSession struct {

@@ -67,7 +67,10 @@ func (s *Server) Run(cfg *config.Config) error {
 	return nil
 }
 
-// Shutdown stops the server
+// Shutdown stops the server. No-op if Run was not called.
 func (s *Server) Shutdown(ctx context.Context) error {
+	if s.srv == nil {
+		return nil
+	}
 	return s.srv.Shutdown(ctx)
 }

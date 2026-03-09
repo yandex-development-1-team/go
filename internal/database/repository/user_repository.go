@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/yandex-development-1-team/go/internal/models"
@@ -36,12 +37,13 @@ func (u *UserRepo) CreateUser(ctx context.Context, telegramID int64, userName, f
 		}
 		defer func() { _ = tx.Rollback() }()
 
+		email := fmt.Sprintf("tg%d@telegram.bot", telegramID)
 		_, err = tx.ExecContext(ctx, `
-			INSERT INTO users (telegram_id, username, first_name, last_name, password_hash, role, status)
-			VALUES ($1, $2, $3, $4, '', 'manager', 'active')
+			INSERT INTO users (telegram_id, username, first_name, last_name, email, password_hash, role, status)
+			VALUES ($1, $2, $3, $4, $5, '', 'manager', 'active')
 			ON CONFLICT (telegram_id)
-			DO UPDATE SET username=EXCLUDED.username, first_name=EXCLUDED.first_name, last_name=EXCLUDED.last_name
-			`, telegramID, userName, firstName, lastName)
+			DO UPDATE SET username=EXCLUDED.username, first_name=EXCLUDED.first_name, last_name=EXCLUDED.last_name, email=EXCLUDED.email
+			`, telegramID, userName, firstName, lastName, email)
 		if err != nil {
 			return err
 		}
