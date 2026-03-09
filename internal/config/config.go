@@ -9,21 +9,30 @@ import (
 )
 
 type Config struct {
-	TelegramBotToken  string        `mapstructure:"telegram_bot_token"`
-	TelegramBotAPIUrl string        `mapstructure:"telegram_bot_api_url"`
-	PostgresURL       string        `mapstructure:"postgres_url"`
-	Port              int           `mapstructure:"port"`
-	Environment       string        `mapstructure:"environment"`
-	PrometheusPort    int           `mapstructure:"prometheus_port"`
-	LogLevel          string        `mapstructure:"log_level"`
-	HostName          string        `mapstructure:"host_name"`
-	Redis             RedisConfig   `mapstructure:"redis"`
-	Session           SessionConfig `mapstructure:"session"`
-	MockClientEnabled bool          `mapstructure:"mock_client_enabled"`
-	MockLocalDir      string        `mapstructure:"mock_local_dir"`
-	MsgRPS            float64       `mapstructure:"msg_rps"`
-	ApiRPS            float64       `mapstructure:"api_rps"`
-	CacheSizeRPS      int           `mapstructure:"cache_size_rps"`
+	TelegramBotToken  string `mapstructure:"telegram_bot_token"`
+	TelegramBotAPIUrl string `mapstructure:"telegram_bot_api_url"`
+
+	DB                DatabaseConfig `mapstructure:"db"`
+	Port              int            `mapstructure:"port"`
+	Environment       string         `mapstructure:"environment"`
+	PrometheusPort    int            `mapstructure:"prometheus_port"`
+	LogLevel          string         `mapstructure:"log_level"`
+	HostName          string         `mapstructure:"host_name"`
+	Redis             RedisConfig    `mapstructure:"redis"`
+	Session           SessionConfig  `mapstructure:"session"`
+	MockClientEnabled bool           `mapstructure:"mock_client_enabled"`
+	MockLocalDir      string         `mapstructure:"mock_local_dir"`
+	MsgRPS            float64        `mapstructure:"msg_rps"`
+	ApiRPS            float64        `mapstructure:"api_rps"`
+	CacheSizeRPS      int            `mapstructure:"cache_size_rps"`
+}
+
+type DatabaseConfig struct {
+	PostgresURL string
+	Name        string `mapstructure:"name"`
+	User        string `mapstructure:"user"`
+	Password    string `mapstructure:"password"`
+	SslMode     string `mapstructure:"ssl_mode"`
 }
 
 type RedisConfig struct {
@@ -31,14 +40,14 @@ type RedisConfig struct {
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
 
-	// Пул
+	// Pool
 	PoolSize        int           `mapstructure:"pool_size"`
 	MinIdleConns    int           `mapstructure:"min_idle_conns"`
 	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
 	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 
-	// Таймауты
+	// Timeouts
 	DialTimeout  time.Duration `mapstructure:"dial_timeout"`
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
@@ -102,6 +111,11 @@ func loadConfig(paths []string) (*Config, error) {
 		return nil, fmt.Errorf("error parsing config.yml: %w", err)
 	}
 
+	if config.DB.Name != "" {
+		config.DB.PostgresURL = fmt.Sprintf("postgres://%s:%s@db:5432/%s?sslmode=%s",
+			config.DB.User, config.DB.Password, config.DB.Name, config.DB.SslMode)
+	}
+
 	if err := validateConfig(config); err != nil {
 		return nil, err
 	}
@@ -116,6 +130,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("prometheus_port", 9090)
 	v.SetDefault("log_level", "info")
 	v.SetDefault("host_name", "unknown")
+
+	v.SetDefault("db.ssl_mode", "disable")
 
 	v.SetDefault("redis.addr", "localhost:6379")
 	v.SetDefault("redis.db", 0)
@@ -140,14 +156,25 @@ func setDefaults(v *viper.Viper) {
 func bindEnvs(v *viper.Viper) {
 	v.BindEnv("telegram_bot_token", "BOT_TOKEN")
 	v.BindEnv("postgres_url", "POSTGRES_URL")
-	v.BindEnv("port", "PORT")
-	v.BindEnv("environment", "ENVIRONMENT")
+	v.BindEnv("port", "SERVER_PORT")
+
+	viper.BindEnv("db.name", "DB_NAME")
+	viper.BindEnv("db.user", "DB_USER")
+	viper.BindEnv("db.password", "DB_PASSWORD")
+	viper.BindEnv("db.ssl_mode", "DB_SSLMODE")
+
+	viper.BindEnv("redis.addr", "REDIS_ADDR")
+	viper.BindEnv("redis.password", "REDIS_PASSWORD")
+	viper.BindEnv("redis.db", "REDIS_DB")
+
 	v.BindEnv("prometheus_port", "PROMETHEUS_PORT")
+
+	v.BindEnv("environment", "ENVIRONMENT")
+
 	v.BindEnv("log_level", "LOG_LEVEL")
 	v.BindEnv("host_name", "HOSTNAME")
 	v.BindEnv("mock_client_enabled", "MOCK_CLIENT_ENABLED")
 	v.BindEnv("mock_local_dir", "MOCK_LOCAL_DIR")
-
 }
 
 func validateConfig(config *Config) error {
@@ -155,7 +182,7 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("telegram_bot_token is empty")
 	}
 
-	if config.PostgresURL == "" {
+	if config.DB.PostgresURL == "" {
 		return fmt.Errorf("postgres_url is empty")
 	}
 

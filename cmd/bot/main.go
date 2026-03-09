@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"log"
 	"net/http"
 	"os/signal"
@@ -12,9 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+
+	"github.com/yandex-development-1-team/go/internal/api/server"
 	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
 	"github.com/yandex-development-1-team/go/internal/service"
+	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/bot"
@@ -50,7 +53,7 @@ func run() error {
 	metrics.Initialize(cfg)
 
 	// init database connection for migrations
-	db, err := sql.Open("postgres", cfg.PostgresURL)
+	db, err := sql.Open("postgres", cfg.DB.PostgresURL)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -71,6 +74,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("init redis client: %w", err)
 	}
+	defer redisClient.Close()
 
 	// init telegram bot
 	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
@@ -140,11 +144,31 @@ func run() error {
 		zap.String("log_level", cfg.LogLevel),
 	)
 
+	apiBoxService := apiService.NewAPIBoxService()
+
+	var wg sync.WaitGroup
+
+	// Creating an API server
+	apiServer := server.New(cfg.Environment)
+
+	// Registering routes
+	// Сервисов будет много, поэтому и обернул в структуру, иначе слишком много параметров получится
+	apiServer.RegisterRoutes(&server.APIServices{BoxService: apiBoxService})
+
+	// Launching API server
+	go func() {
+		wg.Go(func() {
+			if err := apiServer.Run(&cfg); err != nil {
+				logger.Error("failed to start the server", zap.Error(err))
+			}
+			logger.Info("server has been started", zap.Int("port", cfg.Port))
+		})
+	}()
+
 	// get channel with updates
-	updates := tgBot.GetUpdates(30 * time.Second) // TODO: перенести в конфиг
+	updates := tgBot.GetUpdates(30 * time.Second)
 
 	// handle updates
-	var wg sync.WaitGroup
 	go func() {
 		for update := range updates {
 			wg.Go(func() {
@@ -163,7 +187,7 @@ func run() error {
 	defer cancel()
 
 	// shutdown bot and servers (this closes updates channel)
-	shutdown := shutdown.NewShutdownHandler(tgBot, nil, metricsServer)
+	shutdown := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient)
 	if err := shutdown.WaitForShutdown(ctxTimeout); err != nil {
 		return fmt.Errorf("failed to shutdown: %w", err)
 	}
