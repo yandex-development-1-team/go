@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"github.com/yandex-development-1-team/go/internal/database/repository"
-	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/repository/models"
+	repository "github.com/yandex-development-1-team/go/internal/repository/postgres"
 )
 
 type SpecialProjectService struct {

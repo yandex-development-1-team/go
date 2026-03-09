@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yandex-development-1-team/go/internal/logger"
-	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/repository/models"
 	"github.com/yandex-development-1-team/go/internal/service"
 	"go.uber.org/zap"
 )
@@ -61,7 +61,7 @@ func sendErr(c *gin.Context, id int, err error) {
 	switch {
 	case errors.Is(err, models.ErrInvalidInput):
 		c.JSON(http.StatusBadRequest, gin.H{"error": models.ErrInvalidInput.Error()})
-	case errors.Is(err, models.ErrSpecialProjectNotFound):
+	case errors.Is(err, models.ErrSpecProjNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": http.StatusText(http.StatusNotFound)})
 	default:
 		logger.Error("failed to update special project", zap.Error(err), zap.Int("project_id", id))

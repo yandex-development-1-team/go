@@ -32,7 +32,12 @@ CREATE TABLE IF NOT EXISTS applications (
     special_project_id BIGINT,
     manager_id         BIGINT,
     created_at         TIMESTAMPTZ        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMPTZ        NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at         TIMESTAMPTZ        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_special_project
+    FOREIGN KEY (special_project_id)
+    REFERENCES special_projects (id)
+    ON DELETE RESTRICT 
 );
 
 CREATE INDEX IF NOT EXISTS idx_applications_status     ON applications(status);

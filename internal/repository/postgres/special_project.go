@@ -8,7 +8,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/yandex-development-1-team/go/internal/logger"
-	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/repository/models"
 	"go.uber.org/zap"
 )
 
@@ -50,7 +50,7 @@ func (sp *SpecialProjectRepo) UpdateSpecialProject(ctx context.Context, id int, 
 	).Scan(&updatedSpecialProject.Title, &updatedSpecialProject.Description, &updatedSpecialProject.Image, &updatedSpecialProject.Is_active_in_bot)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.SpecialProject{}, models.ErrSpecialProjectNotFound
+			return models.SpecialProject{}, models.ErrSpecProjNotFound
 		}
 		return models.SpecialProject{}, fmt.Errorf("failed to update special project: %w", err)
 	}
@@ -68,6 +68,7 @@ func (sp *SpecialProjectRepo) DeleteSpecialProject(ctx context.Context, id int) 
 		}
 	}()
 
+	
 	if _, err = tx.ExecContext(ctx, deactivateApplicationsQuery, id); err != nil {
 		return fmt.Errorf("failed to deactivate special project in applications: %w", err)
 	}
@@ -78,7 +79,7 @@ func (sp *SpecialProjectRepo) DeleteSpecialProject(ctx context.Context, id int) 
 	}
 
 	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
-		return models.ErrSpecialProjectNotFound
+		return models.ErrSpecProjNotFound
 	}
 
 	if err = tx.Commit(); err != nil {

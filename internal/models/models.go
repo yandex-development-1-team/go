@@ -139,11 +139,3 @@ type ApplicationListResponse struct {
 	Items      []Application `json:"items"`
 	Pagination Pagination    `json:"pagination"`
 }
-
-type SpecialProject struct {
-	Title            string `json:"title,omitempty" db:"title"`
-	Description      string `json:"description,omitempty" db:"description"`
-	Image            string `json:"image,omitempty" db:"image"`
-	Is_active_in_bot bool   `json:"is_active_in_bot,omitempty" db:"is_active_in_bot"`
-	// todo: добавить поле deleted_at при необходимости
-}
