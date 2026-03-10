@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/yandex-development-1-team/go/internal/apierrors"
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
@@ -22,7 +24,7 @@ func NewBoxHandler(boxService *apiService.APIBoxService) *BoxHandler {
 func (h *BoxHandler) List(c *gin.Context) {
 	list, err := h.boxService.List(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal_server_error"})
+		apierrors.WriteErrorGin(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, list)
@@ -36,8 +38,23 @@ func (h *BoxHandler) Create(c *gin.Context) {
 
 // GetByID GET /api/v1/boxes/:id
 func (h *BoxHandler) GetByID(c *gin.Context) {
-	id := c.Param("id")
-	c.JSON(200, gin.H{"message": "BoxHandler.GetByID - not implemented yet", "id": id})
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный идентификатор коробочного решения"})
+		return
+	}
+
+	box, err := h.boxService.GetByID(c.Request.Context(), id)
+	if err != nil {
+		apierrors.WriteErrorGin(c, err)
+		return
+	}
+	if box == nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusNotFound, []string{"Коробочное решение не найдено"})
+		return
+	}
+
+	c.JSON(http.StatusOK, box)
 }
 
 // Update PUT /api/v1/boxes/:id

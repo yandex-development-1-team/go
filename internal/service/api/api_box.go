@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/models"
@@ -10,6 +12,7 @@ import (
 // BoxLister returns box solutions (services with box_solution=true) from storage.
 type BoxLister interface {
 	GetServices(ctx context.Context, telegramID int64) ([]models.Service, error)
+	GetServiceByID(ctx context.Context, serviceID int) (models.Service, error)
 }
 
 // APIBoxService implements HTTP API logic for boxed solutions.
@@ -39,4 +42,34 @@ func (s *APIBoxService) List(ctx context.Context) ([]dto.BoxListItem, error) {
 		})
 	}
 	return out, nil
+}
+
+// GetByID returns a single box solution by ID.
+func (s *APIBoxService) GetByID(ctx context.Context, id int) (*dto.BoxDetail, error) {
+	svc, err := s.lister.GetServiceByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	slots := make([]dto.BoxAvailableSlot, 0, len(svc.AvailableSlots))
+	for _, s := range svc.AvailableSlots {
+		slots = append(slots, dto.BoxAvailableSlot{
+			Date:      s.Date,
+			TimeSlots: s.TimeSlots,
+		})
+	}
+
+	return &dto.BoxDetail{
+		ID:             svc.ID,
+		Name:           svc.Name,
+		Description:    svc.Description,
+		Rules:          svc.Rules,
+		Schedule:       svc.Schedule,
+		Type:           svc.Type,
+		BoxSolution:    svc.BoxSolution,
+		AvailableSlots: slots,
+	}, nil
 }
