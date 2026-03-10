@@ -115,19 +115,6 @@ func run() error {
 	adminSettingsRep := apiRepository.NewSettingsRep(dbSqlx)
 	adminSettingsService := apiService.NewSettingsService(adminSettingsRep)
 
-	////TODO когда будет сервер от Алексея, мой код с сервером под удаление. Использовала для отладки задачи. Начало кода:
-	//r := gin.Default()
-	//
-	//api := r.Group("/api/v1")
-	//{
-	//	api.GET("/settings", adminSettingsHandler.Get)
-	//}
-	//
-	//if err := r.Run(fmt.Sprintf(":%d", cfg.Port)); err != nil {
-	//	log.Fatalf("failed to run server: %v", err)
-	//}
-	////TODO конец кода для удаления
-
 	// run metrics server
 	go func() {
 		logger.Info("starting metrics and health server", zap.String("addr", metricsServer.Addr))
