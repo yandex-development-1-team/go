@@ -7,9 +7,10 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.uber.org/zap"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
-	"go.uber.org/zap"
 )
 
 // CallbackHandler интерфейс для обработчиков
@@ -104,7 +105,7 @@ func (r *CallbackRouter) findHandler(data string) (CallbackHandler, error) {
 		return handler, nil
 	}
 
-	return nil, fmt.Errorf("Data handler not found")
+	return nil, fmt.Errorf("data handler not found")
 }
 
 // getName извлекает имя из данных callback

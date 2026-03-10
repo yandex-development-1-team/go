@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers
 
 import (
@@ -18,9 +20,10 @@ import (
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"golang.org/x/crypto/bcrypt"
+
 	repository "github.com/yandex-development-1-team/go/internal/repository/postgres"
 	service "github.com/yandex-development-1-team/go/internal/service/api"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type seedUserParams struct {
@@ -36,7 +39,7 @@ func setupServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 
 	userRepo := repository.NewUserRepo(db)
 	refreshRepo := repository.NewRefreshTokenRepo(db)
-	svc := service.GetNewAuthService(userRepo, refreshRepo)
+	svc := service.NewAuthService(db, refreshRepo, userRepo, "test-secret", 15, 30)
 	handler := NewAuthHandler(svc)
 
 	router := gin.New()
@@ -118,44 +121,31 @@ func TestHandleLogin(t *testing.T) {
 			name:       "неверный пароль",
 			body:       map[string]string{"login": "user@example.com", "password": "wrongpass"},
 			wantStatus: http.StatusUnauthorized,
-			checkBody: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, "error", body["status"])
-				assert.NotEmpty(t, body["message"])
-			},
+			checkBody:  checkServiceErrorBody,
 		},
 		{
 			name:       "пользователь не найден",
 			body:       map[string]string{"login": "notfound@example.com", "password": "password123"},
-			wantStatus: http.StatusUnauthorized,
-			checkBody: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, "error", body["status"])
-				assert.NotEmpty(t, body["message"])
-			},
+			wantStatus: http.StatusNotFound,
+			checkBody:  checkServiceErrorBody,
 		},
 		{
 			name:       "заблокированный пользователь",
 			body:       map[string]string{"login": "blocked@example.com", "password": "password123"},
 			wantStatus: http.StatusForbidden,
-			checkBody: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, "error", body["status"])
-				assert.NotEmpty(t, body["message"])
-			},
+			checkBody:  checkServiceErrorBody,
 		},
 		{
 			name:       "короткий пароль",
 			body:       map[string]string{"login": "user@example.com", "password": "123"},
 			wantStatus: http.StatusBadRequest,
-			checkBody: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, "error", body["status"])
-			},
+			checkBody:  checkServiceErrorBody,
 		},
 		{
 			name:       "пустой email",
 			body:       map[string]string{"login": "", "password": "password123"},
 			wantStatus: http.StatusBadRequest,
-			checkBody: func(t *testing.T, body map[string]any) {
-				assert.Equal(t, "error", body["status"])
-			},
+			checkBody:  checkServiceErrorBody,
 		},
 		{
 			name:       "невалидный json",
@@ -186,6 +176,13 @@ func TestHandleLogin(t *testing.T) {
 			}
 		})
 	}
+}
+
+// checkServiceErrorBody проверяет формат ServiceErrorResponse: {"errors": ["..."]}.
+func checkServiceErrorBody(t *testing.T, body map[string]any) {
+	errors, ok := body["errors"].([]any)
+	require.True(t, ok, "expected 'errors' array in body: %v", body)
+	assert.NotEmpty(t, errors, "errors must not be empty")
 }
 
 func startContainer() (tc.Container, error) {

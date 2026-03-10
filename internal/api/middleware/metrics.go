@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/yandex-development-1-team/go/internal/metrics"
 )
 

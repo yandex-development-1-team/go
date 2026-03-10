@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/redis/go-redis/v9"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 )
 
@@ -43,48 +44,51 @@ func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer, redis Redis) *Shu
 
 func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 	var wg sync.WaitGroup
+	errChan := make(chan error, 4)
 
-	errChan := make(chan error, 3)
+	if s.bot != nil {
+		logger.Info("shutting down bot...")
+		wg.Go(func() {
+			if err := s.bot.Shutdown(ctx); err != nil {
+				errChan <- err
+			} else {
+				logger.Info("bot gracefully shutdown")
+			}
+		})
+	}
 
-	// bot shutdown
-	logger.Info("shutting down bot...")
-	wg.Go(func() {
-		if err := s.bot.Shutdown(ctx); err != nil {
-			errChan <- err
-		} else {
-			logger.Info("bot gracefully shutdown")
-		}
-	})
+	if s.redis != nil {
+		logger.Info("shutting down redis...")
+		wg.Go(func() {
+			if err := s.redis.Shutdown(ctx).Err(); err != nil {
+				errChan <- err
+			} else {
+				logger.Info("redis gracefully shutdown")
+			}
+		})
+	}
 
-	// redis shutdown
-	logger.Info("shutting down bot...")
-	wg.Go(func() {
-		if err := s.redis.Shutdown(ctx).Err(); err != nil {
-			errChan <- err
-		} else {
-			logger.Info("redis gracefully shutdown")
-		}
-	})
+	if s.db != nil {
+		logger.Info("shutting down DB...")
+		wg.Go(func() {
+			if err := s.db.Close(); err != nil {
+				errChan <- err
+			} else {
+				logger.Info("DB gracefully shutdown")
+			}
+		})
+	}
 
-	// DB shutdown
-	logger.Info("shutting down DB...")
-	wg.Go(func() {
-		if err := s.db.Close(); err != nil {
-			errChan <- err
-		} else {
-			logger.Info("DB gracefully shutdown")
-		}
-	})
-
-	// shutdown metrics server
-	logger.Info("shutting down metrics server...")
-	wg.Go(func() {
-		if err := s.metrics.Shutdown(ctx); err != nil {
-			errChan <- err
-		} else {
-			logger.Info("metrics server gracefully shutdown")
-		}
-	})
+	if s.metrics != nil {
+		logger.Info("shutting down metrics server...")
+		wg.Go(func() {
+			if err := s.metrics.Shutdown(ctx); err != nil {
+				errChan <- err
+			} else {
+				logger.Info("metrics server gracefully shutdown")
+			}
+		})
+	}
 
 	wg.Wait()
 	close(errChan)

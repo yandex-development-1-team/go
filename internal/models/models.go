@@ -14,7 +14,22 @@ var (
 	ErrBookingNotFound        = errors.New("booking not found")
 	ErrUserNotFound           = errors.New("user not found")
 	ErrSpecialProjectNotFound = errors.New("special project not found")
+	ErrInvalidCredentials     = errors.New("invalid credentials")
+	ErrUserBlocked            = errors.New("user blocked")
+	ErrUnauthorized           = errors.New("unauthorized")
+	ErrForbidden              = errors.New("forbidden")
+	ErrCache                  = errors.New("cache error")
 )
+
+// RefreshToken — refresh-токен для аутентификации.
+type RefreshToken struct {
+	ID        int64      `db:"id"`
+	UserID    int64      `db:"user_id"`
+	Token     string     `db:"token"`
+	ExpiresAt time.Time  `db:"expires_at"`
+	RevokedAt *time.Time `db:"revoked_at"`
+	CreatedAt time.Time  `db:"created_at"`
+}
 
 type User struct {
 	ID         int64     `db:"id"`
@@ -26,6 +41,32 @@ type User struct {
 	IsAdmin    bool      `db:"is_admin"`
 	CreatedAt  time.Time `db:"created_at"`
 	UpdatedAt  time.Time `db:"updated_at"`
+}
+
+// UserAPI is the API/domain representation of a user (auth and handlers).
+type UserAPI struct {
+	ID           int64     `json:"id"`
+	TelegramNick string    `json:"telegram_nick"`
+	Name         string    `json:"name"`
+	Email        string    `json:"email"`
+	Role         string    `json:"role"`
+	Status       string    `json:"status"`
+	Permissions  []string  `json:"permissions"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// UserWithAuth holds user and password hash for auth flow.
+type UserWithAuth struct {
+	User     *UserAPI `json:"user"`
+	PassHash string   `json:"-"`
+}
+
+// AuthResult is returned on successful login.
+type AuthResult struct {
+	User         *UserAPI `json:"user"`
+	Token        string   `json:"token"`
+	RefreshToken string   `json:"refresh_token"`
 }
 type Booking struct {
 	ID                int64      `db:"id"`

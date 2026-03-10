@@ -24,19 +24,21 @@ CREATE TABLE IF NOT EXISTS users (
     last_name VARCHAR(255),
     grade SMALLINT DEFAULT 0,
     is_admin BOOLEAN DEFAULT FALSE,
-    password_hash TEXT NOT NULL,
-    role user_role_type  DEFAULT 'manager',
-    status user_status_type  DEFAULT 'invited',
+    password_hash TEXT NOT NULL DEFAULT '',
+    role user_role_type DEFAULT 'manager',
+    status user_status_type DEFAULT 'invited',
     invite_token TEXT,
     permissions TEXT[] DEFAULT '{}',
-    email VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL DEFAULT '',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email != '';
 
 -- +goose Down
+DROP INDEX IF EXISTS idx_users_telegram_id;
 DROP TABLE IF EXISTS users;
 DROP TYPE IF EXISTS user_status_type;
 DROP TYPE IF EXISTS user_role_type;

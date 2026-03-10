@@ -6,19 +6,19 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-type ApplicationRepository interface {
-	CreateApplication(ctx context.Context, req *models.ApplicationCreateRequest) (*models.Application, error)
-	GetApplications(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error)
-}
+const insertApplicationQuery = `
+	INSERT INTO applications (type, source, customer_name, contact_info, project_name, box_id, special_project_id)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)
+	RETURNING id, type, source, status, customer_name, contact_info,
+	          project_name, box_id, special_project_id, manager_id, created_at, updated_at`
 
 type ApplicationRepo struct {
 	db *sqlx.DB
 }
-
-var _ ApplicationRepository = (*ApplicationRepo)(nil)
 
 func NewApplicationRepository(db *sqlx.DB) *ApplicationRepo {
 	return &ApplicationRepo{db: db}
@@ -31,14 +31,8 @@ func (r *ApplicationRepo) CreateApplication(ctx context.Context, req *models.App
 		return nil, models.ErrInvalidInput
 	}
 
-	const query = `
-		INSERT INTO applications (type, source, customer_name, contact_info, project_name, box_id, special_project_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, type, source, status, customer_name, contact_info,
-		          project_name, box_id, special_project_id, manager_id, created_at, updated_at`
-
 	var app models.Application
-	err := r.db.QueryRowxContext(ctx, query,
+	err := r.db.QueryRowxContext(ctx, insertApplicationQuery,
 		req.Type, req.Source, req.CustomerName, req.ContactInfo,
 		req.ProjectName, req.BoxID, req.SpecialProjectID,
 	).StructScan(&app)

@@ -12,19 +12,29 @@ type Config struct {
 	TelegramBotToken  string `mapstructure:"telegram_bot_token"`
 	TelegramBotAPIUrl string `mapstructure:"telegram_bot_api_url"`
 
-	DB                DatabaseConfig `mapstructure:"db"`
-	Port              int            `mapstructure:"port"`
-	Environment       string         `mapstructure:"environment"`
-	PrometheusPort    int            `mapstructure:"prometheus_port"`
-	LogLevel          string         `mapstructure:"log_level"`
-	HostName          string         `mapstructure:"host_name"`
-	Redis             RedisConfig    `mapstructure:"redis"`
-	Session           SessionConfig  `mapstructure:"session"`
-	MockClientEnabled bool           `mapstructure:"mock_client_enabled"`
-	MockLocalDir      string         `mapstructure:"mock_local_dir"`
-	MsgRPS            float64        `mapstructure:"msg_rps"`
-	ApiRPS            float64        `mapstructure:"api_rps"`
-	CacheSizeRPS      int            `mapstructure:"cache_size_rps"`
+	DB             DatabaseConfig `mapstructure:"db"`
+	Port           int            `mapstructure:"port"`
+	Environment    string         `mapstructure:"environment"`
+	PrometheusPort int            `mapstructure:"prometheus_port"`
+	LogLevel       string         `mapstructure:"log_level"`
+	HostName       string         `mapstructure:"host_name"`
+	Redis          RedisConfig    `mapstructure:"redis"`
+	Session        SessionConfig  `mapstructure:"session"`
+	MsgRPS         float64        `mapstructure:"msg_rps"`
+	ApiRPS         float64        `mapstructure:"api_rps"`
+	CacheSizeRPS   int            `mapstructure:"cache_size_rps"`
+	APIOnly        bool           `mapstructure:"api_only"` // only API + metrics, no telegram bot
+	CORS           CORSConfig     `mapstructure:"cors"`
+}
+
+// CORSConfig — настройки CORS для HTTP API.
+type CORSConfig struct {
+	AllowOrigin      string `mapstructure:"allow_origin"`
+	AllowMethods     string `mapstructure:"allow_methods"`
+	AllowHeaders     string `mapstructure:"allow_headers"`
+	ExposeHeaders    string `mapstructure:"expose_headers"`
+	AllowCredentials string `mapstructure:"allow_credentials"`
+	MaxAge           string `mapstructure:"max_age"`
 }
 
 type DatabaseConfig struct {
@@ -33,6 +43,7 @@ type DatabaseConfig struct {
 	User        string `mapstructure:"user"`
 	Password    string `mapstructure:"password"`
 	SslMode     string `mapstructure:"ssl_mode"`
+	HostPort    string `mapstructure:"host_port"`
 }
 
 type RedisConfig struct {
@@ -112,8 +123,8 @@ func loadConfig(paths []string) (*Config, error) {
 	}
 
 	if config.DB.Name != "" {
-		config.DB.PostgresURL = fmt.Sprintf("postgres://%s:%s@db:5432/%s?sslmode=%s",
-			config.DB.User, config.DB.Password, config.DB.Name, config.DB.SslMode)
+		config.DB.PostgresURL = fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
+			config.DB.User, config.DB.Password, config.DB.HostPort, config.DB.Name, config.DB.SslMode)
 	}
 
 	if err := validateConfig(config); err != nil {
@@ -132,6 +143,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("host_name", "unknown")
 
 	v.SetDefault("db.ssl_mode", "disable")
+	v.SetDefault("db.host_port", "localhost:5432")
 
 	v.SetDefault("redis.addr", "localhost:6379")
 	v.SetDefault("redis.db", 0)
@@ -158,14 +170,15 @@ func bindEnvs(v *viper.Viper) {
 	v.BindEnv("postgres_url", "POSTGRES_URL")
 	v.BindEnv("port", "SERVER_PORT")
 
-	viper.BindEnv("db.name", "DB_NAME")
-	viper.BindEnv("db.user", "DB_USER")
-	viper.BindEnv("db.password", "DB_PASSWORD")
-	viper.BindEnv("db.ssl_mode", "DB_SSLMODE")
+	v.BindEnv("db.name", "DB_NAME")
+	v.BindEnv("db.user", "DB_USER")
+	v.BindEnv("db.password", "DB_PASSWORD")
+	v.BindEnv("db.ssl_mode", "DB_SSLMODE")
+	v.BindEnv("db.host_port", "DB_HOST_PORT")
 
-	viper.BindEnv("redis.addr", "REDIS_ADDR")
-	viper.BindEnv("redis.password", "REDIS_PASSWORD")
-	viper.BindEnv("redis.db", "REDIS_DB")
+	v.BindEnv("redis.addr", "REDIS_ADDR")
+	v.BindEnv("redis.password", "REDIS_PASSWORD")
+	v.BindEnv("redis.db", "REDIS_DB")
 
 	v.BindEnv("prometheus_port", "PROMETHEUS_PORT")
 
@@ -173,8 +186,7 @@ func bindEnvs(v *viper.Viper) {
 
 	v.BindEnv("log_level", "LOG_LEVEL")
 	v.BindEnv("host_name", "HOSTNAME")
-	v.BindEnv("mock_client_enabled", "MOCK_CLIENT_ENABLED")
-	v.BindEnv("mock_local_dir", "MOCK_LOCAL_DIR")
+	v.BindEnv("api_only", "API_ONLY")
 }
 
 func validateConfig(config *Config) error {

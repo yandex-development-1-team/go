@@ -11,8 +11,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/yandex-development-1-team/go/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/yandex-development-1-team/go/internal/logger"
 )
 
 type healthHandler struct {

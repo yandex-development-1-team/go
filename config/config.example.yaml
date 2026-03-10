@@ -6,6 +6,7 @@ prometheus_port: 9090
 msg_rps: 30 # per-chat message limit / sec
 api_rps: 10 # general message limit / sec
 cache_size_rps: 128 # total number of maximum limiters in cache
+get_updates_timeout: "30s" # long polling timeout для GetUpdates
 log_level: "info"
 host_name: "host"
 
@@ -39,3 +40,12 @@ redis:
 
 session:
   ttl: "24h"
+
+# CORS для HTTP API (по умолчанию — разрешить всё для разработки)
+cors:
+  allow_origin: "*"
+  allow_methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+  allow_headers: "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With"
+  expose_headers: "Content-Length, Content-Type, Date, X-Total-Count"
+  allow_credentials: "true"
+  max_age: "86400"

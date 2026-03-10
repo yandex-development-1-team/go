@@ -5,10 +5,33 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
+
 	"github.com/yandex-development-1-team/go/internal/models"
 )
+
+type userRow struct {
+	ID           int64          `db:"id"`
+	TelegramNick *string        `db:"username"`
+	FirstName    *string        `db:"first_name"`
+	LastName     *string        `db:"last_name"`
+	Email        string         `db:"email"`
+	UserPass     string         `db:"password_hash"`
+	Role         string         `db:"role"`
+	Status       string         `db:"status"`
+	Permissions  pq.StringArray `db:"permissions"`
+	CreatedAt    time.Time      `db:"created_at"`
+	UpdatedAt    time.Time      `db:"updated_at"`
+}
+
+const getUserByEmailQuery = `
+	SELECT id, username, first_name, last_name, email,
+	       role, status, permissions, password_hash, created_at, updated_at
+	FROM users
+	WHERE email = $1`
 
 type UserRepo struct {
 	db *sqlx.DB
@@ -21,17 +44,8 @@ func NewUserRepo(db *sqlx.DB) *UserRepo {
 }
 
 func (u *UserRepo) GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error) {
-	//operation := "get_user"
-	//return withMetricsValue(operation, func() (*models.UserWithAuth, error) {
-
-	query := `
-    SELECT id, username, first_name, last_name, email, 
-           role, status, permissions, password_hash, created_at, updated_at
-    FROM users
-    WHERE email = $1`
-
 	var user userRow
-	err := u.db.GetContext(ctx, &user, query, email)
+	err := u.db.GetContext(ctx, &user, getUserByEmailQuery, email)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, models.ErrUserNotFound
 	}
@@ -43,7 +57,6 @@ func (u *UserRepo) GetUserByEmail(ctx context.Context, email string) (*models.Us
 		User:     toUser(&user),
 		PassHash: user.UserPass,
 	}, nil
-	//})
 }
 
 func toUser(user *userRow) *models.UserAPI {

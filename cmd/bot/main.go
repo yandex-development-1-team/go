@@ -12,199 +12,169 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-
-	"github.com/yandex-development-1-team/go/internal/api/server"
-	"github.com/yandex-development-1-team/go/internal/database/repository"
-	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
-	"github.com/yandex-development-1-team/go/internal/service"
-	apiService "github.com/yandex-development-1-team/go/internal/service/api"
+	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/api"
+	"github.com/yandex-development-1-team/go/internal/api/server"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
-	"github.com/yandex-development-1-team/go/internal/handlers"
+	"github.com/yandex-development-1-team/go/internal/database/repository"
+	apiHandlers "github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
+	apiRepository "github.com/yandex-development-1-team/go/internal/repository/postgres"
+	"github.com/yandex-development-1-team/go/internal/service"
+	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 	"github.com/yandex-development-1-team/go/internal/shutdown"
-
-	_ "github.com/lib/pq"
-	"go.uber.org/zap"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("error:%v\n", err)
+		log.Fatalf("run: %v", err)
 	}
 }
 
 func run() error {
-	// init config
+	// --- Config & logging ---
 	cfg, err := config.GetConfig(nil)
 	if err != nil {
-		return fmt.Errorf("failed to init config: %w", err)
+		return fmt.Errorf("config: %w", err)
 	}
-
-	// init logger
 	logger.NewLogger(cfg.Environment, cfg.LogLevel)
 	defer logger.Sync()
-
-	// init metrics
 	metrics.Initialize(cfg)
 
-	// init database connection for migrations
+	// --- Infrastructure: DB (sqlx) ---
 	db, err := sql.Open("postgres", cfg.DB.PostgresURL)
 	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
+		return fmt.Errorf("db open: %w", err)
 	}
 	defer db.Close()
-
 	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+		return fmt.Errorf("db ping: %w", err)
 	}
-
-	// run migrations
 	if err := database.RunMigrations(db); err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
+		return fmt.Errorf("migrations: %w", err)
 	}
-	// Оборачиваем sql.DB в sqlx.DB
 	dbSqlx := sqlx.NewDb(db, "postgres")
 
+	// --- Infrastructure: Redis ---
 	redisClient, err := repository.NewRedisClient(cfg.Redis)
 	if err != nil {
-		return fmt.Errorf("init redis client: %w", err)
+		return fmt.Errorf("redis: %w", err)
 	}
 	defer redisClient.Close()
 
-	// init telegram bot
-	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
-	if err != nil {
-		return fmt.Errorf("failed to init telegram bot: %w", err)
-	}
-
-	// init signal ctx
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	// init rate limiters
-	apiRL := bot.NewApiRateLimiter(cfg.ApiRPS)
-	msgRL, err := bot.NewMsgRateLimiter(cfg.CacheSizeRPS, cfg.MsgRPS)
-	if err != nil {
-		return fmt.Errorf("failed to init new messages rate limiter")
-	}
-
-	// init metrics server
-	metricsMux := http.NewServeMux()
-	metricsMux.Handle("/metrics", metrics.NewHandler())
-	metricsMux.HandleFunc("/health", api.NewHealthHandler(nil, cfg.TelegramBotAPIUrl))
-	metricsServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.PrometheusPort),
-		Handler: metricsMux,
-	}
-
-	// Redis connection check — fail fast.
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("redis ping: %w", err)
 	}
 	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
-	// TODO: init API server
-	/*apiMux := http.NewServeMux()
-	// apiMux.HandleFunc("/", handlers.APIHandler)
-	apiServer := &http.Server{
-		Addr:    ":8080",
-		Handler: apiMux,
-	}*/
+	// --- Repositories ---
+	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
+	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
+	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
 
-	// run metrics server
+	// --- Services ---
+	_ = apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
+	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
+	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
+
+	// --- HTTP: metrics + health ---
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", metrics.NewHandler())
+	metricsMux.HandleFunc("/health", api.NewHealthHandler(dbSqlx, cfg.TelegramBotAPIUrl))
+	metricsServer := &http.Server{
+		Addr:    fmt.Sprintf(":%d", cfg.PrometheusPort),
+		Handler: metricsMux,
+	}
 	go func() {
-		logger.Info("starting metrics and health server", zap.String("addr", metricsServer.Addr))
+		logger.Info("metrics server starting", zap.String("addr", metricsServer.Addr))
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("metrics server error", zap.Error(err))
+			logger.Error("metrics server", zap.Error(err))
 		}
 	}()
 
-	rep := repository.NewRepository(dbSqlx)
-	repMock := mocks.NewMockClient(cfg.MockLocalDir)
-
-	var bsService *service.BoxSolutionsService
-	if cfg.MockClientEnabled {
-		bsService = service.NewBoxSolutionsService(repMock)
-	} else {
-		bsService = service.NewBoxSolutionsService(rep)
-	}
-
-	startHandler := handlers.NewStartHandler(tgBot, rep)
-	boxSolutionsHandler := handlers.NewBoxSolutions(tgBot, bsService)
-
-	// init handler
-	handler := handlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
-	logger.Info("bot has been started",
-		zap.String("environment", cfg.Environment),
-		zap.String("log_level", cfg.LogLevel),
-	)
-
-	apiBoxService := apiService.NewAPIBoxService()
+	// --- API server (routers) ---
+	apiServer := server.New(&cfg)
+	apiServer.RegisterRoutes(&server.APIServices{
+		BoxService:        boxService,
+		SpecialProjectSvc: specialProjectService,
+	})
 
 	var wg sync.WaitGroup
-
-	// Creating an API server
-	apiServer := server.New(cfg.Environment)
-
-	// Registering routes
-	// Сервисов будет много, поэтому и обернул в структуру, иначе слишком много параметров получится
-	apiServer.RegisterRoutes(&server.APIServices{BoxService: apiBoxService})
-
-	// Launching API server
 	go func() {
 		wg.Go(func() {
 			if err := apiServer.Run(&cfg); err != nil {
-				logger.Error("failed to start the server", zap.Error(err))
+				logger.Error("api server", zap.Error(err))
 			}
-			logger.Info("server has been started", zap.Int("port", cfg.Port))
+			logger.Info("api server started", zap.Int("port", cfg.Port))
 		})
 	}()
 
-	// get channel with updates
-	updates := tgBot.GetUpdates(30 * time.Second)
+	// --- API-only mode: no bot ---
+	if cfg.APIOnly {
+		logger.Info("api_only mode (no bot)")
+		<-ctx.Done()
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
+		return shutdown.NewShutdownHandler(nil, dbSqlx, metricsServer, redisClient).WaitForShutdown(shutdownCtx)
+	}
 
-	// handle updates
+	// --- Telegram bot ---
+	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
+	if err != nil {
+		return fmt.Errorf("telegram bot: %w", err)
+	}
+	apiRL := bot.NewApiRateLimiter(cfg.ApiRPS)
+	msgRL, err := bot.NewMsgRateLimiter(cfg.CacheSizeRPS, cfg.MsgRPS)
+	if err != nil {
+		return fmt.Errorf("rate limiter: %w", err)
+	}
+
+	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
+	startHandler := apiHandlers.NewStartHandler(tgBot, nil)
+	boxSolutionsHandler := apiHandlers.NewBoxSolutions(tgBot, bsService)
+	handler := apiHandlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
+	logger.Info("bot started", zap.String("env", cfg.Environment))
+
+	updates := tgBot.GetUpdates(30 * time.Second)
 	go func() {
 		for update := range updates {
 			wg.Go(func() {
 				if err := apiRL.Exec(ctx, func() { handler.Handle(ctx, update) }); err != nil {
-					logger.Error("failed to handle update", zap.Error(err))
+					logger.Error("handle update", zap.Error(err))
 				}
 			})
 		}
 	}()
 
-	// wait for shutdown signal
+	// --- Shutdown ---
 	<-ctx.Done()
 
-	// init ctx timeout
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
 
-	// shutdown bot and servers (this closes updates channel)
-	shutdown := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient)
-	if err := shutdown.WaitForShutdown(ctxTimeout); err != nil {
-		return fmt.Errorf("failed to shutdown: %w", err)
+	if err := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient).WaitForShutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("shutdown: %w", err)
 	}
 
-	// wait for in-flight updates to finish
-	logger.Info("waiting for updates to finish...")
+	logger.Info("waiting for in-flight updates...")
 	updatesDone := make(chan struct{})
 	go func() {
 		wg.Wait()
 		close(updatesDone)
 	}()
-
 	select {
 	case <-updatesDone:
-		logger.Info("all updates processed")
-	case <-ctxTimeout.Done():
-		logger.Warn("timeout waiting for updates to finish")
+		logger.Info("updates done")
+	case <-shutdownCtx.Done():
+		logger.Warn("shutdown timeout waiting for updates")
 	}
 
 	return nil

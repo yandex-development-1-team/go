@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
 
@@ -84,35 +85,12 @@ func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 		zap.Int64("chat_id", chatID),
 	)
 
-	if sh.userRepository != nil {
-		// if err := sh.userRepository.CreateUser(
-		// 	ctx,
-		// 	telegramID,
-		// 	username,
-		// 	firstName,
-		// 	lastName,
-		// ); err != nil {
-
-		// 	// При ошибке создания пользователя инкрементируем MessagesErrors
-		// 	metrics.IncMessagesErrors()
-
-		// 	logger.Error("database error in CreateUser",
-		// 		zap.Int64("telegram_id", telegramID),
-		// 		zap.String("username", username),
-		// 		zap.Error(err),
-		// 	)
-
-		// 	errMsg := tgbotapi.NewMessage(chatID, ErrMessageUser)
-		// 	if _, sendErr := sh.bot.Send(errMsg); sendErr != nil {
-		// 		logger.Error("failed to send error message", zap.Error(sendErr))
-
-		// 		// При ошибке отправки сообщения об ошибке инкрементируем MessagesErrors
-		// 		metrics.IncMessagesErrors()
-		// 	}
-
-		// 	return err
-		// }
-	}
+	// TODO: включить создание пользователя при старте
+	// if sh.userRepository != nil {
+	// 	if err := sh.userRepository.CreateUser(ctx, telegramID, username, firstName, lastName); err != nil {
+	// 		...
+	// 	}
+	// }
 
 	reply := tgbotapi.NewMessage(chatID, WelcomeText)
 	reply.ReplyMarkup = mainMenuKeyboard()

@@ -1,71 +1,72 @@
+# Все сервисы в network_mode: host — без отдельной Docker-сети, всё на localhost (5432, 6379, 9090).
+# На Linux работает как ожидается; на macOS/Windows host-режим может отличаться.
 services:
 
-  db:
+  postgres:
     image: postgres:16-alpine
     container_name: booking_bot_db
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5432:5432"     # if it's nessesary
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bot_db}
+      POSTGRES_USER: ${POSTGRES_USER:-bot_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bot_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bot_user} -h 127.0.0.1"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: booking_bot_redis
+    container_name: bot_redis
     restart: unless-stopped
-    environment:
-      REDIS_DB: ${REDIS_DB} 
-      REDIS_PASSWORD: ${REDIS_PASSWORD} 
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD} 
-      --appendonly yes
-      --appendfsync everysec
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
     ports:
-      - "6379:6379"     # if it's nesessary
-    volumes:
-      - redis_data:/data
+      - "6379:6379"
     healthcheck:
-      # -a needed cause of --requirepass
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
 
-  app:
+  api:
     build: .
-    container_name: booking_bot_server
+    image: request-bot:latest
+    container_name: bot_api
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-      REDIS_DB: ${REDIS_DB} 
-      REDIS_PASSWORD: ${REDIS_PASSWORD} 
     ports:
-      - "${SERVER_PORT}:${SERVER_PORT}"
+      - "8080:8080"
+      - "9090:9090"
+    profiles:
+      - api_only
+    environment:
+      RUN_MODE: api_only
+      CONFIG_FILE: /app/config/docker.yaml
+      POSTGRES_URL: "postgres://${POSTGRES_USER:-bot_user}:${POSTGRES_PASSWORD:-bot_password}@postgres:5432/${POSTGRES_DB:-bot_db}"
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:${PROMETHEUS_PORT}/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 15s   # awaiting for miggrations 
+
+  bot:
+    image: request-bot:latest
+    container_name: bot_app
+    restart: unless-stopped
+    profiles:
+      - bot
+    environment:
+      CONFIG_FILE: /app/config/docker.yaml
+      BOT_TOKEN: ${BOT_TOKEN}
+      POSTGRES_URL: "postgres://${POSTGRES_USER:-bot_user}:${POSTGRES_PASSWORD:-bot_password}@postgres:5432/${POSTGRES_DB:-bot_db}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

@@ -15,7 +15,7 @@ END $$;
 
 -- +goose StatementBegin
 DO $$ BEGIN
-    CREATE TYPE application_status AS ENUM ('queue', 'in_progress', 'done', 'cancelled');
+    CREATE TYPE application_status AS ENUM ('queue', 'in_progress', 'done');
 EXCEPTION WHEN duplicate_object THEN null;
 END $$;
 -- +goose StatementEnd
@@ -32,12 +32,7 @@ CREATE TABLE IF NOT EXISTS applications (
     special_project_id BIGINT,
     manager_id         BIGINT,
     created_at         TIMESTAMPTZ        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMPTZ        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_special_project
-    FOREIGN KEY (special_project_id)
-    REFERENCES special_projects (id)
-    ON DELETE RESTRICT 
+    updated_at         TIMESTAMPTZ        NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_applications_status     ON applications(status);

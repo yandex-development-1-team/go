@@ -11,10 +11,15 @@ GORUN=$(GO) run
 # Paths
 SRC_DIR=./cmd/bot
 BUILD_DIR=./bin
+GO_FILES=$(shell find . -type f -name '*.go' ! -path './vendor/*')
 
-.PHONY: migration migration-create migration-rollback generate-mocks
+.PHONY: migration migration-create migration-rollback generate-mocks fmt fix lint lint-fix vet help
 
 all: build
+
+## help: Show this help
+help:
+	@grep -E '^## ' Makefile | sed 's/## //' | column -t -s ':'
 
 ## build: building a project
 build:
@@ -33,17 +38,25 @@ clean:
 test:
 	$(GOTEST) ./... -v -cover -count=1
 
-## fmt: Format the source code
-fmt:
+## fmt: Format code and fix imports (goimports + gofmt)
+fmt: fix
+
+## fix: Fix imports (grouping, unused) and format code. Run before commit.
+fix:
+	$(GO) run golang.org/x/tools/cmd/goimports@latest -w $(GO_FILES)
 	$(GO) fmt ./...
 
 ## vet: Check the code for suspicious structures
 vet:
 	$(GO) vet ./...
 
-## lint: Launch the linter (golangci-lint)
+## lint: Run linter (golangci-lint). Install: https://golangci-lint.run/usage/install/
 lint:
 	golangci-lint run ./...
+
+## lint-fix: Run linter with auto-fix where possible
+lint-fix:
+	golangci-lint run --fix ./...
 
 
 migration:
