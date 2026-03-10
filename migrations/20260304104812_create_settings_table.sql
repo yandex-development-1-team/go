@@ -1,5 +1,11 @@
 -- +goose Up
-CREATE TYPE setting_category_type AS ENUM ('general', 'booking', 'notifications');
+-- +goose StatementBegin
+DO $$ BEGIN
+    CREATE TYPE setting_category_type AS ENUM ('general', 'booking', 'notifications');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+-- +goose StatementEnd
 
 CREATE TABLE IF NOT EXISTS settings (
     id SERIAL PRIMARY KEY,
@@ -21,7 +27,11 @@ INSERT INTO settings (category, key, value) VALUES
                                                 ('booking', 'cancellation_allowed_hours', 24),
                                                 ('general', 'site_name', ''),
                                                 ('general', 'contact_email', ''),
-                                                ('general', 'contact_phone', '');
+                                                ('general', 'contact_phone', '')
+ON CONFLICT (category, key)
+    DO UPDATE SET
+                  category = EXCLUDED.category,
+                  key = EXCLUDED.key;
 
 -- +goose Down
 DROP TABLE IF EXISTS settings;
