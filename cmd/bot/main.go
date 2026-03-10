@@ -78,15 +78,17 @@ func run() error {
 	// --- Repositories ---
 	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
 	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
+	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
 
 	// --- Services ---
 	_ = apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
+	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 
 	// --- HTTP: metrics + health ---
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
-	metricsMux.HandleFunc("/health", api.NewHealthHandler(nil, cfg.TelegramBotAPIUrl))
+	metricsMux.HandleFunc("/health", api.NewHealthHandler(dbSqlx, cfg.TelegramBotAPIUrl))
 	metricsServer := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.PrometheusPort),
 		Handler: metricsMux,
@@ -101,7 +103,8 @@ func run() error {
 	// --- API server (routers) ---
 	apiServer := server.New(&cfg)
 	apiServer.RegisterRoutes(&server.APIServices{
-		BoxService: boxService,
+		BoxService:        boxService,
+		SpecialProjectSvc: specialProjectService,
 	})
 
 	var wg sync.WaitGroup

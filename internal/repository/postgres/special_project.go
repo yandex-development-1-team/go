@@ -23,12 +23,11 @@ const (
 	getSpecialProjectByIDQuery = `
 		SELECT id, title, description, image, is_active_in_bot, created_at, updated_at
 		FROM special_projects
-		WHERE id = $1 AND deleted_at IS NULL`
+		WHERE id = $1`
 
 	listSpecialProjectsBaseQuery = `
 		SELECT id, title, is_active_in_bot
-		FROM special_projects
-		WHERE deleted_at IS NULL`
+		FROM special_projects`
 
 	updateSpecialProjectQuery = `
 		UPDATE special_projects
@@ -42,9 +41,8 @@ const (
 		WHERE special_project_id = $1 AND status IN ('queue', 'in_progress')`
 
 	deleteSpecialProjectQuery = `
-		UPDATE special_projects
-		SET deleted_at = NOW(), updated_at = NOW(), is_active_in_bot = false
-		WHERE id = $1 AND deleted_at IS NULL`
+		DELETE FROM special_projects
+		WHERE id = $1`
 )
 
 type specialProjectRepo struct {
