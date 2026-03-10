@@ -52,18 +52,9 @@ const (
 		WHERE id = $2`
 )
 
-type BookingRepository interface {
-	CreateBooking(ctx context.Context, b *models.Booking) (int64, error)
-	GetAvailableSlots(ctx context.Context, serviceID int, date time.Time) ([]time.Time, error)
-	GetBookingsByUserID(ctx context.Context, userID int64) ([]models.Booking, error)
-	UpdateBookingStatus(ctx context.Context, bookingID int64, status string) error
-}
-
 type BookingRepo struct {
 	db *sqlx.DB
 }
-
-var _ BookingRepository = (*BookingRepo)(nil)
 
 func NewBookingRepository(db *sqlx.DB) *BookingRepo {
 	return &BookingRepo{db: db}

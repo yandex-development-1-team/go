@@ -8,19 +8,43 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
+	"go.uber.org/zap"
 
-	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
 const (
 	insertSpecialProjectQuery = `
 		INSERT INTO special_projects (title, description, image, is_active_in_bot)
-		VALUES (:title, :description, :image, :is_active_in_bot)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, title, description, image, is_active_in_bot, created_at, updated_at`
 
-	getSpecialProjectByIDQuery = `SELECT * FROM special_projects WHERE id = $1`
+	getSpecialProjectByIDQuery = `
+		SELECT id, title, description, image, is_active_in_bot, created_at, updated_at
+		FROM special_projects
+		WHERE id = $1 AND deleted_at IS NULL`
 
-	listSpecialProjectsBaseQuery = `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
+	listSpecialProjectsBaseQuery = `
+		SELECT id, title, is_active_in_bot
+		FROM special_projects
+		WHERE deleted_at IS NULL`
+
+	updateSpecialProjectQuery = `
+		UPDATE special_projects
+		SET title = $1, description = $2, image = $3, is_active_in_bot = $4, updated_at = NOW()
+		WHERE id = $5 AND deleted_at IS NULL
+		RETURNING id, title, description, image, is_active_in_bot, created_at, updated_at`
+
+	deactivateApplicationsQuery = `
+		UPDATE applications
+		SET status = 'cancelled', updated_at = NOW()
+		WHERE special_project_id = $1 AND status IN ('queue', 'in_progress')`
+
+	deleteSpecialProjectQuery = `
+		UPDATE special_projects
+		SET deleted_at = NOW(), updated_at = NOW(), is_active_in_bot = false
+		WHERE id = $1 AND deleted_at IS NULL`
 )
 
 type specialProjectRepo struct {
@@ -31,63 +55,120 @@ func NewSpecialProjectRepository(db *sqlx.DB) *specialProjectRepo {
 	return &specialProjectRepo{db: db}
 }
 
-func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
-	err := r.db.QueryRowxContext(ctx, insertSpecialProjectQuery, proj).StructScan(proj)
+func (r *specialProjectRepo) Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error) {
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" { // duplicate key
-			return nil, fmt.Errorf("special project already exists: %w", err)
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
+			logger.Error("failed to rollback transaction", zap.Error(rollbackErr))
+		}
+	}()
+
+	var out specialproject.DB
+	err = tx.QueryRowxContext(ctx, insertSpecialProjectQuery,
+		proj.Title, proj.Description, proj.Image, proj.IsActiveInBot,
+	).StructScan(&out)
+	if err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
+			return nil, specialproject.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("repo create: %w", err)
 	}
-	return proj, nil
 
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return &out, nil
 }
 
-func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
-	var proj models.SpecialProjectDB
+func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*specialproject.DB, error) {
+	var proj specialproject.DB
 	err := r.db.GetContext(ctx, &proj, getSpecialProjectByIDQuery, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrSpecProjNotFound
+			return nil, specialproject.ErrNotFound
 		}
 		return nil, fmt.Errorf("repo get by id: %w", err)
 	}
 	return &proj, nil
 }
 
-func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*models.SpecialProjectDB, error) {
+func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*specialproject.DB, error) {
 	baseQuery := listSpecialProjectsBaseQuery
-	args := make(map[string]interface{})
+	var args []interface{}
 
-	// Apply status filter if provided
 	if statusFilter != nil {
-		baseQuery += " AND is_active_in_bot = :status"
-		args["status"] = *statusFilter
+		baseQuery += fmt.Sprintf(" AND is_active_in_bot = $%d", len(args)+1)
+		args = append(args, *statusFilter)
 	}
-
-	// Apply full-text search if query is provided
 	if searchQuery != "" {
-		// Use PostgreSQL's built-in full-text search with to_tsvector
-		// This requires the GIN index created earlier
-		baseQuery += ` AND to_tsvector('russian', coalesce(title, '') || ' ' || coalesce(description, '')) @@ plainto_tsquery('russian', :search)`
-		args["search"] = searchQuery
+		baseQuery += fmt.Sprintf(" AND to_tsvector('russian', coalesce(title, '') || ' ' || coalesce(description, '')) @@ plainto_tsquery('russian', $%d)", len(args)+1)
+		args = append(args, searchQuery)
 	}
-
-	// Order results by creation date descending
 	baseQuery += " ORDER BY updated_at DESC"
 
-	// Prepare the named query
-	stmt, err := r.db.PrepareNamedContext(ctx, baseQuery)
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare named query: %w", err)
-	}
-	defer stmt.Close()
-
-	var projects []*models.SpecialProjectDB
-	err = stmt.SelectContext(ctx, &projects, args)
+	var projects []*specialproject.DB
+	err := r.db.SelectContext(ctx, &projects, baseQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("repo list: %w", err)
 	}
-
 	return projects, nil
+}
+
+func (r *specialProjectRepo) UpdateSpecialProject(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
+			logger.Error("failed to rollback transaction", zap.Error(rollbackErr))
+		}
+	}()
+
+	var out specialproject.DB
+	err = tx.QueryRowxContext(ctx, updateSpecialProjectQuery,
+		update.Title, update.Description, update.Image, update.IsActiveInBot, id,
+	).StructScan(&out)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, specialproject.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to update special project: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return &out, nil
+}
+
+func (r *specialProjectRepo) DeleteSpecialProject(ctx context.Context, id int64) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
+			logger.Error("failed to rollback transaction", zap.Error(rollbackErr))
+		}
+	}()
+
+	if _, err = tx.ExecContext(ctx, deactivateApplicationsQuery, id); err != nil {
+		return fmt.Errorf("failed to deactivate applications: %w", err)
+	}
+	res, err := tx.ExecContext(ctx, deleteSpecialProjectQuery, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete special project: %w", err)
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return specialproject.ErrNotFound
+	}
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
 }

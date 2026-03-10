@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
@@ -11,17 +13,19 @@ type BoxHandler struct {
 	boxService *apiService.APIBoxService
 }
 
-// NewBoxHandler creates a new 'BoxHandler'
+// NewBoxHandler creates a new BoxHandler
 func NewBoxHandler(boxService *apiService.APIBoxService) *BoxHandler {
-	return &BoxHandler{
-		boxService: boxService,
-	}
+	return &BoxHandler{boxService: boxService}
 }
 
 // List GET /api/v1/boxes
 func (h *BoxHandler) List(c *gin.Context) {
-	// TODO: Implement with filters: status, search, limit, offset, sort, order
-	c.JSON(200, gin.H{"message": "BoxHandler.List - not implemented yet"})
+	list, err := h.boxService.List(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal_server_error"})
+		return
+	}
+	c.JSON(http.StatusOK, list)
 }
 
 // Create POST /api/v1/boxes

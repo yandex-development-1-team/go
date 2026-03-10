@@ -11,10 +11,15 @@ GORUN=$(GO) run
 # Paths
 SRC_DIR=./cmd/bot
 BUILD_DIR=./bin
+GO_FILES=$(shell find . -type f -name '*.go' ! -path './vendor/*')
 
-.PHONY: migration migration-create migration-rollback generate-mocks
+.PHONY: migration migration-create migration-rollback generate-mocks fmt fix lint lint-fix vet help
 
 all: build
+
+## help: Show this help
+help:
+	@grep -E '^## ' Makefile | sed 's/## //' | column -t -s ':'
 
 ## build: building a project
 build:
@@ -29,44 +34,29 @@ clean:
 	$(GOCLEAN)
 	rm -rf $(SRC_DIR)/bin
 	
-## test: running unit tests (без интеграционных)
+## test: running tests
 test:
-	$(GOTEST) ./... -v -count=1
+	$(GOTEST) ./... -v -cover -count=1
 
-## test-integration: интеграционные тесты (testcontainers: Postgres и т.д.). То же вызывается в CI.
-test-integration:
-	$(GOTEST) -tags=integration ./... -v -count=1 -timeout=15m
+## fmt: Format code and fix imports (goimports + gofmt)
+fmt: fix
 
-# Local module path for goimports grouping
-IMPORT_LOCAL=github.com/yandex-development-1-team/go
-
-GO_FILES=$(shell find . -name '*.go' -not -path './bot/*' 2>/dev/null)
-
-## fmt: Format the source code (gofmt)
-fmt:
-	@gofmt -w $(GO_FILES)
-
-## imports: Sort and group imports (goimports)
-imports:
-	@$(GORUN) golang.org/x/tools/cmd/goimports@latest -w -local $(IMPORT_LOCAL) $(GO_FILES)
+## fix: Fix imports (grouping, unused) and format code. Run before commit.
+fix:
+	$(GO) run golang.org/x/tools/cmd/goimports@latest -w $(GO_FILES)
+	$(GO) fmt ./...
 
 ## vet: Check the code for suspicious structures
 vet:
 	$(GO) vet ./...
 
-## lint: Run golangci-lint (нужна сборка под Go 1.26; в CI используется action с нужной версией)
+## lint: Run linter (golangci-lint). Install: https://golangci-lint.run/usage/install/
 lint:
-	golangci-lint run ./... --timeout=5m
+	golangci-lint run ./...
 
-## check: Verify formatting and imports (CI check, fails if not applied)
-check: check-fmt check-imports vet
-	@echo "check: fmt, imports, vet OK"
-
-check-fmt:
-	@out=$$(gofmt -l $(GO_FILES)); [ -z "$$out" ] || { echo "gofmt -l: unformatted files:"; echo "$$out"; exit 1; }
-
-check-imports:
-	@out=$$($(GORUN) golang.org/x/tools/cmd/goimports@latest -l -local $(IMPORT_LOCAL) $(GO_FILES)); [ -z "$$out" ] || { echo "goimports -l: files with import issues:"; echo "$$out"; exit 1; }
+## lint-fix: Run linter with auto-fix where possible
+lint-fix:
+	golangci-lint run --fix ./...
 
 
 migration:

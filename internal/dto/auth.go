@@ -2,7 +2,7 @@ package dto
 
 import "time"
 
-// LoginRequest — тело запроса POST /api/v1/auth/login (docs/openapi.json).
+// LoginRequest — тело запроса POST /api/v1/auth/login.
 type LoginRequest struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
@@ -26,4 +26,24 @@ type UserResponse struct {
 	Permissions  []string  `json:"permissions"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// RefreshRequest — body для POST /api/v1/auth/refresh
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+// RefreshResponse — ответ с новым access token
+type RefreshResponse struct {
+	Token string `json:"token"`
+}
+
+// LogoutRequest — body для POST /api/v1/auth/logout
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+// LogoutResponse — ответ после logout
+type LogoutResponse struct {
+	Message string `json:"message"`
 }

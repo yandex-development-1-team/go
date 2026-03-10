@@ -105,7 +105,7 @@ func (r *CallbackRouter) findHandler(data string) (CallbackHandler, error) {
 		return handler, nil
 	}
 
-	return nil, fmt.Errorf("Data handler not found")
+	return nil, fmt.Errorf("data handler not found")
 }
 
 // getName извлекает имя из данных callback

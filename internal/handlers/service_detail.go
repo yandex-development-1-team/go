@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-
-	"go.uber.org/zap"
-
 	"github.com/yandex-development-1-team/go/internal/models"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/logger"
 )
@@ -87,21 +86,22 @@ func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.C
 }
 
 func convertDBServiceModelToHandlerModel(dbServiceModel models.Service) Service {
-	var scheduleSlots []AvailableSlot
-	for _, slot := range dbServiceModel.AvailableSlots {
-		scheduleSlots = append(scheduleSlots, AvailableSlot{
-			Date:      slot.Date,
-			TimeSlots: slot.TimeSlots,
+	slots := make([]AvailableSlot, 0, len(dbServiceModel.AvailableSlots))
+	for _, s := range dbServiceModel.AvailableSlots {
+		slots = append(slots, AvailableSlot{
+			Date:      s.Date,
+			TimeSlots: s.TimeSlots,
 		})
 	}
+
 	return Service{
 		ID:             dbServiceModel.ID,
 		Name:           dbServiceModel.Name,
 		Description:    dbServiceModel.Description,
 		Rules:          dbServiceModel.Rules,
 		Schedule:       dbServiceModel.Schedule,
+		AvailableSlots: slots,
 		Type:           ServiceType(dbServiceModel.Type),
-		AvailableSlots: scheduleSlots,
 	}
 }
 

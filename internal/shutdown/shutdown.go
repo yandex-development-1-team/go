@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/redis/go-redis/v9"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 )
 
@@ -25,96 +26,67 @@ type Redis interface {
 	Shutdown(ctx context.Context) *redis.StatusCmd
 }
 
-// APIServer — HTTP API (Gin), останавливается через Shutdown.
-type APIServer interface {
-	Shutdown(ctx context.Context) error
-}
-
 type ShutdownHandler struct {
-	bot       Bot
-	db        DB
-	metrics   MetricsServer
-	redis     Redis
-	apiServer APIServer
+	bot     Bot
+	db      DB
+	metrics MetricsServer
+	redis   Redis
 }
 
-func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer, redis Redis, apiServer APIServer) *ShutdownHandler {
+func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer, redis Redis) *ShutdownHandler {
 	return &ShutdownHandler{
-		bot:       bot,
-		db:        db,
-		metrics:   metrics,
-		redis:     redis,
-		apiServer: apiServer,
+		bot:     bot,
+		db:      db,
+		metrics: metrics,
+		redis:   redis,
 	}
 }
 
 func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 	var wg sync.WaitGroup
-	errChan := make(chan error, 5)
+	errChan := make(chan error, 4)
 
-	run := func(fn func() error) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := fn(); err != nil {
-				errChan <- err
-			}
-		}()
-	}
-
-	// bot shutdown
 	if s.bot != nil {
 		logger.Info("shutting down bot...")
-		run(func() error {
-			err := s.bot.Shutdown(ctx)
-			if err == nil {
+		wg.Go(func() {
+			if err := s.bot.Shutdown(ctx); err != nil {
+				errChan <- err
+			} else {
 				logger.Info("bot gracefully shutdown")
 			}
-			return err
 		})
 	}
 
-	// redis shutdown
-	logger.Info("shutting down redis...")
-	run(func() error {
-		err := s.redis.Shutdown(ctx).Err()
-		if err == nil {
-			logger.Info("redis gracefully shutdown")
-		}
-		return err
-	})
+	if s.redis != nil {
+		logger.Info("shutting down redis...")
+		wg.Go(func() {
+			if err := s.redis.Shutdown(ctx).Err(); err != nil {
+				errChan <- err
+			} else {
+				logger.Info("redis gracefully shutdown")
+			}
+		})
+	}
 
-	// DB shutdown
-	logger.Info("shutting down DB...")
-	run(func() error {
-		err := s.db.Close()
-		if err == nil {
-			logger.Info("DB gracefully shutdown")
-		}
-		return err
-	})
+	if s.db != nil {
+		logger.Info("shutting down DB...")
+		wg.Go(func() {
+			if err := s.db.Close(); err != nil {
+				errChan <- err
+			} else {
+				logger.Info("DB gracefully shutdown")
+			}
+		})
+	}
 
-	// shutdown metrics server
 	if s.metrics != nil {
 		logger.Info("shutting down metrics server...")
-		run(func() error {
-			err := s.metrics.Shutdown(ctx)
-			if err == nil {
+		wg.Go(func() {
+			if err := s.metrics.Shutdown(ctx); err != nil {
+				errChan <- err
+			} else {
 				logger.Info("metrics server gracefully shutdown")
 			}
-			return err
-		})
-	}
-
-	// shutdown API server (Gin)
-	if s.apiServer != nil {
-		logger.Info("shutting down API server...")
-		run(func() error {
-			err := s.apiServer.Shutdown(ctx)
-			if err == nil {
-				logger.Info("API server gracefully shutdown")
-			}
-			return err
 		})
 	}
 

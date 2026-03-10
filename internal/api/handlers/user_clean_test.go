@@ -39,7 +39,7 @@ func setupServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 
 	userRepo := repository.NewUserRepo(db)
 	refreshRepo := repository.NewRefreshTokenRepo(db)
-	svc := service.GetNewAuthService(userRepo, refreshRepo)
+	svc := service.NewAuthService(db, refreshRepo, userRepo, "test-secret", 15, 30)
 	handler := NewAuthHandler(svc)
 
 	router := gin.New()

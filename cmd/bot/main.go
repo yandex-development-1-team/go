@@ -6,83 +6,84 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"golang.org/x/sync/errgroup"
-
-	"github.com/yandex-development-1-team/go/internal/api/server"
-	"github.com/yandex-development-1-team/go/internal/database/repository"
-	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
-	postgresRepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
-	"github.com/yandex-development-1-team/go/internal/service"
-	apiService "github.com/yandex-development-1-team/go/internal/service/api"
+	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/api"
+	"github.com/yandex-development-1-team/go/internal/api/server"
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
-	"github.com/yandex-development-1-team/go/internal/handlers"
+	"github.com/yandex-development-1-team/go/internal/database/repository"
+	apiHandlers "github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
+	apiRepository "github.com/yandex-development-1-team/go/internal/repository/postgres"
+	"github.com/yandex-development-1-team/go/internal/service"
+	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 	"github.com/yandex-development-1-team/go/internal/shutdown"
-
-	_ "github.com/lib/pq"
-	"go.uber.org/zap"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("error:%v\n", err)
+		log.Fatalf("run: %v", err)
 	}
 }
 
 func run() error {
-	apiOnly := os.Getenv("RUN_MODE") == "api_only"
-
-	// init config
+	// --- Config & logging ---
 	cfg, err := config.GetConfig(nil)
 	if err != nil {
-		return fmt.Errorf("failed to init config: %w", err)
+		return fmt.Errorf("config: %w", err)
 	}
-
-	// init logger
 	logger.NewLogger(cfg.Environment, cfg.LogLevel)
 	defer logger.Sync()
-
-	// init metrics
 	metrics.Initialize(cfg)
 
-	// init database connection for migrations
+	// --- Infrastructure: DB (sqlx) ---
 	db, err := sql.Open("postgres", cfg.DB.PostgresURL)
 	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
+		return fmt.Errorf("db open: %w", err)
 	}
 	defer db.Close()
-
 	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+		return fmt.Errorf("db ping: %w", err)
 	}
-
-	// run migrations
 	if err := database.RunMigrations(db); err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
+		return fmt.Errorf("migrations: %w", err)
 	}
-	// Оборачиваем sql.DB в sqlx.DB
 	dbSqlx := sqlx.NewDb(db, "postgres")
 
+	// --- Infrastructure: Redis ---
 	redisClient, err := repository.NewRedisClient(cfg.Redis)
 	if err != nil {
-		return fmt.Errorf("init redis client: %w", err)
+		return fmt.Errorf("redis: %w", err)
 	}
 	defer redisClient.Close()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("redis ping: %w", err)
+	}
+	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
+
+	// --- Repositories ---
+	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
+	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
+
+	// --- Services ---
+	_ = apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
+	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
+
+	// --- HTTP: metrics + health ---
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
 	metricsMux.HandleFunc("/health", api.NewHealthHandler(nil, cfg.TelegramBotAPIUrl))
@@ -90,119 +91,88 @@ func run() error {
 		Addr:    fmt.Sprintf(":%d", cfg.PrometheusPort),
 		Handler: metricsMux,
 	}
-
-	if err := redisClient.Ping(ctx).Err(); err != nil {
-		return fmt.Errorf("redis ping: %w", err)
-	}
-	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
-
 	go func() {
-		logger.Info("starting metrics and health server", zap.String("addr", metricsServer.Addr))
+		logger.Info("metrics server starting", zap.String("addr", metricsServer.Addr))
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("metrics server error", zap.Error(err))
+			logger.Error("metrics server", zap.Error(err))
 		}
 	}()
 
-	if apiOnly {
-		logger.Info("running in api_only mode (no bot)")
+	// --- API server (routers) ---
+	apiServer := server.New(&cfg)
+	apiServer.RegisterRoutes(&server.APIServices{
+		BoxService: boxService,
+	})
+
+	var wg sync.WaitGroup
+	go func() {
+		wg.Go(func() {
+			if err := apiServer.Run(&cfg); err != nil {
+				logger.Error("api server", zap.Error(err))
+			}
+			logger.Info("api server started", zap.Int("port", cfg.Port))
+		})
+	}()
+
+	// --- API-only mode: no bot ---
+	if cfg.APIOnly {
+		logger.Info("api_only mode (no bot)")
 		<-ctx.Done()
-		ctxTimeout, cancelShutdown := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancelShutdown()
-		return shutdown.NewShutdownHandler(nil, dbSqlx, metricsServer, redisClient, nil).WaitForShutdown(ctxTimeout)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
+		return shutdown.NewShutdownHandler(nil, dbSqlx, metricsServer, redisClient).WaitForShutdown(shutdownCtx)
 	}
 
+	// --- Telegram bot ---
 	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
 	if err != nil {
-		return fmt.Errorf("failed to init telegram bot: %w", err)
+		return fmt.Errorf("telegram bot: %w", err)
 	}
-
 	apiRL := bot.NewApiRateLimiter(cfg.ApiRPS)
 	msgRL, err := bot.NewMsgRateLimiter(cfg.CacheSizeRPS, cfg.MsgRPS)
 	if err != nil {
-		return fmt.Errorf("failed to init new messages rate limiter")
+		return fmt.Errorf("rate limiter: %w", err)
 	}
 
-	rep := repository.NewRepository(dbSqlx)
-	repMock := mocks.NewMockClient(cfg.MockLocalDir)
+	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
+	startHandler := apiHandlers.NewStartHandler(tgBot, nil)
+	boxSolutionsHandler := apiHandlers.NewBoxSolutions(tgBot, bsService)
+	handler := apiHandlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
+	logger.Info("bot started", zap.String("env", cfg.Environment))
 
-	var bsService *service.BoxSolutionsService
-	if cfg.MockClientEnabled {
-		bsService = service.NewBoxSolutionsService(repMock)
-	} else {
-		bsService = service.NewBoxSolutionsService(rep)
-	}
-
-	startHandler := handlers.NewStartHandler(tgBot, rep)
-	boxSolutionsHandler := handlers.NewBoxSolutions(tgBot, bsService)
-
-	// init handler
-	handler := handlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
-	logger.Info("bot has been started",
-		zap.String("environment", cfg.Environment),
-		zap.String("log_level", cfg.LogLevel),
-	)
-
-	apiBoxService := apiService.NewAPIBoxService()
-	specProjRepo := postgresRepo.NewSpecialProjectRepository(dbSqlx)
-	specProjSvc := service.NewSpecialProjectService(specProjRepo)
-
-	var wg errgroup.Group
-
-	// Creating an API server
-	apiServer := server.New(&cfg)
-
-	// Registering routes
-	apiServer.RegisterRoutes(&server.APIServices{
-		BoxService:        apiBoxService,
-		SpecialProjectSvc: specProjSvc,
-	})
-
-	// Launching API server
-	wg.Go(func() error {
-		if err := apiServer.Run(&cfg); err != nil {
-			logger.Error("failed to start the server", zap.Error(err))
-			return err
-		}
-		logger.Info("server has been started", zap.Int("port", cfg.Port))
-		return nil
-	})
-
-	// get channel with updates
-	updates := tgBot.GetUpdates(cfg.GetUpdatesTimeout)
-
-	// handle updates
+	updates := tgBot.GetUpdates(30 * time.Second)
 	go func() {
 		for update := range updates {
-			u := update
-			wg.Go(func() error {
-				if err := apiRL.Exec(ctx, func() { handler.Handle(ctx, u) }); err != nil {
-					logger.Error("failed to handle update", zap.Error(err))
-					return err
+			wg.Go(func() {
+				if err := apiRL.Exec(ctx, func() { handler.Handle(ctx, update) }); err != nil {
+					logger.Error("handle update", zap.Error(err))
 				}
-				return nil
 			})
 		}
 	}()
 
-	// wait for shutdown signal
+	// --- Shutdown ---
 	<-ctx.Done()
 
-	// init ctx timeout
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
 
-	// shutdown bot, API server, and infra (this closes updates channel)
-	shutdownHandler := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient, apiServer)
-	if err := shutdownHandler.WaitForShutdown(ctxTimeout); err != nil {
-		return fmt.Errorf("failed to shutdown: %w", err)
+	if err := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient).WaitForShutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("shutdown: %w", err)
 	}
 
-	// wait for in-flight updates to finish
-	logger.Info("waiting for updates to finish...")
-	if err := wg.Wait(); err != nil {
-		logger.Warn("some goroutines finished with error", zap.Error(err))
+	logger.Info("waiting for in-flight updates...")
+	updatesDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(updatesDone)
+	}()
+	select {
+	case <-updatesDone:
+		logger.Info("updates done")
+	case <-shutdownCtx.Done():
+		logger.Warn("shutdown timeout waiting for updates")
 	}
-	logger.Info("all updates processed")
 
 	return nil
 }
