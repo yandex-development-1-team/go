@@ -1,8 +1,5 @@
 package handlers
 
-<<<<<<< HEAD
-// ErrorResponse and it's components
-=======
 // Message-style response (auth, legacy)
 type MessageStatus string
 
@@ -24,7 +21,6 @@ type MessageResponse struct {
 }
 
 // Error-style response (REST API, e.g. special_project)
->>>>>>> dev
 type ErrorDetail struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
@@ -39,8 +35,6 @@ type ErrorObject struct {
 type ErrorResponse struct {
 	Error ErrorObject `json:"error"`
 }
-<<<<<<< HEAD
-=======
 
 // Helpers: MessageResponse for auth flow
 func UnauthorizedError(detail string) *MessageResponse {
@@ -71,4 +65,3 @@ func InternalServerError() *MessageResponse {
 		Status:  StatusError,
 	}
 }
->>>>>>> dev

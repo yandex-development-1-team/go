@@ -4,10 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-<<<<<<< HEAD
-=======
 	"github.com/jmoiron/sqlx"
->>>>>>> dev
 	"github.com/lib/pq"
 	"go.uber.org/zap"
 

@@ -32,7 +32,7 @@ type RefreshTokenRepository interface {
 type SpecialProjectRepository interface {
 	Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error)
 	GetByID(ctx context.Context, id int64) (*specialproject.DB, error)
-	List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*specialproject.DB, error)
-	UpdateSpecialProject(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
-	DeleteSpecialProject(ctx context.Context, id int64) error
+	List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error)
+	Update(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
+	Delete(ctx context.Context, id int64) error
 }
