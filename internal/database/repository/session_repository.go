@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
@@ -31,25 +32,21 @@ type sessionDTO struct {
 	UpdatedAt    time.Time              `json:"updated_at"`
 }
 
-// SessionRepository is a Redis-backed implementation of repository.SessionRepository.
-type SessionRepository struct {
+type SessionRepo struct {
 	client redis.Cmdable
 	ttl    time.Duration
 }
 
-// Option is a functional option for SessionRepository.
-type Option func(*SessionRepository)
+type Option func(*SessionRepo)
 
-// WithTTL overrides the default session TTL.
 func WithTTL(ttl time.Duration) Option {
-	return func(r *SessionRepository) {
+	return func(r *SessionRepo) {
 		r.ttl = ttl
 	}
 }
 
-// NewSessionRepository constructs a new Redis-backed SessionRepository.
-func NewSessionRepository(client redis.Cmdable, opts ...Option) *SessionRepository {
-	r := &SessionRepository{
+func NewSessionRepository(client redis.Cmdable, opts ...Option) *SessionRepo {
+	r := &SessionRepo{
 		client: client,
 		ttl:    defaultSessionTTL,
 	}
@@ -85,9 +82,7 @@ func NewRedisClient(cfg config.RedisConfig) (*redis.Client, error) {
 	return redis.NewClient(opts), nil
 }
 
-// SaveSession creates or fully replaces the session for the given user.
-// If a session already exists its CreatedAt timestamp is preserved.
-func (r *SessionRepository) SaveSession(
+func (r *SessionRepo) SaveSession(
 	ctx context.Context,
 	userID int64,
 	state string,
@@ -95,11 +90,10 @@ func (r *SessionRepository) SaveSession(
 ) error {
 	now := time.Now().UTC()
 
-	// Preserve CreatedAt when overwriting an existing session.
 	createdAt := now
-	// if existing, err := r.getDTO(ctx, userID); err == nil {
-	// 	createdAt = existing.CreatedAt
-	// }
+	if existing, err := r.getDTO(ctx, userID); err == nil {
+		createdAt = existing.CreatedAt
+	}
 
 	dto := sessionDTO{
 		UserID:       userID,
@@ -112,9 +106,7 @@ func (r *SessionRepository) SaveSession(
 	return r.setDTO(ctx, userID, dto)
 }
 
-// GetSession retrieves the session for the given user.
-// Returns repository.ErrSessionNotFound if no session exists.
-func (r *SessionRepository) GetSession(ctx context.Context, userID int64) (*models.UserSession, error) {
+func (r *SessionRepo) GetSession(ctx context.Context, userID int64) (*models.UserSession, error) {
 	dto, err := r.getDTO(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -122,9 +114,7 @@ func (r *SessionRepository) GetSession(ctx context.Context, userID int64) (*mode
 	return dtoToModel(dto), nil
 }
 
-// ClearSession removes the session for the given user.
-// It is a no-op (returns nil) when the session does not exist.
-func (r *SessionRepository) ClearSession(ctx context.Context, userID int64) error {
+func (r *SessionRepo) ClearSession(ctx context.Context, userID int64) error {
 	return withMetricsRedis("Del", func() error {
 
 		key := r.buildKey(userID)
@@ -135,10 +125,7 @@ func (r *SessionRepository) ClearSession(ctx context.Context, userID int64) erro
 	})
 }
 
-// UpdateSessionState changes only the state field of an existing session,
-// leaving all state_data intact.
-// Returns repository.ErrSessionNotFound if the session does not exist.
-func (r *SessionRepository) UpdateSessionState(ctx context.Context, userID int64, newState string) error {
+func (r *SessionRepo) UpdateSessionState(ctx context.Context, userID int64, newState string) error {
 	dto, err := r.getDTO(ctx, userID)
 	if err != nil {
 		return err
@@ -150,12 +137,11 @@ func (r *SessionRepository) UpdateSessionState(ctx context.Context, userID int64
 	return r.setDTO(ctx, userID, *dto)
 }
 
-func (r *SessionRepository) buildKey(userID int64) string {
+func (r *SessionRepo) buildKey(userID int64) string {
 	return fmt.Sprintf("%s%d", keyPrefix, userID)
 }
 
-// getDTO fetches and deserialises a session DTO from Redis.
-func (r *SessionRepository) getDTO(ctx context.Context, userID int64) (*sessionDTO, error) {
+func (r *SessionRepo) getDTO(ctx context.Context, userID int64) (*sessionDTO, error) {
 	return withMetricsRedisValue("getDTO", func() (*sessionDTO, error) {
 
 		key := r.buildKey(userID)
@@ -176,8 +162,7 @@ func (r *SessionRepository) getDTO(ctx context.Context, userID int64) (*sessionD
 	})
 }
 
-// setDTO serialises and stores a session DTO in Redis, refreshing the TTL.
-func (r *SessionRepository) setDTO(ctx context.Context, userID int64, dto sessionDTO) error {
+func (r *SessionRepo) setDTO(ctx context.Context, userID int64, dto sessionDTO) error {
 	return withMetricsRedis("setDTO", func() error {
 		key := r.buildKey(userID)
 

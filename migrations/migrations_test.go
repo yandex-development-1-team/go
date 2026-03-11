@@ -80,7 +80,7 @@ func setupTestDatabase(t *testing.T, ctx context.Context) *sql.DB {
 }
 
 func applyMigration(t *testing.T, ctx context.Context, db *sql.DB, filename string) {
-	migrationSQL, err := os.ReadFile(filepath.Join(".", filename))
+	migrationSQL, err := os.ReadFile(filepath.Join("testdata", filename))
 	require.NoError(t, err)
 
 	_, err = db.ExecContext(ctx, string(migrationSQL))

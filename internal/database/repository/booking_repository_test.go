@@ -16,7 +16,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/metrics"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
@@ -35,6 +38,7 @@ func mustParseTime(layout, value string) *time.Time {
 
 func TestMain(m *testing.M) {
 	logger.NewLogger("dev", "debug")
+	metrics.Initialize(config.Config{Environment: "test", HostName: "test"})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -48,6 +52,10 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("failed to connect to db: %s", err.Error())
 	}
+
+	_, _ = db.Exec(`INSERT INTO services (id, name) VALUES (1, 'Test Service') ON CONFLICT DO NOTHING`)
+	_, _ = db.Exec(`INSERT INTO services (id, name) VALUES (5, 'Slot Service') ON CONFLICT DO NOTHING`)
+	_, _ = db.Exec(`INSERT INTO services (id, name) VALUES (50, 'Race Service') ON CONFLICT DO NOTHING`)
 
 	repo = NewBookingRepository(db)
 
@@ -101,9 +109,9 @@ func createDB(container tc.Container) error {
 func TestCreateBooking(t *testing.T) {
 	var userID int64
 	err := db.QueryRow(`
-        INSERT INTO users (telegram_id, username) VALUES ($1, $2)
+        INSERT INTO users (telegram_id, username, email, password_hash) VALUES ($1, $2, $3, $4)
         ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
-        RETURNING id`, 111, "test").Scan(&userID)
+        RETURNING id`, 111, "test", "booking_test@test.local", "placeholder").Scan(&userID)
 	assert.NoError(t, err)
 
 	targetDate := time.Now().AddDate(0, 0, 1).Truncate(24 * time.Hour)
@@ -203,7 +211,7 @@ func TestCreateBooking_RaceCondition(t *testing.T) {
 	slot := mustParseTime("15:04:05", "12:00:00")
 
 	var userID int64
-	_ = db.QueryRow("INSERT INTO users (telegram_id, username) VALUES (999, 'racer') ON CONFLICT DO NOTHING RETURNING id").Scan(&userID)
+	_ = db.QueryRow("INSERT INTO users (telegram_id, username, email, password_hash) VALUES (999, 'racer', 'racer@test.local', 'placeholder') ON CONFLICT DO NOTHING RETURNING id").Scan(&userID)
 	if userID == 0 {
 		_ = db.Get(&userID, "SELECT id FROM users WHERE telegram_id = 999")
 	}
@@ -243,7 +251,7 @@ func TestGetAvailableSlots(t *testing.T) {
 
 	var userID int64
 	err := db.QueryRow(`
-        INSERT INTO users (telegram_id, username) VALUES (777, 'slot_tester')
+        INSERT INTO users (telegram_id, username, email, password_hash) VALUES (777, 'slot_tester', 'slot_tester@test.local', 'placeholder')
         ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
         RETURNING id`).Scan(&userID)
 	assert.NoError(t, err)

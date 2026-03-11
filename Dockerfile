@@ -1,7 +1,7 @@
 # ============================================
 # Builder Stage - компиляция Go приложения
 # ============================================
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Устанавливаем рабочую директорию
 WORKDIR /build
@@ -12,10 +12,11 @@ COPY go.mod go.sum ./
 # Скачиваем зависимости (кешируется при неизменных go.mod/go.sum)
 RUN go mod download
 
-# Копируем исходный код
+# Копируем исходный код и конфиг для Docker
 COPY internal/ ./internal/
 COPY cmd/ ./cmd/
 COPY migrations/ ./migrations/
+COPY config/ ./config/
 
 # Компилируем приложение
 # CGO_ENABLED=0 - статическая сборка без CGO
@@ -44,8 +45,13 @@ WORKDIR /app
 # Копируем скомпилированный бинарник из builder
 COPY --from=builder /app/bot /app/bot
 
-# Копируем миграции (могут понадобиться в runtime)
+# Копируем миграции и конфиг для Docker (CONFIG_FILE в compose указывает на docker.yaml)
 COPY --from=builder /build/migrations /app/migrations
+RUN mkdir -p /app/config
+COPY --from=builder /build/config/docker.yaml /app/config/docker.yaml
+
+# Копируем конфиг
+COPY --from=builder /build/config /app/config
 
 # Устанавливаем права на выполнение
 RUN chmod +x /app/bot
@@ -60,10 +66,8 @@ EXPOSE 9090
 # EXPOSE 8080
 
 # Health check (проверка каждые 30 секунд)
-# /health endpoint реализован в ветках: dev, feat/14, feat/17, feat/21
-# После мержа соответствующей ветки, раскомментируйте:
-# HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-#   CMD curl -f http://localhost:9090/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+   CMD curl -f http://localhost:9090/health || exit 1
 # Примечание: порт зависит от конфигурации (обычно PrometheusPort: 9090)
 
 # Entrypoint

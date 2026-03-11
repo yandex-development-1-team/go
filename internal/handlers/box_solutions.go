@@ -5,11 +5,17 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.uber.org/zap"
+
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/service"
+<<<<<<< HEAD
 	service_models "github.com/yandex-development-1-team/go/internal/service/models"
 	"go.uber.org/zap"
+=======
+>>>>>>> dev
 )
 
 const (
@@ -54,7 +60,7 @@ func (h *BoxSolutionsHandler) HandleBoxSolutions(ctx context.Context, query *tgb
 	return nil
 }
 
-func getMenuBoxSolutions(boxSolutionsButtons []service_models.BoxSolutionsButton) tgbotapi.InlineKeyboardMarkup {
+func getMenuBoxSolutions(boxSolutionsButtons []models.BoxSolutionsButton) tgbotapi.InlineKeyboardMarkup {
 	var rows [][]tgbotapi.InlineKeyboardButton
 
 	for _, boxSolution := range boxSolutionsButtons {

@@ -1,17 +1,23 @@
 telegram_bot_token:  # будет переопределено BOT_TOKEN
 telegram_bot_api_url: "https://api.telegram.org"
-postgres_url: "postgres://user:pass@localhost:5432/bot_db"
 port: 8080
 environment: "dev"
 prometheus_port: 9090
 msg_rps: 30 # per-chat message limit / sec
 api_rps: 10 # general message limit / sec
 cache_size_rps: 128 # total number of maximum limiters in cache
+get_updates_timeout: "30s" # long polling timeout для GetUpdates
 log_level: "info"
 host_name: "host"
 
+db:
+  name: "postgres"
+  user: "postgres"
+  password: "postgres"
+  ssl_mode: "disable"
+
 redis:
-  addr: "localhost:6379"
+  addr: "redis:6379" # Redis address: 'localhost:6379' for local, or '<docker_service_name>:6379' for Docker
   password: ""
   db: 0
 
@@ -34,3 +40,12 @@ redis:
 
 session:
   ttl: "24h"
+
+# CORS для HTTP API (по умолчанию — разрешить всё для разработки)
+cors:
+  allow_origin: "*"
+  allow_methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+  allow_headers: "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With"
+  expose_headers: "Content-Length, Content-Type, Date, X-Total-Count"
+  allow_credentials: "true"
+  max_age: "86400"

@@ -1,75 +1,94 @@
+// Package logger предоставляет глобальный логгер приложения.
+// Инициализация: вызвать NewLogger() при старте (например в main).
+// Доступ: везде использовать logger.Info/Error/Warn/Debug или logger.L() для получения *zap.Logger.
 package logger
 
 import (
+	"sync"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-var logger *zap.Logger
+var (
+	global *zap.Logger
+	mu     sync.RWMutex
+)
 
-// setEnvironment определяет и устанавливает конфигурацию Development/Production
+// L возвращает глобальный логгер. До вызова NewLogger возвращает no-op логгер (записи отбрасываются).
+// Использовать для передачи *zap.Logger в сторонний код или когда нужны методы zap напрямую.
+func L() *zap.Logger {
+	mu.RLock()
+	l := global
+	mu.RUnlock()
+	if l != nil {
+		return l
+	}
+	return zap.NewNop()
+}
+
 func setEnvironment(mode string) zap.Config {
 	if mode == "dev" {
 		return zap.NewDevelopmentConfig()
 	}
-
 	return zap.NewProductionConfig()
 }
 
-// setLevel устанавливает уровень логгирования
-func setLevel(config *zap.Config, env string) {
-	if env != "" {
-		var level zapcore.Level
-		if err := level.UnmarshalText([]byte(env)); err == nil {
-			config.Level = zap.NewAtomicLevelAt(level)
+func setLevel(config *zap.Config, level string) {
+	if level != "" {
+		var l zapcore.Level
+		if err := l.UnmarshalText([]byte(level)); err == nil {
+			config.Level = zap.NewAtomicLevelAt(l)
 		}
 	}
 }
 
-// NewLogger создает и настраивает логгер
+// NewLogger инициализирует глобальный логгер. Вызывать один раз при старте приложения (например в main).
 func NewLogger(mode string, level string) {
-	var err error
 	config := setEnvironment(mode)
 	setLevel(&config, level)
 
-	logger, err = config.Build()
+	l, err := config.Build()
 	if err != nil {
-		logger, _ = zap.NewProduction()
+		l, _ = zap.NewProduction()
 	}
+
+	mu.Lock()
+	global = l
+	mu.Unlock()
 }
 
-// Sync удаляет все буферизованные записи журнала
-// Нужно вызывать Sync перед выходом
+// Sync сбрасывает буфер логгера. Вызывать перед выходом из приложения (например defer logger.Sync() в main).
 func Sync() error {
-	return logger.Sync()
+	return L().Sync()
 }
 
-// Info логирование информационных сообщений
+// Info — информационное сообщение.
 func Info(msg string, fields ...zap.Field) {
-	logger.Info(msg, fields...)
+	L().Info(msg, fields...)
 }
 
-// Error логирование ошибок
+// Error — ошибка.
 func Error(msg string, fields ...zap.Field) {
-	logger.Error(msg, fields...)
+	L().Error(msg, fields...)
 }
 
-// Warn логирование предупреждений
+// Warn — предупреждение.
 func Warn(msg string, fields ...zap.Field) {
-	logger.Warn(msg, fields...)
+	L().Warn(msg, fields...)
 }
 
-// Debug логирование отладочной информации
+// Debug — отладочное сообщение.
 func Debug(msg string, fields ...zap.Field) {
-	logger.Debug(msg, fields...)
+	L().Debug(msg, fields...)
 }
 
-// Fatal логирование критических ошибок
+// Fatal — критическая ошибка (завершает процесс).
 func Fatal(msg string, fields ...zap.Field) {
-	logger.Fatal(msg, fields...)
+	L().Fatal(msg, fields...)
 }
 
-// Panic логирование ошибок с паникой
+// Panic — логирование с паникой.
 func Panic(msg string, fields ...zap.Field) {
-	logger.Panic(msg, fields...)
+	L().Panic(msg, fields...)
 }

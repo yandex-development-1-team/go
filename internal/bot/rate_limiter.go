@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/yandex-development-1-team/go/internal/logger"
-	"github.com/yandex-development-1-team/go/internal/metrics"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
+
+	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/metrics"
 )
 
 type ApiRateLimiter struct {
@@ -60,7 +61,7 @@ func (rl *MsgRateLimiter) Exec(ctx context.Context, chatID int64, f func() error
 			logger.Warn("message limit has been exceeded", zap.Int64("chatID", chatID))
 		}
 	}
-	
+
 	if err := l.Wait(ctx); err != nil {
 		return err
 	}
