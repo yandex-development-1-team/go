@@ -6,16 +6,18 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 	"github.com/yandex-development-1-team/go/internal/config"
+	"github.com/yandex-development-1-team/go/internal/service"
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
 // APIServices contains API services
 type APIServices struct {
-	// Сервисов будет много, поэтому и обернул в структуру, иначе слишком много параметров получится
-	BoxService *apiService.APIBoxService
+	BoxService        *apiService.APIBoxService
+	SpecialProjectSvc *service.SpecialProjectService
 }
 
 // Server server structure
@@ -25,9 +27,9 @@ type Server struct {
 	srv      *http.Server
 }
 
-// New creates a new server
-func New(env string) *Server {
-	if env == "dev" {
+// New creates a new server (CORS и прочие настройки берутся из cfg).
+func New(cfg *config.Config) *Server {
+	if cfg.Environment == "dev" {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
@@ -37,7 +39,7 @@ func New(env string) *Server {
 	router.Use(gin.Recovery())
 	router.Use(middleware.Logger())
 	router.Use(middleware.Metrics())
-	router.Use(middleware.CORS())
+	router.Use(middleware.CORS(cfg.CORS))
 
 	return &Server{
 		router: router,
@@ -47,10 +49,9 @@ func New(env string) *Server {
 // RegisterRoutes registers routes
 func (s *Server) RegisterRoutes(services *APIServices) {
 	s.services = services
-	boxService := s.services.BoxService
-	boxHandler := handlers.NewBoxHandler(boxService)
-
-	SetupRoutes(s.router, boxHandler)
+	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
+	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
+	SetupRoutes(s.router, boxHandler, specProjHandler)
 }
 
 // Run starts the server
@@ -66,7 +67,10 @@ func (s *Server) Run(cfg *config.Config) error {
 	return nil
 }
 
-// Shutdown stops the server
+// Shutdown stops the server. No-op if Run was not called.
 func (s *Server) Shutdown(ctx context.Context) error {
+	if s.srv == nil {
+		return nil
+	}
 	return s.srv.Shutdown(ctx)
 }

@@ -23,7 +23,6 @@ func TestBookingsMigration(t *testing.T) {
 	db := setupTestDatabase(t, ctx)
 	defer db.Close()
 
-
 	migrations := []string{
 		"001_create_users_table.sql",
 		"002_create_bookings_table.sql",
@@ -81,7 +80,7 @@ func setupTestDatabase(t *testing.T, ctx context.Context) *sql.DB {
 }
 
 func applyMigration(t *testing.T, ctx context.Context, db *sql.DB, filename string) {
-	migrationSQL, err := os.ReadFile(filepath.Join(".", filename))
+	migrationSQL, err := os.ReadFile(filepath.Join("testdata", filename))
 	require.NoError(t, err)
 
 	_, err = db.ExecContext(ctx, string(migrationSQL))

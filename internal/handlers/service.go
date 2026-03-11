@@ -5,8 +5,11 @@ import (
 	"strconv"
 	"strings"
 
+	"context"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	repository "github.com/yandex-development-1-team/go/internal/database/repository"
+
+	"github.com/yandex-development-1-team/go/internal/models"
 )
 
 var (
@@ -15,16 +18,18 @@ var (
 	ErrInvalidField  = errors.New("handler with an invalid field")
 )
 
-// Service представляет собой услугу с полной информацией
+type ServiceRepo interface {
+	GetServiceByID(ctx context.Context, serviceID int) (models.Service, error)
+}
+
 type Service struct {
-	ID             int64  //Уникальный идентификатор услуги
-	Name           string // название услуги
-	Description    string // описание
-	Rules          string // правила
-	Schedule       string // время проведения
+	ID             int64
+	Name           string
+	Description    string
+	Rules          string
+	Schedule       string
 	AvailableSlots []AvailableSlot
-	Type           ServiceType // Тип услуги (музей, спорт и т.д.)
-	BoxID          int         // ID бокса/категории для кнопки "Назад" todo это поле не нужно
+	Type           ServiceType
 }
 
 type AvailableSlot struct {
@@ -32,9 +37,8 @@ type AvailableSlot struct {
 	TimeSlots []string
 }
 
-// ServiceHandler обрабатывает действия, связанные с услугами
 type ServiceHandler struct {
-	repo            *repository.Repository
+	repo            ServiceRepo
 	bot             *tgbotapi.BotAPI
 	keyboardService *KeyboardService
 }
@@ -46,8 +50,7 @@ func (h *ServiceHandler) sendMessage(userID int64, text string, keyboard tgbotap
 	return err
 }
 
-// NewServiceHandler создаёт новый обработчик услуг
-func NewServiceHandler(repo *repository.Repository, bot *tgbotapi.BotAPI) *ServiceHandler {
+func NewServiceHandler(repo ServiceRepo, bot *tgbotapi.BotAPI) *ServiceHandler {
 	return &ServiceHandler{
 		repo:            repo,
 		bot:             bot,

@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/pressly/goose/v3"
-	"github.com/yandex-development-1-team/go/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/yandex-development-1-team/go/internal/logger"
 )
 
 // RunMigrations применяет миграции и логирует результат

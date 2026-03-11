@@ -39,5 +39,8 @@ CREATE INDEX IF NOT EXISTS idx_bookings_service_id ON bookings(service_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
 
 -- +goose Down
+DROP INDEX IF EXISTS idx_bookings_user_id;
+DROP INDEX IF EXISTS idx_bookings_service_id;
+DROP INDEX IF EXISTS idx_bookings_status;
 DROP TABLE IF EXISTS bookings;
 DROP TYPE IF EXISTS booking_status;
