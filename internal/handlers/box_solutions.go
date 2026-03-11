@@ -11,11 +11,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/service"
-<<<<<<< HEAD
-	service_models "github.com/yandex-development-1-team/go/internal/service/models"
-	"go.uber.org/zap"
-=======
->>>>>>> dev
 )
 
 const (

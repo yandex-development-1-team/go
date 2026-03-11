@@ -12,15 +12,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-<<<<<<< HEAD
-
-	"github.com/yandex-development-1-team/go/internal/database/repository"
-	"github.com/yandex-development-1-team/go/internal/database/repository/mocks"
-	"github.com/yandex-development-1-team/go/internal/service"
-=======
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
->>>>>>> dev
 
 	"github.com/yandex-development-1-team/go/internal/api"
 	"github.com/yandex-development-1-team/go/internal/api/server"
@@ -74,16 +67,6 @@ func run() error {
 	}
 	defer redisClient.Close()
 
-<<<<<<< HEAD
-	// init telegram bot
-	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
-	if err != nil {
-		return fmt.Errorf("failed to init telegram bot: %w", err)
-	}
-	
-	// init signal ctx
-=======
->>>>>>> dev
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 

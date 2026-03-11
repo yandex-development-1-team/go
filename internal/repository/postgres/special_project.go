@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
-	"github.com/yandex-development-1-team/go/internal/repository/models"
+	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
 type specialProjectRepo struct {
@@ -19,7 +19,7 @@ func NewSpecialProjectRepository(db *sqlx.DB) *specialProjectRepo {
 	return &specialProjectRepo{db: db}
 }
 
-func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
+func (r *specialProjectRepo) Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error) {
 	query := `
 		INSERT INTO special_projects (title, description, image, is_active_in_bot)
 		VALUES (:title, :description, :image, :is_active_in_bot)
@@ -37,21 +37,21 @@ func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialPro
 
 }
 
-func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
+func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*specialproject.DB, error) {
 	query := `SELECT * FROM special_projects WHERE id = $1`
-	var proj models.SpecialProjectDB
+	var proj specialproject.DB
 
 	err := r.db.GetContext(ctx, &proj, query, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrSpecProjNotFound
+			return nil, specialproject.ErrNotFound
 		}
 		return nil, fmt.Errorf("repo get by id: %w", err)
 	}
 	return &proj, nil
 }
 
-func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*models.SpecialProjectDB, error) {
+func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*specialproject.DB, error) {
 	// Base query selecting only required fields for the list endpoint
 	baseQuery := `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
 	args := make(map[string]interface{})
@@ -80,7 +80,7 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searc
 	}
 	defer stmt.Close()
 
-	var projects []*models.SpecialProjectDB
+	var projects []*specialproject.DB
 	err = stmt.SelectContext(ctx, &projects, args)
 	if err != nil {
 		return nil, fmt.Errorf("repo list: %w", err)
