@@ -17,6 +17,13 @@ import (
 	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
+const (
+	RoleAdmin    = "admin"
+	RoleManager1 = "manager1"
+	RoleManager2 = "manager2"
+	RoleManager3 = "manager3"
+)
+
 // HashPassword hashes a password for storage (e.g. when creating/updating users).
 func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -98,7 +105,8 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (string,
 		return "", err
 	}
 
-	role := "manager"
+	//todo нужно передавать роль
+	role := RoleManager1
 
 	accessToken, err := s.generateAccessToken(rt.UserID, role)
 	if err != nil {
