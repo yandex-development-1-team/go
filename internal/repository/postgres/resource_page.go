@@ -1,4 +1,4 @@
-package repo
+package repository
 
 import (
 	"context"
@@ -7,20 +7,20 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/yandex-development-1-team/go/internal/repository/models"
+	"github.com/yandex-development-1-team/go/internal/resoursepage"
 )
 
-type ResourcePageRepo struct {
+type ResourcePageRepository struct {
 	db *sqlx.DB
 }
 
-func NewResourcePageRepo(db *sqlx.DB) *ResourcePageRepo {
-	return &ResourcePageRepo{db: db}
+func NewResourcePageRepo(db *sqlx.DB) *ResourcePageRepository {
+	return &ResourcePageRepository{db: db}
 }
 
 // GetBySlug
-func (r *ResourcePageRepo) GetBySlug(ctx context.Context, slug string) (*models.ResourcePageDB, error) {
-	var dbPage models.ResourcePageDB
+func (r *ResourcePageRepository) GetBySlug(ctx context.Context, slug string) (*resoursepage.DB, error) {
+	var dbPage resoursepage.DB
 
 	err := r.db.QueryRowxContext(ctx, "SELECT slug, title, content, links, updated_at FROM resource_pages WHERE slug = $1", slug).StructScan(&dbPage)
 	if err != nil {
@@ -32,7 +32,7 @@ func (r *ResourcePageRepo) GetBySlug(ctx context.Context, slug string) (*models.
 }
 
 // UpdatePage обновляет существующую страницу по slug.
-func (r *ResourcePageRepo) UpdatePage(ctx context.Context, page *models.ResourcePageDB) error {
+func (r *ResourcePageRepository) Update(ctx context.Context, page *resoursepage.DB) error {
 
 	query := `UPDATE resource_pages
 		SET

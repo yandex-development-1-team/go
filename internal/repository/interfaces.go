@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/resoursepage"
 	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
@@ -28,11 +29,17 @@ type RefreshTokenRepository interface {
 	Revoke(ctx context.Context, token string) error
 }
 
-// SpecialProjectRepository — CRUD спецпроектов.
+// SpecialProjectRepository — CRUD for spesial projects.
 type SpecialProjectRepository interface {
 	Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error)
 	GetByID(ctx context.Context, id int64) (*specialproject.DB, error)
 	List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*specialproject.DB, error)
 	UpdateSpecialProject(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
 	DeleteSpecialProject(ctx context.Context, id int64) error
+}
+
+// ResourcePageRepository — CRUD for resourse pages.
+type ResourcePageRepository interface {
+	GetBySlug(ctx context.Context, id int64) (*resoursepage.DB, error)
+	Update(ctx context.Context, id int64, update *resoursepage.DB) error
 }
