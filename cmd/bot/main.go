@@ -79,6 +79,8 @@ func run() error {
 	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
 	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
 	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
+	refreshTokenRepoRepo := apiRepository.NewRefreshTokenRepo(dbSqlx)
+	userRepo := apiRepository.NewUserRepo(dbSqlx)
 
 	// --- Services ---
 	settingsService := apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
@@ -101,11 +103,15 @@ func run() error {
 	}()
 
 	// --- API server (routers) ---
+	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, userRepo, cfg.AuthConfig.JWTSecret,
+		cfg.AuthConfig.RefreshTokenTTLDays, cfg.AuthConfig.AccessTokenTTLMinutes)
+
 	apiServer := server.New(&cfg, &server.APIServices{
 		BoxService:        boxService,
 		SpecialProjectSvc: specialProjectService,
 		SettingsService:   settingsService,
-	})
+	}, apiAuthService)
+
 	apiServer.RegisterRoutes()
 
 	var wg sync.WaitGroup

@@ -12,6 +12,7 @@ type Config struct {
 	TelegramBotToken  string `mapstructure:"telegram_bot_token"`
 	TelegramBotAPIUrl string `mapstructure:"telegram_bot_api_url"`
 
+	AuthConfig     AuthConfig     `mapstructure:"auth_config"`
 	DB             DatabaseConfig `mapstructure:"db"`
 	Port           int            `mapstructure:"port"`
 	Environment    string         `mapstructure:"environment"`
@@ -71,6 +72,12 @@ type RedisConfig struct {
 
 type SessionConfig struct {
 	TTL time.Duration `mapstructure:"ttl"`
+}
+
+type AuthConfig struct {
+	JWTSecret             string `mapstructure:"jwt_secret"`
+	AccessTokenTTLMinutes int    `mapstructure:"access_token_ttl_minutes"`
+	RefreshTokenTTLDays   int    `mapstructure:"refresh_token_ttl_days"`
 }
 
 var (
@@ -187,6 +194,8 @@ func bindEnvs(v *viper.Viper) {
 	v.BindEnv("log_level", "LOG_LEVEL")
 	v.BindEnv("host_name", "HOSTNAME")
 	v.BindEnv("api_only", "API_ONLY")
+
+	v.BindEnv("auth_config.jwt_secret", "JWT_SECRET")
 }
 
 func validateConfig(config *Config) error {

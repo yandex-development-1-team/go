@@ -7,11 +7,11 @@ import (
 )
 
 // SetupRoutes configures all API routes according to docs/openapi.json
-func SetupRoutes(router *gin.Engine, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler) {
+func SetupRoutes(router *gin.Engine, jwtSecret []byte, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler) {
 	apiV1 := router.Group("/api/v1")
 	{
 		protected := apiV1.Group("/")
-		protected.Use(middleware.Auth())
+		protected.Use(middleware.Auth(jwtSecret))
 		{
 			setupBoxRoutes(protected, boxHandler)
 			setupSpecialProjectRoutes(protected, specProjHandler)

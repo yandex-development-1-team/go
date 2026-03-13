@@ -37,7 +37,7 @@ type AuthService struct {
 	db         *sqlx.DB
 	rtRepo     repository.RefreshTokenRepository
 	userRepo   repository.UserRepository
-	jwtSecret  []byte
+	JwtSecret  []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
 }
@@ -53,7 +53,7 @@ func NewAuthService(db *sqlx.DB, rtRepo repository.RefreshTokenRepository, userR
 		db:         db,
 		rtRepo:     rtRepo,
 		userRepo:   userRepo,
-		jwtSecret:  []byte(jwtSecret),
+		JwtSecret:  []byte(jwtSecret),
 		accessTTL:  time.Duration(accessTTLMinutes) * time.Minute,
 		refreshTTL: time.Duration(refreshTTlDays) * time.Hour * 24,
 	}
@@ -153,7 +153,7 @@ func (s *AuthService) generateAccessToken(userID int64, role string) (string, er
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(s.jwtSecret)
+	return token.SignedString(s.JwtSecret)
 }
 
 func generateRandomToken() string {

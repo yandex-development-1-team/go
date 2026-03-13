@@ -10,7 +10,7 @@ import (
 )
 
 // Auth returns middleware for authorization verification
-func Auth() gin.HandlerFunc {
+func Auth(jwtSecret []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -37,14 +37,7 @@ func Auth() gin.HandlerFunc {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, jwt.ErrSignatureInvalid
 				}
-				//todo тут нужен правильный секретный ключ, который берется из конфигов
-				//для тестов через postmen использовала секретный ключ "monday" и payload{
-				//  "user_id": 12345,
-				//  "role": "admin",
-				//  "exp": 1773491431, - нужно заменить на новую дату, чтобы токен был валиден
-				//  "iat": 1773405031
-				//}
-				return []byte("monday"), nil
+				return jwtSecret, nil
 			},
 		)
 
