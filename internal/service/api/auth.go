@@ -17,6 +17,13 @@ import (
 	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
+const (
+	RoleAdmin    = "admin"
+	RoleManager1 = "manager1"
+	RoleManager2 = "manager2"
+	RoleManager3 = "manager3"
+)
+
 // HashPassword hashes a password for storage (e.g. when creating/updating users).
 func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -30,7 +37,7 @@ type AuthService struct {
 	db         *sqlx.DB
 	rtRepo     repository.RefreshTokenRepository
 	userRepo   repository.UserRepository
-	jwtSecret  []byte
+	JwtSecret  []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
 }
@@ -46,7 +53,7 @@ func NewAuthService(db *sqlx.DB, rtRepo repository.RefreshTokenRepository, userR
 		db:         db,
 		rtRepo:     rtRepo,
 		userRepo:   userRepo,
-		jwtSecret:  []byte(jwtSecret),
+		JwtSecret:  []byte(jwtSecret),
 		accessTTL:  time.Duration(accessTTLMinutes) * time.Minute,
 		refreshTTL: time.Duration(refreshTTlDays) * time.Hour * 24,
 	}
@@ -98,7 +105,8 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (string,
 		return "", err
 	}
 
-	role := "manager"
+	//todo нужно передавать роль
+	role := RoleManager1
 
 	accessToken, err := s.generateAccessToken(rt.UserID, role)
 	if err != nil {
@@ -145,7 +153,7 @@ func (s *AuthService) generateAccessToken(userID int64, role string) (string, er
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(s.jwtSecret)
+	return token.SignedString(s.JwtSecret)
 }
 
 func generateRandomToken() string {

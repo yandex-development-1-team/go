@@ -17,6 +17,7 @@ var (
 	ErrInvalidCredentials     = errors.New("invalid credentials")
 	ErrUserBlocked            = errors.New("user blocked")
 	ErrUnauthorized           = errors.New("unauthorized")
+	ErrValidation             = errors.New("validation error")
 	ErrForbidden              = errors.New("forbidden")
 	ErrCache                  = errors.New("cache error")
 )
