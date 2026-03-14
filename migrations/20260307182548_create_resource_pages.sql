@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS resource_pages (
     title TEXT NOT NULL,
     content TEXT,
     links JSONB DEFAULT '[]'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_resource_pages_updated_at ON resource_pages (updated_at);
@@ -13,7 +13,7 @@ CREATE INDEX IF NOT EXISTS idx_resource_pages_updated_at ON resource_pages (upda
 INSERT INTO resource_pages (slug, title, content) VALUES 
 ('organizationInfo', 'Организационная информация', 'Текст о нас'),
 ('usefulLinks', 'Полезные ссылки', ''),
-('faq', 'FAQ', '')
+('faq', 'FAQ', ''),
 ('eventSchedule', 'Афиша Pertner Relations', '');
 
 

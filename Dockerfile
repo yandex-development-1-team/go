@@ -48,7 +48,7 @@ COPY --from=builder /app/bot /app/bot
 # Копируем миграции и конфиг для Docker (CONFIG_FILE в compose указывает на docker.yaml)
 COPY --from=builder /build/migrations /app/migrations
 RUN mkdir -p /app/config
-COPY --from=builder /build/config/docker.yaml /app/config/docker.yaml
+COPY --from=builder /build/config/config.yaml /app/config/config.yaml
 
 # Копируем конфиг
 COPY --from=builder /build/config /app/config

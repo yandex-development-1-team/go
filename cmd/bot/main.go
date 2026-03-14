@@ -47,6 +47,7 @@ func run() error {
 	metrics.Initialize(cfg)
 
 	// --- Infrastructure: DB (sqlx) ---
+	fmt.Println(cfg.DB.PostgresURL)
 	db, err := sql.Open("postgres", cfg.DB.PostgresURL)
 	if err != nil {
 		return fmt.Errorf("db open: %w", err)

@@ -11,6 +11,7 @@ log_level: "info"
 host_name: "host"
 
 db:
+  host_port: "db:5432"
   name: "postgres"
   user: "postgres"
   password: "postgres"
