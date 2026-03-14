@@ -1230,6 +1230,25 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
           }
         ],
         "responses": {
@@ -1238,10 +1257,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SpecialProjectListItem"
-                  }
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpecialProjectListItem"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "pagination"
+                  ]
                 }
               }
             }
@@ -1801,6 +1832,50 @@
           },
           "400": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/v1/resources/{slug}/{id}": {
+      "delete": {
+        "summary": "Удалить ссылку ресурсной страницы",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ресурсная страница обновлена, ссылка удалена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "message": { "type": "string" } },
+                  "required": ["message"]
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
@@ -3110,6 +3185,10 @@
             "items": {
               "type": "object",
               "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
                 "title": {
                   "type": "string"
                 },
@@ -3167,6 +3246,10 @@
             "items": {
               "type": "object",
               "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
                 "title": {
                   "type": "string"
                 },
