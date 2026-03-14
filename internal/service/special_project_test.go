@@ -15,11 +15,11 @@ import (
 )
 
 type mockSpecialProjectRepo struct {
-	createFn               func(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error)
-	getByIDFn              func(ctx context.Context, id int64) (*specialproject.DB, error)
-	listFn                 func(ctx context.Context, statusFilter *bool, searchQuery string) ([]*specialproject.DB, error)
-	updateSpecialProjectFn func(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
-	deleteSpecialProjectFn func(ctx context.Context, id int64) error
+	createFn  func(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error)
+	getByIDFn func(ctx context.Context, id int64) (*specialproject.DB, error)
+	listFn    func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error)
+	updateFn  func(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
+	deleteFn  func(ctx context.Context, id int64) error
 }
 
 func (m *mockSpecialProjectRepo) Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error) {
@@ -36,23 +36,23 @@ func (m *mockSpecialProjectRepo) GetByID(ctx context.Context, id int64) (*specia
 	return nil, nil
 }
 
-func (m *mockSpecialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*specialproject.DB, error) {
+func (m *mockSpecialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error) {
 	if m.listFn != nil {
-		return m.listFn(ctx, statusFilter, searchQuery)
+		return m.listFn(ctx, statusFilter, searchQuery, limit, offset)
+	}
+	return nil, 0, nil
+}
+
+func (m *mockSpecialProjectRepo) Update(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
+	if m.updateFn != nil {
+		return m.updateFn(ctx, id, update)
 	}
 	return nil, nil
 }
 
-func (m *mockSpecialProjectRepo) UpdateSpecialProject(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
-	if m.updateSpecialProjectFn != nil {
-		return m.updateSpecialProjectFn(ctx, id, update)
-	}
-	return nil, nil
-}
-
-func (m *mockSpecialProjectRepo) DeleteSpecialProject(ctx context.Context, id int64) error {
-	if m.deleteSpecialProjectFn != nil {
-		return m.deleteSpecialProjectFn(ctx, id)
+func (m *mockSpecialProjectRepo) Delete(ctx context.Context, id int64) error {
+	if m.deleteFn != nil {
+		return m.deleteFn(ctx, id)
 	}
 	return nil
 }
@@ -141,7 +141,7 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 	t.Run("invalid id <= 0", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.UpdateSpecialProject(ctx, 0, &specialproject.Project{Title: "T"})
+		_, err := svc.Update(ctx, 0, &specialproject.Project{Title: "T"})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, models.ErrInvalidInput)
 	})
@@ -149,7 +149,7 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 	t.Run("nil project", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.UpdateSpecialProject(ctx, 1, nil)
+		_, err := svc.Update(ctx, 1, nil)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, models.ErrInvalidInput)
 	})
@@ -158,26 +158,26 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 		repo := &mockSpecialProjectRepo{}
 		svc := NewSpecialProjectService(repo)
 		longTitle := strings.Repeat("x", 256)
-		_, err := svc.UpdateSpecialProject(ctx, 1, &specialproject.Project{Title: longTitle})
+		_, err := svc.Update(ctx, 1, &specialproject.Project{Title: longTitle})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, models.ErrInvalidInput)
 	})
 
 	t.Run("not found maps to ErrNotFound", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			updateSpecialProjectFn: func(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
+			updateFn: func(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
 				return nil, specialproject.ErrNotFound
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.UpdateSpecialProject(ctx, 1, &specialproject.Project{Title: "T"})
+		_, err := svc.Update(ctx, 1, &specialproject.Project{Title: "T"})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, specialproject.ErrNotFound)
 	})
 
 	t.Run("success returns updated domain", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			updateSpecialProjectFn: func(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
+			updateFn: func(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
 				return &specialproject.DB{
 					ID: id, Title: update.Title, Description: update.Description,
 					Image: update.Image, IsActiveInBot: update.IsActiveInBot,
@@ -186,7 +186,7 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 		}
 		svc := NewSpecialProjectService(repo)
 		desc := "new desc"
-		got, err := svc.UpdateSpecialProject(ctx, 1, &specialproject.Project{
+		got, err := svc.Update(ctx, 1, &specialproject.Project{
 			Title: "Updated", Description: &desc, Image: "img2", IsActiveInBot: false,
 		})
 		require.NoError(t, err)
@@ -202,19 +202,19 @@ func TestSpecialProjectService_DeleteSpecialProject(t *testing.T) {
 	t.Run("invalid id <= 0", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{}
 		svc := NewSpecialProjectService(repo)
-		err := svc.DeleteSpecialProject(ctx, 0)
+		err := svc.Delete(ctx, 0)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, models.ErrInvalidInput)
 	})
 
 	t.Run("not found maps to ErrNotFound", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			deleteSpecialProjectFn: func(ctx context.Context, id int64) error {
+			deleteFn: func(ctx context.Context, id int64) error {
 				return specialproject.ErrNotFound
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		err := svc.DeleteSpecialProject(ctx, 999)
+		err := svc.Delete(ctx, 999)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, specialproject.ErrNotFound)
 	})
@@ -222,14 +222,14 @@ func TestSpecialProjectService_DeleteSpecialProject(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		called := false
 		repo := &mockSpecialProjectRepo{
-			deleteSpecialProjectFn: func(ctx context.Context, id int64) error {
+			deleteFn: func(ctx context.Context, id int64) error {
 				called = true
 				assert.Equal(t, int64(1), id)
 				return nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		err := svc.DeleteSpecialProject(ctx, 1)
+		err := svc.Delete(ctx, 1)
 		require.NoError(t, err)
 		assert.True(t, called)
 	})
@@ -240,15 +240,15 @@ func TestSpecialProjectService_List(t *testing.T) {
 
 	t.Run("success returns list", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string) ([]*specialproject.DB, error) {
+			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error) {
 				return []*specialproject.DB{
 					{ID: 1, Title: "A", IsActiveInBot: true},
 					{ID: 2, Title: "B", IsActiveInBot: false},
-				}, nil
+				}, 10, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		got, err := svc.List(ctx, "active", "q")
+		got, _, err := svc.List(ctx, "active", "q", 10, 0)
 		require.NoError(t, err)
 		require.Len(t, got, 2)
 		assert.Equal(t, int64(1), got[0].ID)
@@ -259,12 +259,12 @@ func TestSpecialProjectService_List(t *testing.T) {
 	t.Run("repo error propagated", func(t *testing.T) {
 		repoErr := errors.New("db error")
 		repo := &mockSpecialProjectRepo{
-			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string) ([]*specialproject.DB, error) {
-				return nil, repoErr
+			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error) {
+				return nil, 0, repoErr
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.List(ctx, "", "")
+		_, _, err := svc.List(ctx, "", "", 0, 0)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repoErr)
 	})

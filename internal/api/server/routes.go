@@ -8,7 +8,7 @@ import (
 )
 
 // SetupRoutes configures all API routes according to docs/openapi.json
-func SetupRoutes(router *gin.Engine, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler) {
+func SetupRoutes(router *gin.Engine, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, recPageHandler *handlers.ResourcePageHandler) {
 	apiV1 := router.Group("/api/v1")
 	{
 		protected := apiV1.Group("/")
@@ -16,7 +16,11 @@ func SetupRoutes(router *gin.Engine, boxHandler *handlers.BoxHandler, specProjHa
 		{
 			setupBoxRoutes(protected, boxHandler)
 			setupSpecialProjectRoutes(protected, specProjHandler)
+			setupResourcePageRoutes(protected, recPageHandler)
 		}
+		// Public API for Telegram BOT
+		public := apiV1.Group("/public")
+		public.GET("/resources/:slug", recPageHandler.GetPublicResourcePage)
 	}
 }
 
@@ -27,6 +31,17 @@ func setupSpecialProjectRoutes(rg *gin.RouterGroup, h *handlers.SpecialProjectHa
 		sp.GET("/", h.ListSpecialProjects)
 		sp.POST("/", h.CreateSpecialProject)
 		sp.GET("/:id", h.GetSpecialProjectByID)
+	}
+}
+
+// setupResourcePageRoutes
+func setupResourcePageRoutes(rg *gin.RouterGroup, h *handlers.ResourcePageHandler) {
+	rp := rg.Group("/resources")
+	{
+		rp.GET("/", h.ListResourcePages)
+		rp.GET("/:slug", h.GetResourcePage)
+		rp.PUT("/:slug", h.UpdateResourcePage)
+		rp.DELETE("/:slug/:id", h.DeleteLink)
 	}
 }
 

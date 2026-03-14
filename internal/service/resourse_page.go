@@ -2,82 +2,132 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
-	"net/url"
+	"log"
 
-	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/repository"
-	"github.com/yandex-development-1-team/go/internal/service/models"
+	rp "github.com/yandex-development-1-team/go/internal/resourcepage"
 )
 
 type ResourcePageService struct {
-	repo *repository.ResourcePageRepository
+	repo repository.ResourcePageRepository
 }
 
-func NewResourcePageService(repo *repo.ResourcePageRepo) *ResourcePageService {
+func NewResourcePageService(repo repository.ResourcePageRepository) *ResourcePageService {
 	return &ResourcePageService{repo: repo}
 }
 
-func (s *ResourcePageService) GetResourcePage(ctx context.Context, slug string) (*models.ResourcePage, error) {
+func (s *ResourcePageService) GetResourcePage(ctx context.Context, slug string) (*rp.ResourcePage, error) {
 	return s.repo.GetBySlug(ctx, slug)
 }
 
-func (s *ResourcePageService) GetResourcePagePublic(ctx context.Context, slug string) (*dto.ResourcePagePublic, error) {
-	page, err := s.repo.GetBySlug(ctx, slug)
+func (s *ResourcePageService) UpdateResourcePage(ctx context.Context, slug string, newPageData *rp.ResourcePage) (*rp.ResourcePage, error) {
+	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
-		return nil, err // Передаем ошибку выше (например, NotFound)
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			log.Printf("ERROR: failed to rollback transaction: %v", err)
+		}
+	}()
+
+	currentPage, err := s.repo.GetBySlugTx(ctx, tx, slug, true)
+	if err != nil {
+		return nil, err
 	}
 
-	// Преобразование из models.ResourcePage в dto.ResourcePagePublic
-	publicPage := &dto.ResourcePagePublic{
-		Title:   page.Title,
-		Content: page.Content,
-		Links:   page.Links, // models.Link совпадает с форматом для публичного DTO
+	if newPageData.Title != "" {
+		currentPage.Title = newPageData.Title
 	}
-	return publicPage, nil
-}
+	if newPageData.Content != "" {
+		currentPage.Content = newPageData.Content
+	}
+	if newPageData.Links != nil {
+		newLinksMap := make(map[string]rp.Link, len(newPageData.Links))
+		for _, link := range newPageData.Links {
+			newLinksMap[link.ID] = link
+		}
 
-func (s *ResourcePageService) UpdateResourcePage(ctx context.Context, slug string, updateReq *dto.ResourcePageUpdateRequest) (*models.ResourcePage, error) {
-	// 1. Валидация URL в links
-	if updateReq.Links != nil {
-		for _, link := range *updateReq.Links {
-			parsedURL, err := url.ParseRequestURI(link.URL)
-			if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
-				return nil, fmt.Errorf("validation error: invalid URI '%s' for link title '%s'", link.URL, link.Title)
+		updatedLinks := make([]rp.Link, 0, len(newLinksMap)+len(newPageData.Links))
+
+		for _, link := range currentPage.Links {
+			if v, exists := newLinksMap[link.ID]; exists {
+				updatedLinks = append(updatedLinks, v)
+				delete(newLinksMap, link.ID)
+			} else {
+				updatedLinks = append(updatedLinks, link)
 			}
 		}
+
+		for _, link := range newPageData.Links {
+			if _, exists := newLinksMap[link.ID]; exists {
+				updatedLinks = append(updatedLinks, link)
+			}
+		}
+
+		currentPage.Links = updatedLinks
 	}
 
-	// 2. Получение текущей страницы
-	currentPage, err := s.repo.GetBySlug(ctx, slug)
+	err = s.repo.UpdatePageContentAndLinksTx(ctx, tx, currentPage.Slug, currentPage.Title, currentPage.Content, currentPage.Links)
 	if err != nil {
-		// Если страница не найдена, возвращаем ошибку, как указано в спецификации API для PUT.
-		return nil, err // Это будет обработано хендлером как 404
+		return nil, fmt.Errorf("failed to update resource page in transaction: %w", err)
 	}
 
-	// 3. Мерж значений: используем новое значение, если оно предоставлено, иначе старое
-	if updateReq.Title != nil {
-		currentPage.Title = *updateReq.Title
-	}
-	if updateReq.Content != nil {
-		currentPage.Content = *updateReq.Content
-	}
-	if updateReq.Links != nil {
-		// Заменяем весь массив links новым из запроса
-		currentPage.Links = *updateReq.Links
-	}
-	// updated_at обновится автоматически в репо при Update
-
-	// 4. Обновление страницы (вместо Upsert)
-	err = s.repo.UpdatePage(ctx, currentPage)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update resource page: %w", err)
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// 5. Возврат обновленной страницы
 	return currentPage, nil
 }
 
-func (s *ResourcePageService) GetAllSummaries(ctx context.Context) ([]*models.ResourcePageSummary, error) {
+func (s *ResourcePageService) DeleteLink(ctx context.Context, slug string, linkID string) error {
+
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			log.Printf("ERROR: failed to rollback transaction: %v", err)
+		}
+	}()
+
+	currentPage, err := s.repo.GetBySlugTx(ctx, tx, slug, true)
+	if err != nil {
+		return err
+	}
+
+	found := false
+	newLinks := make([]rp.Link, 0, len(currentPage.Links))
+	for _, link := range currentPage.Links {
+		if link.ID != linkID {
+			newLinks = append(newLinks, link)
+		} else {
+			found = true
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("link with id '%s' not found in page '%s'", linkID, slug)
+	}
+
+	currentPage.Links = newLinks
+	err = s.repo.UpdatePageContentAndLinksTx(ctx, tx, currentPage.Slug, currentPage.Title, currentPage.Content, currentPage.Links)
+	if err != nil {
+		return fmt.Errorf("failed to update page after deleting link: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (s *ResourcePageService) GetAllSummaries(ctx context.Context) ([]*rp.ResourcePage, error) {
 	return s.repo.GetAllSummaries(ctx)
 }
