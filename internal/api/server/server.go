@@ -18,6 +18,7 @@ import (
 type APIServices struct {
 	BoxService        *apiService.APIBoxService
 	SpecialProjectSvc *service.SpecialProjectService
+	RecPageSvc        *service.ResourcePageService
 }
 
 // Server server structure
@@ -51,7 +52,8 @@ func (s *Server) RegisterRoutes(services *APIServices) {
 	s.services = services
 	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
 	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
-	SetupRoutes(s.router, boxHandler, specProjHandler)
+	recPageHandler := handlers.NewResourcePageHandler(services.RecPageSvc)
+	SetupRoutes(s.router, boxHandler, specProjHandler, recPageHandler)
 }
 
 // Run starts the server

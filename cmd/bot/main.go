@@ -47,6 +47,7 @@ func run() error {
 	metrics.Initialize(cfg)
 
 	// --- Infrastructure: DB (sqlx) ---
+	fmt.Println(cfg.DB.PostgresURL)
 	db, err := sql.Open("postgres", cfg.DB.PostgresURL)
 	if err != nil {
 		return fmt.Errorf("db open: %w", err)
@@ -79,11 +80,13 @@ func run() error {
 	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
 	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
 	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
+	resourcePagepRepo := apiRepository.NewResourcePageRepo(dbSqlx)
 
 	// --- Services ---
 	_ = apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
+	resourcePagepService := service.NewResourcePageService(resourcePagepRepo)
 
 	// --- HTTP: metrics + health ---
 	metricsMux := http.NewServeMux()
@@ -105,6 +108,7 @@ func run() error {
 	apiServer.RegisterRoutes(&server.APIServices{
 		BoxService:        boxService,
 		SpecialProjectSvc: specialProjectService,
+		RecPageSvc:        resourcePagepService,
 	})
 
 	var wg sync.WaitGroup
