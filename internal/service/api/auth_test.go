@@ -41,10 +41,12 @@ func TestMain(m *testing.M) {
 	}
 	rtRepo = pgrepo.NewRefreshTokenRepo(db)
 	userRepo = pgrepo.NewUserRepo(db)
+	txRepo := pgrepo.NewTxRepo(db)
 	svc = NewAuthService(
 		db,
 		rtRepo,
 		userRepo,
+		txRepo,
 		"test-service",
 		15,
 		7,
@@ -115,11 +117,11 @@ func insertTestUser(t *testing.T) int64 {
 
 	var id int64
 	err := db.QueryRow(`
-		INSERT INTO users (telegram_id, username, email, password_hash)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
-		RETURNING id`,
-		tgID, "auth_tester", email, "placeholder_hash",
+	INSERT INTO staff (email, password_hash, role, status)
+	VALUES ($1, $2, $3, $4)
+	ON CONFLICT (email) DO UPDATE SET email=EXCLUDED.email
+	RETURNING id`,
+		email, "placeholder_hash", "manager", "active",
 	).Scan(&id)
 	assert.NoError(t, err)
 	return id

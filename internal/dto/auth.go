@@ -38,6 +38,15 @@ type RefreshResponse struct {
 	Token string `json:"token"`
 }
 
+// RegisterRequest - body для POST /api/auth/register
+type RegisterRequest struct {
+	Name        string `json:"name"         binding:"required,min=2,max=255"`
+	Email       string `json:"email"        binding:"required,email,max=255"`
+	Password    string `json:"password"     binding:"required,min=8,max=72"`
+	Role        string `json:"role"         binding:"required,oneof=admin manager"`
+	InviteToken string `json:"invite_token"`
+}
+
 // LogoutRequest — body для POST /api/v1/auth/logout
 type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token"`
