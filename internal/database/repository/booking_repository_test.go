@@ -24,8 +24,9 @@ import (
 )
 
 var (
-	db   *sqlx.DB
-	repo BookingRepository
+	db       *sqlx.DB
+	repo     BookingRepository
+	repoUser UserRepo
 )
 
 func mustParseTime(layout, value string) *time.Time {
@@ -58,6 +59,7 @@ func TestMain(m *testing.M) {
 	_, _ = db.Exec(`INSERT INTO services (id, name) VALUES (50, 'Race Service') ON CONFLICT DO NOTHING`)
 
 	repo = NewBookingRepository(db)
+	repoUser = *NewUserRepository(db)
 
 	code := m.Run()
 
