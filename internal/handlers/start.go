@@ -25,8 +25,8 @@ type StartHandler struct {
 	userRepository UserRepository
 }
 
-func NewStartHandler(bot StartHandlerBot, userRepository UserRepository) StartHandler {
-	return StartHandler{
+func NewStartHandler(bot StartHandlerBot, userRepository UserRepository) *StartHandler {
+	return &StartHandler{
 		bot:            bot,
 		userRepository: userRepository,
 	}
@@ -51,8 +51,7 @@ const (
 )
 
 // HandleStart обрабатывает команду /start
-
-func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
+func (sh *StartHandler) HandleStart(ctx context.Context, msg *tgbotapi.Message) error {
 	// Инкрементируем MessagesReceived
 	metrics.IncMessagesReceived()
 
@@ -65,19 +64,11 @@ func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 		metrics.ObserveMessageProcessingDuration(duration)
 	}()
 
-	// ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	// defer cancel()
-
 	chatID := msg.Chat.ID
 	telegramID := msg.From.ID
-	username := ""
-	// firstName := ""
-	// lastName := ""
-	if msg.From != nil {
-		username = msg.From.UserName
-		// firstName = msg.From.FirstName
-		// lastName = msg.From.LastName
-	}
+	username := msg.From.UserName
+	firstName := msg.From.FirstName
+	lastName := msg.From.LastName
 
 	logger.Info("start command",
 		zap.Int64("telegram_id", telegramID),
@@ -86,11 +77,27 @@ func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 	)
 
 	// TODO: включить создание пользователя при старте
-	// if sh.userRepository != nil {
-	// 	if err := sh.userRepository.CreateUser(ctx, telegramID, username, firstName, lastName); err != nil {
-	// 		...
-	// 	}
-	// }
+	if sh.userRepository != nil {
+		if err := sh.userRepository.CreateUser(ctx, telegramID, username, firstName, lastName); err != nil {
+			// При ошибке создания пользователя инкрементируем MessagesErrors
+			metrics.IncMessagesErrors()
+
+			logger.Error("database error in CreateUser",
+				zap.Int64("telegram_id", telegramID),
+				zap.String("username", username),
+				zap.Error(err),
+			)
+
+			errMsg := tgbotapi.NewMessage(chatID, ErrMessageUser)
+			if _, sendErr := sh.bot.Send(errMsg); sendErr != nil {
+				logger.Error("failed to send error message", zap.Error(sendErr))
+
+				// При ошибке отправки сообщения об ошибке инкрементируем MessagesErrors
+				metrics.IncMessagesErrors()
+			}
+			return err
+		}
+	}
 
 	reply := tgbotapi.NewMessage(chatID, WelcomeText)
 	reply.ReplyMarkup = mainMenuKeyboard()
@@ -106,7 +113,7 @@ func (sh *StartHandler) HandleStart(msg *tgbotapi.Message) error {
 	return nil
 }
 
-func (sh *StartHandler) HandleStartBackToMainMenu(ctx context.Context, query *tgbotapi.CallbackQuery) error {
+func (sh *StartHandler) Handle(ctx context.Context, query *tgbotapi.CallbackQuery) error {
 	reply := tgbotapi.NewMessage(query.Message.Chat.ID, WelcomeText)
 	reply.ReplyMarkup = mainMenuKeyboard()
 

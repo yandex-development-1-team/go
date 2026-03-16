@@ -30,7 +30,7 @@ func NewBoxSolutions(bot *bot.TelegramBot, bsService *service.BoxSolutionsServic
 	}
 }
 
-func (h *BoxSolutionsHandler) HandleBoxSolutions(ctx context.Context, query *tgbotapi.CallbackQuery) error {
+func (h *BoxSolutionsHandler) Handle(ctx context.Context, query *tgbotapi.CallbackQuery) error {
 	ctxBoxSolutions, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
