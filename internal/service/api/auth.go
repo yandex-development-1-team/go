@@ -141,11 +141,6 @@ func (s *AuthService) Register(ctx context.Context, user *models.UserAPI, passwo
 
 	err = s.txRepo.RunToTx(ctx, func(ctx context.Context) error {
 
-		//
-		// разобрать какие ошибки в каком случае возникают
-		//
-		//
-
 		user, err = s.userRepo.CreateStaff(ctx, user, hashPassword)
 		if err != nil {
 			return err
