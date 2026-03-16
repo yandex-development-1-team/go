@@ -9,6 +9,8 @@ import (
 	"github.com/yandex-development-1-team/go/internal/dto"
 )
 
+const analyticsExportLimit = 10_000
+
 const (
 	getBoxesAnalyticsQuery = `
 		SELECT
@@ -31,7 +33,8 @@ const (
 			AND ($2::date IS NULL OR b.booking_date <= $2::date)
 		WHERE s.box_solution = TRUE
 		GROUP BY s.id, s.name
-		ORDER BY s.name`
+		ORDER BY s.name
+		LIMIT $3`
 
 	getUsersAnalyticsQuery = `
 		SELECT
@@ -47,7 +50,8 @@ const (
 			AND ($1::date IS NULL OR b.booking_date >= $1::date)
 			AND ($2::date IS NULL OR b.booking_date <= $2::date)
 		GROUP BY u.id, u.first_name, u.last_name, u.email, u.created_at
-		ORDER BY u.created_at DESC`
+		ORDER BY u.created_at DESC
+		LIMIT $3`
 )
 
 type AnalyticsRepo struct {
@@ -62,7 +66,7 @@ func (r *AnalyticsRepo) GetBoxesAnalytics(ctx context.Context, dateFrom, dateTo 
 	const operation = "get_boxes_analytics"
 	var rows []dto.AnalyticsBoxRow
 	return withMetricsValue(operation, func() ([]dto.AnalyticsBoxRow, error) {
-		err := r.db.SelectContext(ctx, &rows, getBoxesAnalyticsQuery, dateFrom, dateTo)
+		err := r.db.SelectContext(ctx, &rows, getBoxesAnalyticsQuery, dateFrom, dateTo, analyticsExportLimit)
 		return rows, err
 	})
 }
@@ -71,7 +75,7 @@ func (r *AnalyticsRepo) GetUsersAnalytics(ctx context.Context, dateFrom, dateTo 
 	const operation = "get_users_analytics"
 	var rows []dto.AnalyticsUserRow
 	return withMetricsValue(operation, func() ([]dto.AnalyticsUserRow, error) {
-		err := r.db.SelectContext(ctx, &rows, getUsersAnalyticsQuery, dateFrom, dateTo)
+		err := r.db.SelectContext(ctx, &rows, getUsersAnalyticsQuery, dateFrom, dateTo, analyticsExportLimit)
 		return rows, err
 	})
 }

@@ -62,6 +62,12 @@ func (h *AnalyticsHandler) Export(c *gin.Context) {
 		return
 	}
 
+	if dateFrom != nil && dateTo != nil && dateTo.Before(*dateFrom) {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
+			[]string{"date_to не может быть раньше date_from"})
+		return
+	}
+
 	result, err := h.svc.Export(c.Request.Context(), dto.AnalyticsExportRequest{
 		Type:     exportType,
 		DateFrom: dateFrom,

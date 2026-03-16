@@ -92,6 +92,16 @@ func TestAnalyticsHandler_Export_InvalidDateTo(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "date_to")
 }
 
+func TestAnalyticsHandler_Export_DateFromAfterDateTo(t *testing.T) {
+	h := &AnalyticsHandler{svc: &mockExporter{}}
+	w, req := exportRequest("/analytics/export?type=boxes&date_from=2026-03-01&date_to=2026-01-01")
+
+	newTestRouter(h).ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "date_to")
+}
+
 func TestAnalyticsHandler_Export_BoxesXLSX_OK(t *testing.T) {
 	xlsxData := []byte{0x50, 0x4B, 0x03, 0x04}
 	h := &AnalyticsHandler{svc: &mockExporter{
