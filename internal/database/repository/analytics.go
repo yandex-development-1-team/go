@@ -50,17 +50,14 @@ const (
 		ORDER BY u.created_at DESC`
 )
 
-// AnalyticsRepo executes aggregation queries for analytics export.
 type AnalyticsRepo struct {
 	db *sqlx.DB
 }
 
-// NewAnalyticsRepo creates a new AnalyticsRepo.
 func NewAnalyticsRepo(db *sqlx.DB) *AnalyticsRepo {
 	return &AnalyticsRepo{db: db}
 }
 
-// GetBoxesAnalytics returns per-box booking aggregates filtered by optional date range.
 func (r *AnalyticsRepo) GetBoxesAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) ([]dto.AnalyticsBoxRow, error) {
 	const operation = "get_boxes_analytics"
 	var rows []dto.AnalyticsBoxRow
@@ -70,7 +67,6 @@ func (r *AnalyticsRepo) GetBoxesAnalytics(ctx context.Context, dateFrom, dateTo 
 	})
 }
 
-// GetUsersAnalytics returns per-user booking aggregates filtered by optional date range.
 func (r *AnalyticsRepo) GetUsersAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) ([]dto.AnalyticsUserRow, error) {
 	const operation = "get_users_analytics"
 	var rows []dto.AnalyticsUserRow

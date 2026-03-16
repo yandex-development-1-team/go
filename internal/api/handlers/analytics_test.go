@@ -15,7 +15,6 @@ import (
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
-// mockExporter is a test double for the analyticsExporter interface.
 type mockExporter struct {
 	result apiService.ExportResult
 	err    error
@@ -25,6 +24,15 @@ func (m *mockExporter) Export(_ context.Context, _ dto.AnalyticsExportRequest) (
 	return m.result, m.err
 }
 
+type capturingExporter struct {
+	capture *dto.AnalyticsExportRequest
+}
+
+func (c *capturingExporter) Export(_ context.Context, req dto.AnalyticsExportRequest) (apiService.ExportResult, error) {
+	*c.capture = req
+	return apiService.ExportResult{Data: []byte("ok"), ContentType: "text/plain", Filename: "test.txt"}, nil
+}
+
 func newTestRouter(h *AnalyticsHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -32,10 +40,13 @@ func newTestRouter(h *AnalyticsHandler) *gin.Engine {
 	return r
 }
 
+func exportRequest(url string) (*httptest.ResponseRecorder, *http.Request) {
+	return httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, url, nil)
+}
+
 func TestAnalyticsHandler_Export_MissingType(t *testing.T) {
 	h := &AnalyticsHandler{svc: &mockExporter{}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export", nil)
+	w, req := exportRequest("/analytics/export")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -45,8 +56,7 @@ func TestAnalyticsHandler_Export_MissingType(t *testing.T) {
 
 func TestAnalyticsHandler_Export_InvalidType(t *testing.T) {
 	h := &AnalyticsHandler{svc: &mockExporter{}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export?type=employees", nil)
+	w, req := exportRequest("/analytics/export?type=employees")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -55,8 +65,7 @@ func TestAnalyticsHandler_Export_InvalidType(t *testing.T) {
 
 func TestAnalyticsHandler_Export_InvalidFormat(t *testing.T) {
 	h := &AnalyticsHandler{svc: &mockExporter{}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export?type=boxes&format=pdf", nil)
+	w, req := exportRequest("/analytics/export?type=boxes&format=pdf")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -65,8 +74,7 @@ func TestAnalyticsHandler_Export_InvalidFormat(t *testing.T) {
 
 func TestAnalyticsHandler_Export_InvalidDateFrom(t *testing.T) {
 	h := &AnalyticsHandler{svc: &mockExporter{}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export?type=boxes&date_from=01-01-2026", nil)
+	w, req := exportRequest("/analytics/export?type=boxes&date_from=01-01-2026")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -76,8 +84,7 @@ func TestAnalyticsHandler_Export_InvalidDateFrom(t *testing.T) {
 
 func TestAnalyticsHandler_Export_InvalidDateTo(t *testing.T) {
 	h := &AnalyticsHandler{svc: &mockExporter{}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export?type=boxes&date_to=not-a-date", nil)
+	w, req := exportRequest("/analytics/export?type=boxes&date_to=not-a-date")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -86,7 +93,7 @@ func TestAnalyticsHandler_Export_InvalidDateTo(t *testing.T) {
 }
 
 func TestAnalyticsHandler_Export_BoxesXLSX_OK(t *testing.T) {
-	xlsxData := []byte{0x50, 0x4B, 0x03, 0x04} // ZIP/XLSX magic bytes
+	xlsxData := []byte{0x50, 0x4B, 0x03, 0x04}
 	h := &AnalyticsHandler{svc: &mockExporter{
 		result: apiService.ExportResult{
 			Data:        xlsxData,
@@ -94,8 +101,7 @@ func TestAnalyticsHandler_Export_BoxesXLSX_OK(t *testing.T) {
 			Filename:    "analytics_boxes.xlsx",
 		},
 	}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export?type=boxes&format=xlsx", nil)
+	w, req := exportRequest("/analytics/export?type=boxes&format=xlsx")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -106,16 +112,14 @@ func TestAnalyticsHandler_Export_BoxesXLSX_OK(t *testing.T) {
 }
 
 func TestAnalyticsHandler_Export_UsersCSV_OK(t *testing.T) {
-	csvData := []byte("\xEF\xBB\xBFID,Email\n1,user@test.com\n")
 	h := &AnalyticsHandler{svc: &mockExporter{
 		result: apiService.ExportResult{
-			Data:        csvData,
+			Data:        []byte("\xEF\xBB\xBFID,Email\n1,user@test.com\n"),
 			ContentType: "text/csv; charset=utf-8",
 			Filename:    "analytics_users.csv",
 		},
 	}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export?type=users&format=csv", nil)
+	w, req := exportRequest("/analytics/export?type=users&format=csv")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -127,8 +131,7 @@ func TestAnalyticsHandler_Export_UsersCSV_OK(t *testing.T) {
 func TestAnalyticsHandler_Export_DefaultFormatIsXLSX(t *testing.T) {
 	var capturedReq dto.AnalyticsExportRequest
 	h := &AnalyticsHandler{svc: &capturingExporter{capture: &capturedReq}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export?type=boxes", nil)
+	w, req := exportRequest("/analytics/export?type=boxes")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -137,8 +140,7 @@ func TestAnalyticsHandler_Export_DefaultFormatIsXLSX(t *testing.T) {
 
 func TestAnalyticsHandler_Export_ServiceError_Returns500(t *testing.T) {
 	h := &AnalyticsHandler{svc: &mockExporter{err: errors.New("unexpected db failure")}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export?type=boxes", nil)
+	w, req := exportRequest("/analytics/export?type=boxes")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -148,8 +150,7 @@ func TestAnalyticsHandler_Export_ServiceError_Returns500(t *testing.T) {
 func TestAnalyticsHandler_Export_DateRange_Parsed(t *testing.T) {
 	var capturedReq dto.AnalyticsExportRequest
 	h := &AnalyticsHandler{svc: &capturingExporter{capture: &capturedReq}}
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/analytics/export?type=users&date_from=2026-01-01&date_to=2026-03-01", nil)
+	w, req := exportRequest("/analytics/export?type=users&date_from=2026-01-01&date_to=2026-03-01")
 
 	newTestRouter(h).ServeHTTP(w, req)
 
@@ -158,14 +159,4 @@ func TestAnalyticsHandler_Export_DateRange_Parsed(t *testing.T) {
 	require.NotNil(t, capturedReq.DateTo)
 	assert.Equal(t, "2026-01-01", capturedReq.DateFrom.Format("2006-01-02"))
 	assert.Equal(t, "2026-03-01", capturedReq.DateTo.Format("2006-01-02"))
-}
-
-// capturingExporter records the request it receives to allow assertion on parsed params.
-type capturingExporter struct {
-	capture *dto.AnalyticsExportRequest
-}
-
-func (c *capturingExporter) Export(_ context.Context, req dto.AnalyticsExportRequest) (apiService.ExportResult, error) {
-	*c.capture = req
-	return apiService.ExportResult{Data: []byte("ok"), ContentType: "text/plain", Filename: "test.txt"}, nil
 }

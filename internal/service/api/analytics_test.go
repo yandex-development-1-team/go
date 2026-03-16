@@ -15,7 +15,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/dto"
 )
 
-// mockAnalyticsQuerier is a test double for AnalyticsQuerier.
 type mockAnalyticsQuerier struct {
 	boxes []dto.AnalyticsBoxRow
 	users []dto.AnalyticsUserRow
@@ -41,6 +40,14 @@ var (
 	}
 )
 
+func parseCSV(t *testing.T, data []byte) [][]string {
+	t.Helper()
+	body := bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF})
+	records, err := csv.NewReader(strings.NewReader(string(body))).ReadAll()
+	require.NoError(t, err)
+	return records
+}
+
 func TestAnalyticsService_Export_BoxesXLSX(t *testing.T) {
 	svc := NewAnalyticsService(&mockAnalyticsQuerier{boxes: sampleBoxes})
 
@@ -52,8 +59,6 @@ func TestAnalyticsService_Export_BoxesXLSX(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.ContentType)
 	assert.Equal(t, "analytics_boxes.xlsx", result.Filename)
-	assert.NotEmpty(t, result.Data)
-	// XLSX files start with the PK zip signature
 	assert.Equal(t, []byte{0x50, 0x4B}, result.Data[:2])
 }
 
@@ -68,13 +73,9 @@ func TestAnalyticsService_Export_BoxesCSV(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "text/csv; charset=utf-8", result.ContentType)
 	assert.Equal(t, "analytics_boxes.csv", result.Filename)
-	require.NotEmpty(t, result.Data)
 
-	// Strip UTF-8 BOM and parse CSV
-	body := bytes.TrimPrefix(result.Data, []byte{0xEF, 0xBB, 0xBF})
-	records, err := csv.NewReader(strings.NewReader(string(body))).ReadAll()
-	require.NoError(t, err)
-	require.Len(t, records, 3) // header + 2 data rows
+	records := parseCSV(t, result.Data)
+	require.Len(t, records, 3)
 	assert.Equal(t, boxesHeaders, records[0])
 	assert.Equal(t, "Бокс А", records[1][1])
 	assert.Equal(t, "10", records[1][2])
@@ -92,7 +93,6 @@ func TestAnalyticsService_Export_UsersXLSX(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.ContentType)
 	assert.Equal(t, "analytics_users.xlsx", result.Filename)
-	assert.NotEmpty(t, result.Data)
 	assert.Equal(t, []byte{0x50, 0x4B}, result.Data[:2])
 }
 
@@ -107,30 +107,13 @@ func TestAnalyticsService_Export_UsersCSV(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "text/csv; charset=utf-8", result.ContentType)
 	assert.Equal(t, "analytics_users.csv", result.Filename)
-	require.NotEmpty(t, result.Data)
 
-	body := bytes.TrimPrefix(result.Data, []byte{0xEF, 0xBB, 0xBF})
-	records, err := csv.NewReader(strings.NewReader(string(body))).ReadAll()
-	require.NoError(t, err)
-	require.Len(t, records, 3) // header + 2 data rows
+	records := parseCSV(t, result.Data)
+	require.Len(t, records, 3)
 	assert.Equal(t, usersHeaders, records[0])
 	assert.Equal(t, "Иван", records[1][1])
 	assert.Equal(t, "ivan@example.com", records[1][3])
 	assert.Equal(t, "2026-01-10", records[1][5])
-}
-
-func TestAnalyticsService_Export_DefaultFormatIsXLSX(t *testing.T) {
-	svc := NewAnalyticsService(&mockAnalyticsQuerier{boxes: sampleBoxes})
-
-	result, err := svc.Export(context.Background(), dto.AnalyticsExportRequest{
-		Type: dto.ExportTypeBoxes,
-		// Format is zero value — service receives it as empty string, treated as xlsx by handler,
-		// but here we pass XLSX explicitly to verify the path
-		Format: dto.ExportFormatXLSX,
-	})
-
-	require.NoError(t, err)
-	assert.Contains(t, result.ContentType, "spreadsheetml")
 }
 
 func TestAnalyticsService_Export_RepoErrorPropagated(t *testing.T) {
@@ -155,9 +138,7 @@ func TestAnalyticsService_Export_EmptyRows(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	body := bytes.TrimPrefix(result.Data, []byte{0xEF, 0xBB, 0xBF})
-	records, err := csv.NewReader(strings.NewReader(string(body))).ReadAll()
-	require.NoError(t, err)
-	require.Len(t, records, 1) // only header row
+	records := parseCSV(t, result.Data)
+	require.Len(t, records, 1)
 	assert.Equal(t, boxesHeaders, records[0])
 }

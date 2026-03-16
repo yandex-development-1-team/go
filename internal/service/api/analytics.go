@@ -13,31 +13,26 @@ import (
 	"github.com/yandex-development-1-team/go/internal/dto"
 )
 
-// AnalyticsQuerier is the repository interface required by AnalyticsService.
-// Satisfied by *repository.AnalyticsRepo.
 type AnalyticsQuerier interface {
 	GetBoxesAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) ([]dto.AnalyticsBoxRow, error)
 	GetUsersAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) ([]dto.AnalyticsUserRow, error)
 }
 
-// ExportResult carries the generated file bytes and its HTTP response metadata.
+// ExportResult carries the generated file and its HTTP response metadata.
 type ExportResult struct {
 	Data        []byte
 	ContentType string
 	Filename    string
 }
 
-// AnalyticsService builds export files from analytics data.
 type AnalyticsService struct {
 	repo AnalyticsQuerier
 }
 
-// NewAnalyticsService creates a new AnalyticsService.
 func NewAnalyticsService(repo AnalyticsQuerier) *AnalyticsService {
 	return &AnalyticsService{repo: repo}
 }
 
-// Export fetches data and generates a file according to the request parameters.
 func (s *AnalyticsService) Export(ctx context.Context, req dto.AnalyticsExportRequest) (ExportResult, error) {
 	switch req.Type {
 	case dto.ExportTypeBoxes:
@@ -69,7 +64,7 @@ var usersHeaders = []string{
 
 func buildBoxesFile(rows []dto.AnalyticsBoxRow, format dto.ExportFormat) (ExportResult, error) {
 	if format == dto.ExportFormatCSV {
-		data, err := buildCSV(boxesHeaders, func(w *csv.Writer) error {
+		return csvResult("analytics_boxes.csv", boxesHeaders, func(w *csv.Writer) error {
 			for _, r := range rows {
 				if err := w.Write([]string{
 					strconv.FormatInt(r.ServiceID, 10),
@@ -84,40 +79,23 @@ func buildBoxesFile(rows []dto.AnalyticsBoxRow, format dto.ExportFormat) (Export
 			}
 			return nil
 		})
-		if err != nil {
-			return ExportResult{}, err
+	}
+	return xlsxResult("Боксы", "analytics_boxes.xlsx", boxesHeaders, func(f *excelize.File, sheet string) {
+		for i, r := range rows {
+			row := i + 2
+			_ = f.SetCellInt(sheet, excelCell(1, row), r.ServiceID)
+			_ = f.SetCellStr(sheet, excelCell(2, row), r.ServiceName)
+			_ = f.SetCellInt(sheet, excelCell(3, row), r.TotalBookings)
+			_ = f.SetCellInt(sheet, excelCell(4, row), r.ConfirmedBookings)
+			_ = f.SetCellInt(sheet, excelCell(5, row), r.CancelledBookings)
+			_ = f.SetCellFloat(sheet, excelCell(6, row), r.CancellationRate, 2, 64)
 		}
-		return ExportResult{Data: data, ContentType: "text/csv; charset=utf-8", Filename: "analytics_boxes.csv"}, nil
-	}
-
-	f := excelize.NewFile()
-	defer f.Close()
-	const sheet = "Боксы"
-	f.SetSheetName("Sheet1", sheet)
-	writeExcelHeaders(f, sheet, boxesHeaders)
-	for i, r := range rows {
-		row := i + 2
-		_ = f.SetCellInt(sheet, excelCell(1, row), r.ServiceID)
-		_ = f.SetCellStr(sheet, excelCell(2, row), r.ServiceName)
-		_ = f.SetCellInt(sheet, excelCell(3, row), r.TotalBookings)
-		_ = f.SetCellInt(sheet, excelCell(4, row), r.ConfirmedBookings)
-		_ = f.SetCellInt(sheet, excelCell(5, row), r.CancelledBookings)
-		_ = f.SetCellFloat(sheet, excelCell(6, row), r.CancellationRate, 2, 64)
-	}
-	buf, err := f.WriteToBuffer()
-	if err != nil {
-		return ExportResult{}, err
-	}
-	return ExportResult{
-		Data:        buf.Bytes(),
-		ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-		Filename:    "analytics_boxes.xlsx",
-	}, nil
+	})
 }
 
 func buildUsersFile(rows []dto.AnalyticsUserRow, format dto.ExportFormat) (ExportResult, error) {
 	if format == dto.ExportFormatCSV {
-		data, err := buildCSV(usersHeaders, func(w *csv.Writer) error {
+		return csvResult("analytics_users.csv", usersHeaders, func(w *csv.Writer) error {
 			for _, r := range rows {
 				if err := w.Write([]string{
 					strconv.FormatInt(r.UserID, 10),
@@ -132,26 +110,34 @@ func buildUsersFile(rows []dto.AnalyticsUserRow, format dto.ExportFormat) (Expor
 			}
 			return nil
 		})
-		if err != nil {
-			return ExportResult{}, err
-		}
-		return ExportResult{Data: data, ContentType: "text/csv; charset=utf-8", Filename: "analytics_users.csv"}, nil
 	}
+	return xlsxResult("Пользователи", "analytics_users.xlsx", usersHeaders, func(f *excelize.File, sheet string) {
+		for i, r := range rows {
+			row := i + 2
+			_ = f.SetCellInt(sheet, excelCell(1, row), r.UserID)
+			_ = f.SetCellStr(sheet, excelCell(2, row), r.FirstName)
+			_ = f.SetCellStr(sheet, excelCell(3, row), r.LastName)
+			_ = f.SetCellStr(sheet, excelCell(4, row), r.Email)
+			_ = f.SetCellInt(sheet, excelCell(5, row), r.TotalBookings)
+			_ = f.SetCellStr(sheet, excelCell(6, row), r.RegisteredAt.Format("2006-01-02"))
+		}
+	})
+}
 
+func csvResult(filename string, headers []string, fill func(*csv.Writer) error) (ExportResult, error) {
+	data, err := buildCSV(headers, fill)
+	if err != nil {
+		return ExportResult{}, err
+	}
+	return ExportResult{Data: data, ContentType: "text/csv; charset=utf-8", Filename: filename}, nil
+}
+
+func xlsxResult(sheetName, filename string, headers []string, fillRows func(*excelize.File, string)) (ExportResult, error) {
 	f := excelize.NewFile()
 	defer f.Close()
-	const sheet = "Пользователи"
-	f.SetSheetName("Sheet1", sheet)
-	writeExcelHeaders(f, sheet, usersHeaders)
-	for i, r := range rows {
-		row := i + 2
-		_ = f.SetCellInt(sheet, excelCell(1, row), r.UserID)
-		_ = f.SetCellStr(sheet, excelCell(2, row), r.FirstName)
-		_ = f.SetCellStr(sheet, excelCell(3, row), r.LastName)
-		_ = f.SetCellStr(sheet, excelCell(4, row), r.Email)
-		_ = f.SetCellInt(sheet, excelCell(5, row), r.TotalBookings)
-		_ = f.SetCellStr(sheet, excelCell(6, row), r.RegisteredAt.Format("2006-01-02"))
-	}
+	f.SetSheetName("Sheet1", sheetName)
+	writeExcelHeaders(f, sheetName, headers)
+	fillRows(f, sheetName)
 	buf, err := f.WriteToBuffer()
 	if err != nil {
 		return ExportResult{}, err
@@ -159,15 +145,13 @@ func buildUsersFile(rows []dto.AnalyticsUserRow, format dto.ExportFormat) (Expor
 	return ExportResult{
 		Data:        buf.Bytes(),
 		ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-		Filename:    "analytics_users.xlsx",
+		Filename:    filename,
 	}, nil
 }
 
-// buildCSV writes a UTF-8 BOM + header row + data rows into a buffer.
-// The BOM ensures correct opening in Microsoft Excel.
 func buildCSV(headers []string, fill func(*csv.Writer) error) ([]byte, error) {
 	var buf bytes.Buffer
-	buf.Write([]byte{0xEF, 0xBB, 0xBF}) // UTF-8 BOM
+	buf.Write([]byte{0xEF, 0xBB, 0xBF}) // BOM for Excel compatibility
 	w := csv.NewWriter(&buf)
 	if err := w.Write(headers); err != nil {
 		return nil, err
@@ -185,7 +169,7 @@ func writeExcelHeaders(f *excelize.File, sheet string, headers []string) {
 	}
 }
 
-// excelCell converts 1-based column and row indices to a cell address (e.g. 1,1 → "A1").
+// excelCell converts 1-based column and row to a cell address (e.g. 1,1 → "A1").
 func excelCell(col, row int) string {
 	colName, _ := excelize.ColumnNumberToName(col)
 	return fmt.Sprintf("%s%d", colName, row)
