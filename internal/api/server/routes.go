@@ -8,7 +8,7 @@ import (
 )
 
 // SetupRoutes configures all API routes according to docs/openapi.json
-func SetupRoutes(router *gin.Engine, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler) {
+func SetupRoutes(router *gin.Engine, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, analyticsHandler *handlers.AnalyticsHandler) {
 	apiV1 := router.Group("/api/v1")
 	{
 		protected := apiV1.Group("/")
@@ -16,6 +16,7 @@ func SetupRoutes(router *gin.Engine, boxHandler *handlers.BoxHandler, specProjHa
 		{
 			setupBoxRoutes(protected, boxHandler)
 			setupSpecialProjectRoutes(protected, specProjHandler)
+			setupAnalyticsRoutes(protected, analyticsHandler)
 		}
 	}
 }
@@ -27,6 +28,14 @@ func setupSpecialProjectRoutes(rg *gin.RouterGroup, h *handlers.SpecialProjectHa
 		sp.GET("/", h.ListSpecialProjects)
 		sp.POST("/", h.CreateSpecialProject)
 		sp.GET("/:id", h.GetSpecialProjectByID)
+	}
+}
+
+// setupAnalyticsRoutes — GET /api/v1/analytics/export
+func setupAnalyticsRoutes(rg *gin.RouterGroup, h *handlers.AnalyticsHandler) {
+	analytics := rg.Group("/analytics")
+	{
+		analytics.GET("/export", h.Export)
 	}
 }
 

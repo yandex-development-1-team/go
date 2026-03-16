@@ -79,11 +79,13 @@ func run() error {
 	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
 	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
 	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
+	analyticsRepo := repository.NewAnalyticsRepo(dbSqlx)
 
 	// --- Services ---
 	_ = apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
+	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
 
 	// --- HTTP: metrics + health ---
 	metricsMux := http.NewServeMux()
@@ -105,6 +107,7 @@ func run() error {
 	apiServer.RegisterRoutes(&server.APIServices{
 		BoxService:        boxService,
 		SpecialProjectSvc: specialProjectService,
+		AnalyticsSvc:      analyticsService,
 	})
 
 	var wg sync.WaitGroup
