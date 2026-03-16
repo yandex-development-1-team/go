@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -137,4 +138,103 @@ func (r *BoxSolutionRepo) GetServiceByID(ctx context.Context, serviceID int) (mo
 		}
 	}
 	return svc, nil
+}
+
+func (r *BoxSolutionRepo) GetServicesByStatus(ctx context.Context, status *models.ServiceStatus) ([]models.Service, error) {
+	query := `
+        SELECT
+            s.id, s.name, s.description, s.rules, s.schedule,
+            s.type, s.box_solution, s.status, s.created_at, s.updated_at, s.deleted_at,
+            a.slot_date, COALESCE(a.time_slots, '{}') as time_slots
+        FROM services s
+        LEFT JOIN service_available_slots a ON s.id = a.service_id
+        WHERE s.box_solution = true AND s.deleted_at IS NULL`
+
+	var args []interface{}
+	if status != nil {
+		query += ` AND s.status = $1`
+		args = append(args, *status)
+	}
+	query += ` ORDER BY s.id, a.slot_date`
+
+	type serviceRow struct {
+		ID          int64                `db:"id"`
+		Name        string               `db:"name"`
+		Description sql.NullString       `db:"description"`
+		Rules       sql.NullString       `db:"rules"`
+		Schedule    sql.NullString       `db:"schedule"`
+		Type        sql.NullString       `db:"type"`
+		BoxSolution bool                 `db:"box_solution"`
+		Status      models.ServiceStatus `db:"status"`
+		CreatedAt   time.Time            `db:"created_at"`
+		UpdatedAt   time.Time            `db:"updated_at"`
+		DeletedAt   sql.NullTime         `db:"deleted_at"`
+		SlotDate    sql.NullTime         `db:"slot_date"`
+		TimeSlots   pq.StringArray       `db:"time_slots"`
+	}
+
+	var rows []serviceRow
+	err := r.db.SelectContext(ctx, &rows, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	serviceMap := make(map[int64]*models.Service)
+	for _, row := range rows {
+		svc, exists := serviceMap[row.ID]
+		if !exists {
+			svc = &models.Service{
+				ID:             row.ID,
+				Name:           row.Name,
+				Description:    row.Description.String,
+				Rules:          row.Rules.String,
+				Schedule:       row.Schedule.String,
+				Type:           row.Type.String,
+				BoxSolution:    row.BoxSolution,
+				Status:         row.Status,
+				CreatedAt:      row.CreatedAt,
+				UpdatedAt:      row.UpdatedAt,
+				DeletedAt:      row.DeletedAt,
+				AvailableSlots: []models.AvailableSlot{},
+			}
+			serviceMap[row.ID] = svc
+		}
+		if row.SlotDate.Valid {
+			svc.AvailableSlots = append(svc.AvailableSlots, models.AvailableSlot{
+				Date:      row.SlotDate.Time.Format("2006-01-02"),
+				TimeSlots: row.TimeSlots,
+			})
+		}
+	}
+
+	result := make([]models.Service, 0, len(serviceMap))
+	for _, svc := range serviceMap {
+		result = append(result, *svc)
+	}
+	return result, nil
+}
+
+func (r *BoxSolutionRepo) UpdateService(ctx context.Context, service *models.Service) error {
+	query := `
+        UPDATE services 
+        SET name = $2, description = $3, rules = $4, schedule = $5, 
+            type = $6, box_solution = $7, updated_at = $8
+        WHERE id = $1 AND deleted_at IS NULL`
+
+	_, err := r.db.ExecContext(ctx, query,
+		service.ID, service.Name, service.Description, service.Rules,
+		service.Schedule, service.Type, service.BoxSolution, service.UpdatedAt)
+	return err
+}
+
+func (r *BoxSolutionRepo) SoftDeleteService(ctx context.Context, serviceID int) error {
+	query := `UPDATE services SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, serviceID)
+	return err
+}
+
+func (r *BoxSolutionRepo) UpdateServiceStatus(ctx context.Context, serviceID int, status models.ServiceStatus) error {
+	query := `UPDATE services SET status = $2, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, serviceID, status)
+	return err
 }
