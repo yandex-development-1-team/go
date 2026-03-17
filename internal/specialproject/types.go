@@ -39,6 +39,18 @@ type Response struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
+// Response — ответ GET /special-projects/
+type ResponseList struct {
+	Items      []ListItem `json:"items"`
+	Pagination Pagination `json:"pagination"`
+}
+
+type Pagination struct {
+	Total  int `json:"total"`
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+}
+
 // --- Domain (сервисный слой) ---
 
 // Project — доменная сущность (json-теги для PUT /special-projects/{id})

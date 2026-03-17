@@ -19,6 +19,7 @@ var (
 	ErrUnauthorized           = errors.New("unauthorized")
 	ErrForbidden              = errors.New("forbidden")
 	ErrCache                  = errors.New("cache error")
+	ErrEmailAlreadyExist      = errors.New("user already exist")
 )
 
 // RefreshToken — refresh-токен для аутентификации.
@@ -45,15 +46,17 @@ type User struct {
 
 // UserAPI is the API/domain representation of a user (auth and handlers).
 type UserAPI struct {
-	ID           int64     `json:"id"`
-	TelegramNick string    `json:"telegram_nick"`
-	Name         string    `json:"name"`
-	Email        string    `json:"email"`
-	Role         string    `json:"role"`
-	Status       string    `json:"status"`
-	Permissions  []string  `json:"permissions"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           int64  `json:"id"`
+	TelegramNick string `json:"telegram_nick"`
+	Name         string `json:"name"`
+	Email        string `json:"email"`
+	// Password     string
+	InviteToken string
+	Role        string    `json:"role"`
+	Status      string    `json:"status"`
+	Permissions []string  `json:"permissions"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // UserWithAuth holds user and password hash for auth flow.
