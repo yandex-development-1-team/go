@@ -170,9 +170,9 @@ func bindEnvs(v *viper.Viper) {
 	v.BindEnv("postgres_url", "POSTGRES_URL")
 	v.BindEnv("port", "SERVER_PORT")
 
-	v.BindEnv("db.name", "DB_NAME")
-	v.BindEnv("db.user", "DB_USER")
-	v.BindEnv("db.password", "DB_PASSWORD")
+	v.BindEnv("db.name", "POSTGRES_DB")
+	v.BindEnv("db.user", "POSTGRES_USER")
+	v.BindEnv("db.password", "POSTGRES_PASSWORD")
 	v.BindEnv("db.ssl_mode", "DB_SSLMODE")
 	v.BindEnv("db.host_port", "DB_HOST_PORT")
 
