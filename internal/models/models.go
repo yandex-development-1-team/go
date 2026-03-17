@@ -19,6 +19,9 @@ var (
 	ErrUnauthorized           = errors.New("unauthorized")
 	ErrForbidden              = errors.New("forbidden")
 	ErrCache                  = errors.New("cache error")
+	ErrRefreshTokenNotFound   = errors.New("refresh token not found")
+	ErrRefreshTokenExpired    = errors.New("refresh token expired")
+	ErrRefreshTokenRevoked    = errors.New("refresh token revoked")
 )
 
 // RefreshToken — refresh-токен для аутентификации.

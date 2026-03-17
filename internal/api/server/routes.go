@@ -8,9 +8,14 @@ import (
 )
 
 // SetupRoutes configures all API routes according to docs/openapi.json
-func SetupRoutes(router *gin.Engine, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler) {
+func SetupRoutes(router *gin.Engine, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, authHandler *handlers.AuthHandler) {
 	apiV1 := router.Group("/api/v1")
 	{
+		auth := apiV1.Group("/auth")
+		auth.POST("/login", authHandler.HandleLogin)
+		auth.POST("/refresh", authHandler.Refresh)
+		auth.POST("/logout", authHandler.Logout)
+
 		protected := apiV1.Group("/")
 		protected.Use(middleware.Auth())
 		{

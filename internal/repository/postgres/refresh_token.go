@@ -30,15 +30,6 @@ const (
 		WHERE token = $1 AND revoked_at IS NULL`
 )
 
-var (
-	ErrRefreshTokenNotFound = errors.New("refresh token not found")
-	ErrRefreshTokenRevoked  = errors.New("refresh token revoked")
-	ErrRefreshTokenExpired  = errors.New("refresh token expired")
-	ErrRTRequestTimeout     = errors.New("request timeout")
-	ErrRTRequestCanceled    = errors.New("request canceled")
-	ErrRTDatabase           = errors.New("database error")
-)
-
 type RefreshTokenRepo struct {
 	db *sqlx.DB
 }
@@ -66,21 +57,30 @@ func (r *RefreshTokenRepo) CreateRefreshToken(ctx context.Context, userID int64,
 }
 
 func (r *RefreshTokenRepo) GetForUpdate(ctx context.Context, tx *sqlx.Tx, token string) (*models.RefreshToken, error) {
+	const op = "get_refresh_token"
+
+	if tx == nil {
+		return nil, errors.New("transaction required")
+	}
+
 	var rt models.RefreshToken
+
 	err := tx.GetContext(ctx, &rt, getRefreshTokenForUpdateQuery, token)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, ErrRefreshTokenNotFound
+		return nil, models.ErrRefreshTokenNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
+
 	now := time.Now().UTC()
 	if rt.RevokedAt != nil {
-		return nil, ErrRefreshTokenRevoked
+		return nil, models.ErrRefreshTokenRevoked
 	}
-	if !rt.ExpiresAt.After(now) {
-		return nil, ErrRefreshTokenExpired
+	if now.After(rt.ExpiresAt) {
+		return nil, models.ErrRefreshTokenExpired
 	}
+
 	return &rt, nil
 }
 
@@ -95,7 +95,7 @@ func (r *RefreshTokenRepo) Revoke(ctx context.Context, token string) error {
 		return r.checkError(op, err)
 	}
 	if affected == 0 {
-		return ErrRefreshTokenNotFound
+		return models.ErrRefreshTokenNotFound
 	}
 	return nil
 }
@@ -103,12 +103,12 @@ func (r *RefreshTokenRepo) Revoke(ctx context.Context, token string) error {
 func (r *RefreshTokenRepo) checkError(operation string, err error) error {
 	if errors.Is(err, context.Canceled) {
 		logger.Error("canceled_by_context", zap.Error(err), zap.String("operation", operation))
-		return ErrRTRequestCanceled
+		return models.ErrRequestCanceled
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		logger.Error("canceled_by_timeout", zap.Error(err), zap.String("operation", operation))
-		return ErrRTRequestTimeout
+		return models.ErrRequestTimeout
 	}
 	logger.Error("database_error", zap.Error(err), zap.String("operation", operation))
-	return ErrRTDatabase
+	return models.ErrDatabase
 }

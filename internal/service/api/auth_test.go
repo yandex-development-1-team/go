@@ -17,6 +17,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/yandex-development-1-team/go/internal/models"
 	pgrepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 )
 
@@ -182,7 +183,7 @@ func TestAuthService_Refresh_Expired(t *testing.T) {
 
 	_, err = svc.Refresh(ctx, "expired-refresh-token")
 	assert.Error(t, err)
-	assert.True(t, errors.Is(err, pgrepo.ErrRefreshTokenExpired))
+	assert.True(t, errors.Is(err, models.ErrRefreshTokenExpired))
 }
 
 func TestAuthService_Refresh_Revoked(t *testing.T) {
@@ -204,7 +205,7 @@ func TestAuthService_Refresh_Revoked(t *testing.T) {
 
 	_, err = svc.Refresh(ctx, "revoked-refresh-token")
 	assert.Error(t, err)
-	assert.True(t, errors.Is(err, pgrepo.ErrRefreshTokenRevoked))
+	assert.True(t, errors.Is(err, models.ErrRefreshTokenRevoked))
 }
 
 func TestAuthService_Refresh_NotFound(t *testing.T) {
@@ -216,7 +217,7 @@ func TestAuthService_Refresh_NotFound(t *testing.T) {
 
 	_, err := svc.Refresh(ctx, "unknown-token")
 	assert.Error(t, err)
-	assert.True(t, errors.Is(err, pgrepo.ErrRefreshTokenNotFound))
+	assert.True(t, errors.Is(err, models.ErrRefreshTokenNotFound))
 }
 
 func TestAuthService_Refresh_ConcurrentRotation(t *testing.T) {
@@ -295,5 +296,5 @@ func TestAuthService_Logout(t *testing.T) {
 	assert.NotNil(t, revokedAt)
 
 	err = svc.Logout(ctx, "logout-refresh-token")
-	assert.Error(t, err)
+	assert.True(t, errors.Is(err, models.ErrRefreshTokenNotFound))
 }

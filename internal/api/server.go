@@ -1,17 +1,17 @@
 package api
 
 import (
+	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
+	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	"net/http"
 
-	"github.com/jmoiron/sqlx"
-
-	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	pgrepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 	svcapi "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
 type Server struct {
-	mux *http.ServeMux
+	router *gin.Engine
 }
 
 type Config struct {
@@ -21,7 +21,7 @@ type Config struct {
 }
 
 func NewServer(db *sqlx.DB, cfg Config) *Server {
-	mux := http.NewServeMux()
+	router := gin.Default()
 
 	rtRepo := pgrepo.NewRefreshTokenRepo(db)
 	userRepo := pgrepo.NewUserRepo(db)
@@ -36,12 +36,12 @@ func NewServer(db *sqlx.DB, cfg Config) *Server {
 	)
 	authHandler := handlers.NewAuthHandler(authSvc)
 
-	mux.HandleFunc("/api/v1/auth/refresh", authHandler.Refresh)
-	mux.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
+	router.POST("/api/v1/auth/refresh", authHandler.Refresh)
+	router.POST("/api/v1/auth/logout", authHandler.Logout)
 
-	return &Server{mux: mux}
+	return &Server{router: router}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.mux.ServeHTTP(w, r)
+	s.router.ServeHTTP(w, r)
 }
