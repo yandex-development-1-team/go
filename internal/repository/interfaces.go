@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/yandex-development-1-team/go/internal/models"
+	serviceModels "github.com/yandex-development-1-team/go/internal/service/api/models"
 	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
@@ -18,6 +19,7 @@ type UserRepository interface {
 // SettingsRepository — чтение настроек из хранилища.
 type SettingsRepository interface {
 	GetSettings(ctx context.Context) ([]models.Setting, error)
+	PutSettings(ctx context.Context, newSettings serviceModels.SettingsUpdateRequest) (time.Time, error)
 }
 
 // RefreshTokenRepository — хранение и инвалидация refresh-токенов.

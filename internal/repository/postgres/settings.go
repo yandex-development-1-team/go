@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
@@ -29,4 +30,8 @@ func (r *SettingsRep) GetSettings(ctx context.Context) ([]models.Setting, error)
 		return nil, err
 	}
 	return settings, nil
+}
+
+func (r *SettingsRep) PutSettings(ctx context.Context, newSettings models.SettingsUpdateRequest) (time.Time, error) {
+	return nil
 }

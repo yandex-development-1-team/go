@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -75,6 +76,16 @@ func (a SettingsService) GetSettings(ctx context.Context) (models.Settings, erro
 	}
 
 	return settings, nil
+}
+
+func (a SettingsService) PutSettings(ctx context.Context, newSettings models.SettingsUpdateRequest) (time.Time, error) {
+	updatedAt, err := a.settingsRepo.PutSettings(ctx, newSettings)
+	if err != nil {
+		logger.Error("failed to get settings from service", zap.Error(err))
+		return updatedAt, err
+	}
+
+	return updatedAt, nil
 }
 
 func mapNotification(n *models.Notifications, key, value string) error {
