@@ -84,12 +84,15 @@ func run() error {
 	sessionRepo := repository.NewSessionRepository(redisClient, repository.WithTTL(cfg.Session.TTL))
 	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
 	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
+	refreshTokenRepoRepo := apiRepository.NewRefreshTokenRepo(dbSqlx)
+	txRepo := apiRepository.NewTxRepo(dbSqlx)
+	userRepoAPI := apiRepository.NewUserRepo(dbSqlx)
 
 	// --- Services ---
+	settingsService := apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
 	bookService := botService.NewBookingService(sessionRepo, bookRepo, boxSolutionRepo)
 	keyboard := handlers.NewKeyboardService()
 	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
-	_ = apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 
@@ -109,11 +112,16 @@ func run() error {
 	}()
 
 	// --- API server (routers) ---
-	apiServer := server.New(&cfg)
-	apiServer.RegisterRoutes(&server.APIServices{
+	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, userRepoAPI, txRepo, cfg.AuthConfig.JWTSecret,
+		cfg.AuthConfig.RefreshTokenTTLDays, cfg.AuthConfig.AccessTokenTTLMinutes)
+
+	apiServer := server.New(&cfg, &server.APIServices{
 		BoxService:        boxService,
 		SpecialProjectSvc: specialProjectService,
-	})
+		SettingsService:   settingsService,
+	}, apiAuthService)
+
+	apiServer.RegisterRoutes()
 
 	var wg sync.WaitGroup
 	go func() {

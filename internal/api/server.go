@@ -38,6 +38,7 @@ func NewServer(db *sqlx.DB, cfg Config) *Server {
 	)
 	authHandler := handlers.NewAuthHandler(authSvc)
 
+	//todo нужно перенести в роуты регистрацию хендлеров
 	mux.HandleFunc("/api/v1/auth/refresh", authHandler.Refresh)
 	mux.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
 

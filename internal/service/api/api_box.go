@@ -107,7 +107,7 @@ func (s *APIBoxService) Update(ctx context.Context, id int, req *dto.BoxUpdateRe
 		svc.Name = *req.Name
 	}
 	if req.Description != nil {
-		svc.Description = req.Description
+		svc.Description = *req.Description
 	}
 	if req.Type != nil {
 		svc.Type = *req.Type
@@ -166,7 +166,7 @@ func (s *APIBoxService) UpdateStatus(ctx context.Context, id int, status models.
 		return nil, errors.New("invalid status")
 	}
 
-	svc, err := s.lister.GetServiceByID(ctx, id)
+	_, err := s.lister.GetServiceByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil

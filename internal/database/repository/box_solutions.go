@@ -292,6 +292,8 @@ func (r *BoxSolutionRepo) CheckSlotAvailability(ctx context.Context, serviceID i
 	}
 
 	return exists, nil
+}
+
 func (r *BoxSolutionRepo) GetServicesByStatus(ctx context.Context, status *models.ServiceStatus) ([]models.Service, error) {
 	query := `
         SELECT

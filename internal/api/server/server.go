@@ -18,17 +18,19 @@ import (
 type APIServices struct {
 	BoxService        *apiService.APIBoxService
 	SpecialProjectSvc *service.SpecialProjectService
+	SettingsService   *apiService.SettingsService
 }
 
 // Server server structure
 type Server struct {
-	router   *gin.Engine
-	services *APIServices
-	srv      *http.Server
+	router      *gin.Engine
+	services    *APIServices
+	srv         *http.Server
+	authService *apiService.AuthService
 }
 
 // New creates a new server (CORS и прочие настройки берутся из cfg).
-func New(cfg *config.Config) *Server {
+func New(cfg *config.Config, services *APIServices, authService *apiService.AuthService) *Server {
 	if cfg.Environment == "dev" {
 		gin.SetMode(gin.DebugMode)
 	} else {
@@ -42,16 +44,19 @@ func New(cfg *config.Config) *Server {
 	router.Use(middleware.CORS(cfg.CORS))
 
 	return &Server{
-		router: router,
+		router:      router,
+		services:    services,
+		authService: authService,
 	}
 }
 
 // RegisterRoutes registers routes
-func (s *Server) RegisterRoutes(services *APIServices) {
-	s.services = services
+func (s *Server) RegisterRoutes() {
 	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
 	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
-	SetupRoutes(s.router, boxHandler, specProjHandler)
+	settingsHandler := handlers.NewSettingsHandler(s.services.SettingsService)
+
+	SetupRoutes(s.router, s.authService.JwtSecret, boxHandler, specProjHandler, settingsHandler)
 }
 
 // Run starts the server
