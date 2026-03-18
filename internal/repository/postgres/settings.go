@@ -33,5 +33,5 @@ func (r *SettingsRep) GetSettings(ctx context.Context) ([]models.Setting, error)
 }
 
 func (r *SettingsRep) PutSettings(ctx context.Context, newSettings models.SettingsUpdateRequest) (time.Time, error) {
-	return nil
+	return time.Time{}, nil
 }

@@ -36,3 +36,9 @@ type Settings struct {
 	Booking       SettingsBooking
 	General       SettingsGeneral
 }
+
+type SettingsUpdateRequest struct {
+	Notifications SettingsNotifications
+	Booking       SettingsBooking
+	General       SettingsGeneral
+}

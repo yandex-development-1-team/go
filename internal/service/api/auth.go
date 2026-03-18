@@ -40,6 +40,7 @@ type AuthService struct {
 	JwtSecret  []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
+	txRepo     repository.TxRepository
 }
 
 type AccessClaims struct {
@@ -48,12 +49,14 @@ type AccessClaims struct {
 	jwt.RegisteredClaims
 }
 
-func NewAuthService(db *sqlx.DB, rtRepo repository.RefreshTokenRepository, userRepo repository.UserRepository, jwtSecret string, accessTTLMinutes, refreshTTlDays int) *AuthService {
+func NewAuthService(db *sqlx.DB, rtRepo repository.RefreshTokenRepository, userRepo repository.UserRepository,
+	txRepo repository.TxRepository, jwtSecret string, accessTTLMinutes, refreshTTlDays int) *AuthService {
 	return &AuthService{
 		db:         db,
 		rtRepo:     rtRepo,
 		userRepo:   userRepo,
 		JwtSecret:  []byte(jwtSecret),
+		txRepo:     txRepo,
 		accessTTL:  time.Duration(accessTTLMinutes) * time.Minute,
 		refreshTTL: time.Duration(refreshTTlDays) * time.Hour * 24,
 	}
@@ -134,6 +137,47 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (string,
 		return "", err
 	}
 	return accessToken, nil
+}
+
+func (s *AuthService) Register(ctx context.Context, user *models.UserAPI, password string) (*models.AuthResult, error) {
+	hashPassword, err := HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken := generateRandomToken()
+	expiresAt := time.Now().Add(s.refreshTTL)
+
+	err = s.txRepo.RunToTx(ctx, func(ctx context.Context) error {
+
+		user, err = s.userRepo.CreateStaff(ctx, user, hashPassword)
+		if err != nil {
+			return err
+		}
+
+		err = s.rtRepo.CreateRefreshToken(ctx, user.ID, refreshToken, expiresAt)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// accessToken
+	accessToken, err := s.generateAccessToken(user.ID, user.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	// в случае успеха коммит и возвращаем User
+	return &models.AuthResult{
+		User:         user,
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {

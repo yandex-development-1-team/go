@@ -69,7 +69,7 @@ func HandleCallback(router *CallbackRouter, query *tgbotapi.CallbackQuery) error
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	handler, err := router.findHandler(query.Data)
@@ -101,7 +101,8 @@ func HandleCallback(router *CallbackRouter, query *tgbotapi.CallbackQuery) error
 
 // findHandler ищет обработчик данных
 func (r *CallbackRouter) findHandler(data string) (CallbackHandler, error) {
-	if handler, exists := r.handlers[data]; exists {
+	prefix := strings.Split(data, ":")
+	if handler, exists := r.handlers[prefix[0]]; exists {
 		return handler, nil
 	}
 

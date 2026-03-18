@@ -4,13 +4,9 @@ import (
 	"context"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"go.uber.org/zap"
 
-	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
 )
-
-const cmdStart = "start"
 
 type Bot interface {
 	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
@@ -22,18 +18,18 @@ type MsgRateLimiter interface {
 }
 
 type Handler struct {
-	bot                 Bot
-	msgRL               MsgRateLimiter
-	startHandler        StartHandler
-	boxSolutionsHandler *BoxSolutionsHandler
+	bot            Bot
+	msgRL          MsgRateLimiter
+	msgRouter      *MessageRouter
+	callbackRouter *CallbackRouter
 }
 
-func NewHandler(bot Bot, msgRL MsgRateLimiter, startHandler StartHandler, boxSolutionsHandler *BoxSolutionsHandler) *Handler {
+func NewHandler(bot Bot, msgRL MsgRateLimiter, msgRouter *MessageRouter, callbackRouter *CallbackRouter) *Handler {
 	return &Handler{
-		bot:                 bot,
-		msgRL:               msgRL,
-		startHandler:        startHandler,
-		boxSolutionsHandler: boxSolutionsHandler,
+		bot:            bot,
+		msgRL:          msgRL,
+		msgRouter:      msgRouter,
+		callbackRouter: callbackRouter,
 	}
 }
 
@@ -45,41 +41,10 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 	metrics.SetActiveUsers(activeUsers)
 
 	if msg := update.Message; msg != nil {
-		if msg.IsCommand() {
-			h.handleCommand(ctx, msg)
-		}
-		// todo
-		return
+		h.msgRouter.HandleMessage(ctx, msg)
 	}
 	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
-		h.handlCallback(ctx, callbackQuery)
-	}
-}
-
-func (h *Handler) handleCommand(ctx context.Context, msg *tgbotapi.Message) {
-	chatID := msg.Chat.ID
-	switch msg.Command() {
-	case cmdStart:
-		if err := h.msgRL.Exec(ctx, chatID, func() error { return h.startHandler.HandleStart(msg) }); err != nil {
-			logger.Error("failed to handle /start", zap.Error(err))
-		}
-	// в новые ветки добавлять вызовы функций обработчиков команд
-	default:
-		// todo
-	}
-}
-
-func (h *Handler) handlCallback(ctx context.Context, callbackQuery *tgbotapi.CallbackQuery) {
-	switch callbackQuery.Data {
-	case CallbackBoxSolutions:
-		if err := h.boxSolutionsHandler.HandleBoxSolutions(ctx, callbackQuery); err != nil {
-			logger.Error("failed to handle callback BoxSolutions", zap.Error(err))
-		}
-	case BoxSolutionsButtonBackToMainMenu:
-		if err := h.startHandler.HandleStartBackToMainMenu(ctx, callbackQuery); err != nil {
-			logger.Error("failed to handle callback BoxSolutionsButtonBackToMainMenu", zap.Error(err))
-		}
-		// todo
+		HandleCallback(h.callbackRouter, update.CallbackQuery)
 	}
 }
 

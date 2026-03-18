@@ -16,12 +16,25 @@ import (
 const VessagesErrData = "❌ К сожалению, не удалось загрузить информацию об услуге. Пожалуйста, попробуйте позже."
 
 // internal/handlers/service_detail.go
-func (h *ServiceHandler) HandleServiceDetail(ctx context.Context, tg *tgbotapi.CallbackQuery) error {
+func (h *ServiceHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) error {
 	// ШАГ 1: Получаем ID пользователя и номер чата
 	userID := tg.From.ID
 	chatID := tg.Message.Chat.ID
 	callbackData := tg.Data
+
+	info := strings.Split(callbackData, ":")
+	if len(info) == 2 {
+		if info[1] == "back" {
+			if err := h.sh.HandleStart(ctx, tg.Message); err != nil {
+				logger.Error("failed to handle main_menu", zap.Error(err))
+				return err
+			}
+			return nil
+		}
+	}
+
 	serviceID, err := parseServiceID(callbackData)
+
 	if err != nil {
 		logger.Error("failed_to_parse_service_id",
 			zap.String("callback_data", callbackData),

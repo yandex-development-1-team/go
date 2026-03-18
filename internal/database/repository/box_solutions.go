@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -12,11 +14,12 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-// BoxSolutionRepo — репозиторий коробочных решений (services с box_solution=true).
+// BoxSolutionRepo the repository of boxed solutions
 type BoxSolutionRepo struct {
 	db *sqlx.DB
 }
 
+// NewBoxSolutionRepo returns a new instance of the boxed solutions repository
 func NewBoxSolutionRepo(db *sqlx.DB) *BoxSolutionRepo {
 	return &BoxSolutionRepo{db: db}
 }
@@ -41,6 +44,29 @@ const getServiceByIDQuery = `
 	WHERE s.id = $1
 	ORDER BY a.slot_date`
 
+const getAvailableTimeSlotsQuery = `
+	SELECT 
+		slot_date,
+		time_slots
+	FROM service_available_slots 
+	WHERE service_id = $1
+	ORDER BY slot_date`
+
+const getTimeSlotsByDateQuery = `
+	SELECT time_slots
+	FROM service_available_slots 
+	WHERE service_id = $1 AND slot_date = $2`
+
+const checkSlotAvailabilityQuery = `
+	SELECT EXISTS(
+		SELECT 1 
+		FROM service_available_slots 
+		WHERE service_id = $1 
+			AND slot_date = $2 
+			AND $3 = ANY(time_slots)
+	)`
+
+// GetServices gets a list of all services marked as boxed solutions
 func (r *BoxSolutionRepo) GetServices(ctx context.Context, telegramID int64) ([]models.Service, error) {
 	type service struct {
 		ID          int64          `db:"id"`
@@ -97,6 +123,7 @@ func (r *BoxSolutionRepo) GetServices(ctx context.Context, telegramID int64) ([]
 	return services, nil
 }
 
+// GetServiceByID gets detailed information about a specific service by its identifier
 func (r *BoxSolutionRepo) GetServiceByID(ctx context.Context, serviceID int) (models.Service, error) {
 	type row struct {
 		ID          int64          `db:"id"`
@@ -137,4 +164,231 @@ func (r *BoxSolutionRepo) GetServiceByID(ctx context.Context, serviceID int) (mo
 		}
 	}
 	return svc, nil
+}
+
+// GetAvailableDates gets a list of available dates for the service
+func (r *BoxSolutionRepo) GetAvailableDates(ctx context.Context, serviceID int) ([]string, error) {
+	if serviceID <= 0 {
+		return nil, errors.New("invalid service ID")
+	}
+
+	type dbSlot struct {
+		SlotDate sql.NullTime `db:"slot_date"`
+	}
+
+	query := `
+		SELECT slot_date
+		FROM service_available_slots 
+		WHERE service_id = $1 AND array_length(time_slots, 1) > 0
+		ORDER BY slot_date
+	`
+
+	var dbSlots []dbSlot
+	err := r.db.SelectContext(ctx, &dbSlots, query, serviceID)
+	if err != nil {
+		logger.Error("failed to get available dates from db",
+			zap.Int("service_id", serviceID),
+			zap.Error(err))
+		return nil, err
+	}
+
+	dates := make([]string, 0, len(dbSlots))
+	for _, slot := range dbSlots {
+		if slot.SlotDate.Valid {
+			dates = append(dates, slot.SlotDate.Time.Format("2006-01-02"))
+		}
+	}
+
+	return dates, nil
+}
+
+// GetAvailableSlotsByServiceID gets all available dates and time slots for the service
+func (r *BoxSolutionRepo) GetAvailableSlotsByServiceID(ctx context.Context, serviceID int) ([]models.AvailableSlot, error) {
+	if serviceID <= 0 {
+		return nil, errors.New("invalid service ID")
+	}
+
+	type dbSlot struct {
+		SlotDate  sql.NullTime   `db:"slot_date"`
+		TimeSlots pq.StringArray `db:"time_slots"`
+	}
+
+	var dbSlots []dbSlot
+	err := r.db.SelectContext(ctx, &dbSlots, getAvailableTimeSlotsQuery, serviceID)
+	if err != nil {
+		logger.Error("failed to get available slots from db",
+			zap.Int("service_id", serviceID),
+			zap.Error(err))
+		return nil, err
+	}
+
+	availableSlots := make([]models.AvailableSlot, 0, len(dbSlots))
+	for _, slot := range dbSlots {
+		if slot.SlotDate.Valid && len(slot.TimeSlots) > 0 {
+			availableSlots = append(availableSlots, models.AvailableSlot{
+				Date:      slot.SlotDate.Time.Format("2006-01-02"),
+				TimeSlots: slot.TimeSlots,
+			})
+		}
+	}
+
+	return availableSlots, nil
+}
+
+// GetAvailableTimeSlotsByDate gets available time slots for a specific date
+func (r *BoxSolutionRepo) GetAvailableTimeSlotsByDate(ctx context.Context, serviceID int, date string) ([]string, error) {
+	if serviceID <= 0 {
+		return nil, errors.New("invalid service ID")
+	}
+	if date == "" {
+		return nil, errors.New("date cannot be empty")
+	}
+
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		return nil, errors.New("invalid date format, expected YYYY-MM-DD")
+	}
+
+	var timeSlots pq.StringArray
+	err := r.db.GetContext(ctx, &timeSlots, getTimeSlotsByDateQuery, serviceID, date)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return []string{}, nil
+		}
+		logger.Error("failed to get time slots from db",
+			zap.Int("service_id", serviceID),
+			zap.String("date", date),
+			zap.Error(err))
+		return nil, err
+	}
+
+	return timeSlots, nil
+}
+
+// CheckSlotAvailability checks the availability of a specific time slot
+func (r *BoxSolutionRepo) CheckSlotAvailability(ctx context.Context, serviceID int, date string, timeSlot string) (bool, error) {
+	if serviceID <= 0 {
+		return false, errors.New("invalid service ID")
+	}
+	if date == "" {
+		return false, errors.New("date cannot be empty")
+	}
+	if timeSlot == "" {
+		return false, errors.New("time slot cannot be empty")
+	}
+
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		return false, errors.New("invalid date format, expected YYYY-MM-DD")
+	}
+
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, checkSlotAvailabilityQuery, serviceID, date, timeSlot)
+	if err != nil {
+		logger.Error("failed to check slot availability",
+			zap.Int("service_id", serviceID),
+			zap.String("date", date),
+			zap.String("time_slot", timeSlot),
+			zap.Error(err))
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func (r *BoxSolutionRepo) GetServicesByStatus(ctx context.Context, status *models.ServiceStatus) ([]models.Service, error) {
+	query := `
+        SELECT
+            s.id, s.name, s.description, s.rules, s.schedule,
+            s.type, s.box_solution, s.status, s.created_at, s.updated_at, s.deleted_at,
+            a.slot_date, COALESCE(a.time_slots, '{}') as time_slots
+        FROM services s
+        LEFT JOIN service_available_slots a ON s.id = a.service_id
+        WHERE s.box_solution = true AND s.deleted_at IS NULL`
+
+	var args []interface{}
+	if status != nil {
+		query += ` AND s.status = $1`
+		args = append(args, *status)
+	}
+	query += ` ORDER BY s.id, a.slot_date`
+
+	type serviceRow struct {
+		ID          int64                `db:"id"`
+		Name        string               `db:"name"`
+		Description sql.NullString       `db:"description"`
+		Rules       sql.NullString       `db:"rules"`
+		Schedule    sql.NullString       `db:"schedule"`
+		Type        sql.NullString       `db:"type"`
+		BoxSolution bool                 `db:"box_solution"`
+		Status      models.ServiceStatus `db:"status"`
+		CreatedAt   time.Time            `db:"created_at"`
+		UpdatedAt   time.Time            `db:"updated_at"`
+		DeletedAt   sql.NullTime         `db:"deleted_at"`
+		SlotDate    sql.NullTime         `db:"slot_date"`
+		TimeSlots   pq.StringArray       `db:"time_slots"`
+	}
+
+	var rows []serviceRow
+	err := r.db.SelectContext(ctx, &rows, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	serviceMap := make(map[int64]*models.Service)
+	for _, row := range rows {
+		svc, exists := serviceMap[row.ID]
+		if !exists {
+			svc = &models.Service{
+				ID:             row.ID,
+				Name:           row.Name,
+				Description:    row.Description.String,
+				Rules:          row.Rules.String,
+				Schedule:       row.Schedule.String,
+				Type:           row.Type.String,
+				BoxSolution:    row.BoxSolution,
+				Status:         row.Status,
+				CreatedAt:      row.CreatedAt,
+				UpdatedAt:      row.UpdatedAt,
+				DeletedAt:      row.DeletedAt,
+				AvailableSlots: []models.AvailableSlot{},
+			}
+			serviceMap[row.ID] = svc
+		}
+		if row.SlotDate.Valid {
+			svc.AvailableSlots = append(svc.AvailableSlots, models.AvailableSlot{
+				Date:      row.SlotDate.Time.Format("2006-01-02"),
+				TimeSlots: row.TimeSlots,
+			})
+		}
+	}
+
+	result := make([]models.Service, 0, len(serviceMap))
+	for _, svc := range serviceMap {
+		result = append(result, *svc)
+	}
+	return result, nil
+}
+
+func (r *BoxSolutionRepo) UpdateService(ctx context.Context, service *models.Service) error {
+	query := `
+        UPDATE services 
+        SET name = $2, description = $3, rules = $4, schedule = $5, 
+            type = $6, box_solution = $7, updated_at = $8
+        WHERE id = $1 AND deleted_at IS NULL`
+
+	_, err := r.db.ExecContext(ctx, query,
+		service.ID, service.Name, service.Description, service.Rules,
+		service.Schedule, service.Type, service.BoxSolution, service.UpdatedAt)
+	return err
+}
+
+func (r *BoxSolutionRepo) SoftDeleteService(ctx context.Context, serviceID int) error {
+	query := `UPDATE services SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, serviceID)
+	return err
+}
+
+func (r *BoxSolutionRepo) UpdateServiceStatus(ctx context.Context, serviceID int, status models.ServiceStatus) error {
+	query := `UPDATE services SET status = $2, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, serviceID, status)
+	return err
 }

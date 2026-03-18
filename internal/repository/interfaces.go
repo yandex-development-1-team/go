@@ -7,19 +7,19 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/yandex-development-1-team/go/internal/models"
-	serviceModels "github.com/yandex-development-1-team/go/internal/service/api/models"
 	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
 // UserRepository — доступ к пользователям (например по email для логина).
 type UserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error)
+	CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error)
 }
 
 // SettingsRepository — чтение настроек из хранилища.
 type SettingsRepository interface {
 	GetSettings(ctx context.Context) ([]models.Setting, error)
-	PutSettings(ctx context.Context, newSettings serviceModels.SettingsUpdateRequest) (time.Time, error)
+	PutSettings(ctx context.Context, newSettings models.SettingsUpdateRequest) (time.Time, error)
 }
 
 // RefreshTokenRepository — хранение и инвалидация refresh-токенов.
@@ -34,7 +34,12 @@ type RefreshTokenRepository interface {
 type SpecialProjectRepository interface {
 	Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error)
 	GetByID(ctx context.Context, id int64) (*specialproject.DB, error)
-	List(ctx context.Context, statusFilter *bool, searchQuery string) ([]*specialproject.DB, error)
-	UpdateSpecialProject(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
-	DeleteSpecialProject(ctx context.Context, id int64) error
+	List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error)
+	Update(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
+	Delete(ctx context.Context, id int64) error
+}
+
+// TxRepository - атомарность работы с бд
+type TxRepository interface {
+	RunToTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
