@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,11 +28,11 @@ import (
 )
 
 type seedUserParams struct {
-	TelegramID int64
-	Email      string
-	Role       string
-	Status     string
-	PassHash   string
+	TelegramNick string
+	Email        string
+	Role         string
+	Status       string
+	PassHash     string
 }
 
 func setupServer(t *testing.T, db *sqlx.DB) *httptest.Server {
@@ -39,7 +40,8 @@ func setupServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 
 	userRepo := repository.NewUserRepo(db)
 	refreshRepo := repository.NewRefreshTokenRepo(db)
-	svc := service.NewAuthService(db, refreshRepo, userRepo, "test-secret", 15, 30)
+	txRepo := repository.NewTxRepo(db)
+	svc := service.NewAuthService(db, refreshRepo, userRepo, txRepo, "test-secret", 15, 30)
 	handler := NewAuthHandler(svc)
 
 	router := gin.New()
@@ -53,15 +55,15 @@ func setupServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 func seedUser(t *testing.T, db *sqlx.DB, p seedUserParams) {
 	t.Helper()
 	_, err := db.Exec(`
-			INSERT INTO users (telegram_id, email, role, status, password_hash)
+			INSERT INTO staff (telegram_nick, email, role, status, password_hash)
 			VALUES ($1, $2, $3, $4, $5)`,
-		p.TelegramID, p.Email, p.Role, p.Status, p.PassHash,
+		p.TelegramNick, p.Email, p.Role, p.Status, p.PassHash,
 	)
 	require.NoError(t, err)
 }
 
 func TestHandleLogin(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	container, err := startContainer()
@@ -81,19 +83,19 @@ func TestHandleLogin(t *testing.T) {
 
 	// role — только 'admin' или 'manager', нет 'user'
 	seedUser(t, db, seedUserParams{
-		TelegramID: 1,
-		Email:      "user@example.com",
-		Status:     "active",
-		Role:       "manager",
-		PassHash:   string(validHash),
+		TelegramNick: "nick 1",
+		Email:        "user@example.com",
+		Status:       "active",
+		Role:         "manager",
+		PassHash:     string(validHash),
 	})
 
 	seedUser(t, db, seedUserParams{
-		TelegramID: 2,
-		Email:      "blocked@example.com",
-		Status:     "blocked",
-		Role:       "manager",
-		PassHash:   string(validHash),
+		TelegramNick: "nick 2",
+		Email:        "blocked@example.com",
+		Status:       "blocked",
+		Role:         "manager",
+		PassHash:     string(validHash),
 	})
 
 	tests := []struct {
@@ -245,4 +247,207 @@ func createDB(container tc.Container) (*sqlx.DB, error) {
 	}
 
 	return db, nil
+}
+
+func setupRegisterServer(t *testing.T, db *sqlx.DB) *httptest.Server {
+	t.Helper()
+
+	userRepo := repository.NewUserRepo(db)
+	refreshRepo := repository.NewRefreshTokenRepo(db)
+	txRepo := repository.NewTxRepo(db)
+	svc := service.NewAuthService(db, refreshRepo, userRepo, txRepo, "test-secret", 15, 30)
+	handler := NewAuthHandler(svc)
+
+	router := gin.New()
+	router.POST("/auth/register", handler.RegisterHandler)
+
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+	return server
+}
+
+func seedStaff(t *testing.T, db *sqlx.DB, email string, passHash string) {
+	t.Helper()
+	_, err := db.Exec(`
+		INSERT INTO staff (name, email, password_hash, role, status)
+		VALUES ($1, $2, $3, $4, $5)`,
+		"Existing User", email, passHash, "manager", "active",
+	)
+	require.NoError(t, err)
+}
+
+func TestRegisterHandler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	container, err := startContainer()
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, container.Terminate(ctx))
+	}()
+
+	db, err := createDB(container)
+	require.NoError(t, err)
+	defer db.Close()
+
+	// очищаем таблицу перед тестами
+	_, err = db.Exec(`TRUNCATE TABLE staff CASCADE`)
+
+	server := setupRegisterServer(t, db)
+
+	validHash, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	require.NoError(t, err)
+
+	seedStaff(t, db, "existing@example.com", string(validHash))
+
+	tests := []struct {
+		name       string
+		body       any
+		wantStatus int
+		checkBody  func(*testing.T, map[string]any)
+	}{
+		{
+			name: "успешная регистрация",
+			body: map[string]string{
+				"name":     "New User",
+				"email":    "newuser@example.com",
+				"password": "password123",
+				"role":     "manager",
+			},
+			wantStatus: http.StatusOK,
+			checkBody: func(t *testing.T, body map[string]any) {
+				assert.NotEmpty(t, body["token"])
+				assert.NotEmpty(t, body["refresh_token"])
+				user, ok := body["user"].(map[string]any)
+				require.True(t, ok, "user field missing or wrong type")
+				assert.Equal(t, "newuser@example.com", user["email"])
+			},
+		},
+		{
+			name: "email уже существует",
+			body: map[string]string{
+				"name":     "Test User",
+				"email":    "existing@example.com",
+				"password": "password123",
+				"role":     "manager",
+			},
+			wantStatus: http.StatusConflict,
+			checkBody:  checkServiceErrorBody,
+		},
+		{
+			name: "пустое имя",
+			body: map[string]string{
+				"name":     "",
+				"email":    "test@example.com",
+				"password": "password123",
+				"role":     "manager",
+			},
+			wantStatus: http.StatusBadRequest,
+			checkBody:  checkServiceErrorBody,
+		},
+		{
+			name: "имя короче 2 символов",
+			body: map[string]string{
+				"name":     "A",
+				"email":    "test@example.com",
+				"password": "password123",
+				"role":     "manager",
+			},
+			wantStatus: http.StatusBadRequest,
+			checkBody:  checkServiceErrorBody,
+		},
+		{
+			name: "пустой email",
+			body: map[string]string{
+				"name":     "Test User",
+				"email":    "",
+				"password": "password123",
+				"role":     "manager",
+			},
+			wantStatus: http.StatusBadRequest,
+			checkBody:  checkServiceErrorBody,
+		},
+		{
+			name: "невалидный email",
+			body: map[string]string{
+				"name":     "Test User",
+				"email":    "not-an-email",
+				"password": "password123",
+				"role":     "manager",
+			},
+			wantStatus: http.StatusBadRequest,
+			checkBody:  checkServiceErrorBody,
+		},
+		{
+			name: "пароль короче 8 символов",
+			body: map[string]string{
+				"name":     "Test User",
+				"email":    "test2@example.com",
+				"password": "123",
+				"role":     "manager",
+			},
+			wantStatus: http.StatusBadRequest,
+			checkBody:  checkServiceErrorBody,
+		},
+		{
+			name: "пароль длиннее 72 символов",
+			body: map[string]string{
+				"name":     "Test User",
+				"email":    "test3@example.com",
+				"password": strings.Repeat("a", 73),
+				"role":     "manager",
+			},
+			wantStatus: http.StatusBadRequest,
+			checkBody:  checkServiceErrorBody,
+		},
+		{
+			name: "невалидная роль",
+			body: map[string]string{
+				"name":     "Test User",
+				"email":    "test4@example.com",
+				"password": "password123",
+				"role":     "superadmin",
+			},
+			wantStatus: http.StatusBadRequest,
+			checkBody:  checkServiceErrorBody,
+		},
+		{
+			name: "отсутствует роль",
+			body: map[string]string{
+				"name":     "Test User",
+				"email":    "test5@example.com",
+				"password": "password123",
+			},
+			wantStatus: http.StatusBadRequest,
+			checkBody:  checkServiceErrorBody,
+		},
+		{
+			name:       "невалидный json",
+			body:       "not json",
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := json.Marshal(tt.body)
+			require.NoError(t, err)
+
+			resp, err := http.Post(
+				server.URL+"/auth/register",
+				"application/json",
+				bytes.NewReader(body),
+			)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			assert.Equal(t, tt.wantStatus, resp.StatusCode)
+
+			if tt.checkBody != nil {
+				var result map[string]any
+				require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+				tt.checkBody(t, result)
+			}
+		})
+	}
 }

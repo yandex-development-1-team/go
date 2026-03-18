@@ -44,6 +44,7 @@ var errMappings = []errMapping{
 	{models.ErrRequestTimeout, http.StatusGatewayTimeout, "Превышено время ожидания"},
 	{models.ErrDatabase, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
 	{models.ErrCache, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
+	{models.ErrEmailAlreadyExist, http.StatusConflict, "Указанный почтовый адрес уже занят"},
 }
 
 const defaultMessage = "Произошла ошибка. Попробуйте позже."

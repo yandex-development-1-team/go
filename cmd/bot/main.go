@@ -21,12 +21,14 @@ import (
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
 	"github.com/yandex-development-1-team/go/internal/database/repository"
-	apiHandlers "github.com/yandex-development-1-team/go/internal/handlers"
+	"github.com/yandex-development-1-team/go/internal/handlers"
+	botHandlers "github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
 	apiRepository "github.com/yandex-development-1-team/go/internal/repository/postgres"
 	"github.com/yandex-development-1-team/go/internal/service"
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
+	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 	"github.com/yandex-development-1-team/go/internal/shutdown"
 )
 
@@ -76,14 +78,21 @@ func run() error {
 	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
 	// --- Repositories ---
+	userRepo := repository.NewUserRepository(dbSqlx)
 	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
+	bookRepo := repository.NewBookingRepository(dbSqlx)
+	sessionRepo := repository.NewSessionRepository(redisClient, repository.WithTTL(cfg.Session.TTL))
 	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
 	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
 	refreshTokenRepoRepo := apiRepository.NewRefreshTokenRepo(dbSqlx)
-	userRepo := apiRepository.NewUserRepo(dbSqlx)
+	txRepo := apiRepository.NewTxRepo(dbSqlx)
+	userRepoAPI := apiRepository.NewUserRepo(dbSqlx)
 
 	// --- Services ---
 	settingsService := apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
+	bookService := botService.NewBookingService(sessionRepo, bookRepo, boxSolutionRepo)
+	keyboard := handlers.NewKeyboardService()
+	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 
@@ -103,7 +112,7 @@ func run() error {
 	}()
 
 	// --- API server (routers) ---
-	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, userRepo, cfg.AuthConfig.JWTSecret,
+	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, userRepoAPI, txRepo, cfg.AuthConfig.JWTSecret,
 		cfg.AuthConfig.RefreshTokenTTLDays, cfg.AuthConfig.AccessTokenTTLMinutes)
 
 	apiServer := server.New(&cfg, &server.APIServices{
@@ -144,10 +153,23 @@ func run() error {
 		return fmt.Errorf("rate limiter: %w", err)
 	}
 
-	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
-	startHandler := apiHandlers.NewStartHandler(tgBot, nil)
-	boxSolutionsHandler := apiHandlers.NewBoxSolutions(tgBot, bsService)
-	handler := apiHandlers.NewHandler(tgBot, msgRL, startHandler, boxSolutionsHandler)
+	startHandler := botHandlers.NewStartHandler(tgBot, userRepo)
+	bcHandler := handlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, keyboard)
+	bsHandler := botHandlers.NewBoxSolutions(tgBot, bsService)
+	infoHandler := botHandlers.NewServiceHandler(boxSolutionRepo, tgBot.Api, startHandler)
+
+	// Creating a callback router
+	callbackRouter := handlers.NewCallbackRouter(tgBot.Api)
+	msgRouter := handlers.NewMessageRouter(tgBot.Api, startHandler, sessionRepo, bcHandler, msgRL)
+
+	// Registering all handlers
+	callbackRouter.Register(botHandlers.CallbackBoxSolutions, bsHandler)
+	callbackRouter.Register(botService.CallbackBookingPrefix, bcHandler)
+	callbackRouter.Register(botHandlers.CallbackInfoPrefix, infoHandler)
+	callbackRouter.Register(botHandlers.BoxSolutionsButtonBackToMainMenu, startHandler)
+
+	handler := botHandlers.NewHandler(tgBot, msgRL, msgRouter, callbackRouter)
+
 	logger.Info("bot started", zap.String("env", cfg.Environment))
 
 	updates := tgBot.GetUpdates(30 * time.Second)

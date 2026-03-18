@@ -71,28 +71,28 @@ func (s *SpecialProjectService) GetByID(ctx context.Context, id int64) (*special
 	return toDomain(dbModel), nil
 }
 
-func (s *SpecialProjectService) List(ctx context.Context, statusStr string, search string) ([]specialproject.Project, error) {
+func (s *SpecialProjectService) List(ctx context.Context, statusStr string, search string, limit, offset int) ([]*specialproject.Project, int, error) {
 	var statusFilter *bool
 	if statusStr != "" {
 		val := statusStr == "active"
 		statusFilter = &val
 	}
-	dbList, err := s.repo.List(ctx, statusFilter, search)
+	dbList, total, err := s.repo.List(ctx, statusFilter, search, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	result := make([]specialproject.Project, 0, len(dbList))
+	result := make([]*specialproject.Project, 0, len(dbList))
 	for _, item := range dbList {
-		result = append(result, specialproject.Project{
+		result = append(result, &specialproject.Project{
 			ID:            item.ID,
 			Title:         item.Title,
 			IsActiveInBot: item.IsActiveInBot,
 		})
 	}
-	return result, nil
+	return result, total, nil
 }
 
-func (s *SpecialProjectService) UpdateSpecialProject(ctx context.Context, id int64, proj *specialproject.Project) (*specialproject.Project, error) {
+func (s *SpecialProjectService) Update(ctx context.Context, id int64, proj *specialproject.Project) (*specialproject.Project, error) {
 	if id <= 0 || proj == nil {
 		return nil, models.ErrInvalidInput
 	}
@@ -105,7 +105,7 @@ func (s *SpecialProjectService) UpdateSpecialProject(ctx context.Context, id int
 		Image:         proj.Image,
 		IsActiveInBot: proj.IsActiveInBot,
 	}
-	dbModel, err := s.repo.UpdateSpecialProject(ctx, id, update)
+	dbModel, err := s.repo.Update(ctx, id, update)
 	if err != nil {
 		if errors.Is(err, specialproject.ErrNotFound) {
 			return nil, specialproject.ErrNotFound
@@ -115,11 +115,11 @@ func (s *SpecialProjectService) UpdateSpecialProject(ctx context.Context, id int
 	return toDomain(dbModel), nil
 }
 
-func (s *SpecialProjectService) DeleteSpecialProject(ctx context.Context, id int64) error {
+func (s *SpecialProjectService) Delete(ctx context.Context, id int64) error {
 	if id <= 0 {
 		return models.ErrInvalidInput
 	}
-	err := s.repo.DeleteSpecialProject(ctx, id)
+	err := s.repo.Delete(ctx, id)
 	if err != nil {
 		if errors.Is(err, specialproject.ErrNotFound) {
 			return specialproject.ErrNotFound
