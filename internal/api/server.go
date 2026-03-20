@@ -25,17 +25,20 @@ func NewServer(db *sqlx.DB, cfg Config) *Server {
 
 	rtRepo := pgrepo.NewRefreshTokenRepo(db)
 	userRepo := pgrepo.NewUserRepo(db)
+	txRepo := pgrepo.NewTxRepo(db)
 
 	authSvc := svcapi.NewAuthService(
 		db,
 		rtRepo,
 		userRepo,
+		txRepo,
 		cfg.JWTSecret,
 		cfg.AccessTokenTTLMinutes,
 		cfg.RefreshTokenTTLDays,
 	)
 	authHandler := handlers.NewAuthHandler(authSvc)
 
+	//todo нужно перенести в роуты регистрацию хендлеров
 	mux.HandleFunc("/api/v1/auth/refresh", authHandler.Refresh)
 	mux.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
 

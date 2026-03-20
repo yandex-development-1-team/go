@@ -23,11 +23,18 @@ func (a SettingsHandler) Get(c *gin.Context) {
 	settings, err := a.service.GetSettings(ctx)
 	if err != nil {
 		logger.Error("failed to get settings from handler", zap.Error(err))
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to get settings",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, settings)
+}
+
+func (a SettingsHandler) Put(c *gin.Context) {
+	//todo написать реализацию метода
+	c.JSON(http.StatusOK, gin.H{
+		"settings": "ok",
+	})
 }

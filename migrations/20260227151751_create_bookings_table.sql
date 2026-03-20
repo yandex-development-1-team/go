@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS bookings (
 
     CONSTRAINT fk_bookings_user
         FOREIGN KEY (user_id)
-            REFERENCES users(id)
+            REFERENCES users(telegram_id)
             ON DELETE CASCADE,
 
     CONSTRAINT fk_bookings_service

@@ -18,6 +18,8 @@ var (
 	ErrInvalidField  = errors.New("handler with an invalid field")
 )
 
+const CallbackInfoPrefix = "info"
+
 type ServiceRepo interface {
 	GetServiceByID(ctx context.Context, serviceID int) (models.Service, error)
 }
@@ -41,6 +43,7 @@ type ServiceHandler struct {
 	repo            ServiceRepo
 	bot             *tgbotapi.BotAPI
 	keyboardService *KeyboardService
+	sh              *StartHandler
 }
 
 func (h *ServiceHandler) sendMessage(userID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) error {
@@ -50,27 +53,25 @@ func (h *ServiceHandler) sendMessage(userID int64, text string, keyboard tgbotap
 	return err
 }
 
-func NewServiceHandler(repo ServiceRepo, bot *tgbotapi.BotAPI) *ServiceHandler {
+func NewServiceHandler(repo ServiceRepo, bot *tgbotapi.BotAPI, sh *StartHandler) *ServiceHandler {
 	return &ServiceHandler{
 		repo:            repo,
 		bot:             bot,
 		keyboardService: NewKeyboardService(),
+		sh:              sh,
 	}
 }
 
 // splitHanlerData проверяет полученные данные, и возвращает ID услуги
 func parseServiceID(s string) (int, error) {
-	if s == "" {
-		return 0, ErrNullData
-	}
 	info := strings.Split(s, ":")
-	if len(info) != 2 {
+	if len(info) != 3 {
 		return 0, ErrIncorrectData
 	}
 	if info[0] != "info" {
 		return 0, ErrInvalidField
 	}
-	i, err := strconv.Atoi(info[1])
+	i, err := strconv.Atoi(info[2])
 	if err != nil {
 		return 0, err
 	}
