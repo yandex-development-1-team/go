@@ -24,6 +24,9 @@ func NewApplicationHandler(repo repository.ApplicationRepository) *applicationHa
 func (h *applicationHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/applications", h.create)
 	mux.HandleFunc("GET /api/v1/applications", h.list)
+	mux.HandleFunc("GET /api/v1/applications/{id}", h.getByID)
+	mux.HandleFunc("PUT /api/v1/applications/{id}", h.update)
+	mux.HandleFunc("DELETE /api/v1/applications/{id}", h.delete)
 }
 
 func (h *applicationHandler) create(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +124,95 @@ func (h *applicationHandler) list(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *applicationHandler) getByID(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	app, err := h.repo.GetApplicationByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, models.ErrApplicationNotFound) {
+			writeNotFoundError(w)
+			return
+		}
+		logger.Error("failed to get application by id", zap.Error(err))
+		writeInternalError(w)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, app)
+}
+
+func (h *applicationHandler) update(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	var req models.ApplicationUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeValidationError(w, validationDetail{Field: "body", Message: "invalid JSON"})
+		return
+	}
+
+	if req.Status == nil && req.ContactInfo == nil && req.BoxID == nil && req.SpecialProjectID == nil {
+		writeValidationError(w, validationDetail{Field: "body", Message: "at least one field must be provided"})
+		return
+	}
+
+	if req.Status != nil && !req.Status.Valid() {
+		writeValidationError(w, validationDetail{Field: "status", Message: "must be one of: queue, in_progress, done"})
+		return
+	}
+
+	app, err := h.repo.UpdateApplication(r.Context(), id, &req)
+	if err != nil {
+		if errors.Is(err, models.ErrApplicationNotFound) {
+			writeNotFoundError(w)
+			return
+		}
+		if errors.Is(err, models.ErrInvalidInput) {
+			writeValidationError(w, validationDetail{Field: "body", Message: err.Error()})
+			return
+		}
+		logger.Error("failed to update application", zap.Error(err))
+		writeInternalError(w)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, app)
+}
+
+func (h *applicationHandler) delete(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	if err := h.repo.DeleteApplication(r.Context(), id); err != nil {
+		if errors.Is(err, models.ErrApplicationNotFound) {
+			writeNotFoundError(w)
+			return
+		}
+		logger.Error("failed to delete application", zap.Error(err))
+		writeInternalError(w)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "application deleted"})
+}
+
+func parseID(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	raw := r.PathValue("id")
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		writeValidationError(w, validationDetail{Field: "id", Message: "must be a positive integer"})
+		return 0, false
+	}
+	return id, true
+}
+
 type validationDetail struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
@@ -149,6 +241,12 @@ func writeValidationErrors(w http.ResponseWriter, details []validationDetail) {
 	var resp errorResponse
 	resp.Error.Details = details
 	writeJSON(w, http.StatusBadRequest, resp)
+}
+
+func writeNotFoundError(w http.ResponseWriter) {
+	var resp errorResponse
+	resp.Error.Message = "not found"
+	writeJSON(w, http.StatusNotFound, resp)
 }
 
 func writeInternalError(w http.ResponseWriter) {

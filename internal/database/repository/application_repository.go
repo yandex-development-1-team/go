@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -71,6 +73,98 @@ func (r *ApplicationRepo) GetApplications(ctx context.Context, filter models.App
 		return nil, 0, checkError(operation, err)
 	}
 	return apps, total, nil
+}
+
+const selectApplicationByIDQuery = `
+	SELECT id, type, source, status, customer_name, contact_info,
+	       project_name, box_id, special_project_id, manager_id, created_at, updated_at
+	FROM applications
+	WHERE id = $1`
+
+func (r *ApplicationRepo) GetApplicationByID(ctx context.Context, id int64) (*models.Application, error) {
+	const operation = "get_application_by_id"
+
+	var app models.Application
+	err := r.db.QueryRowxContext(ctx, selectApplicationByIDQuery, id).StructScan(&app)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrApplicationNotFound
+		}
+		return nil, checkError(operation, err)
+	}
+	return &app, nil
+}
+
+func (r *ApplicationRepo) UpdateApplication(ctx context.Context, id int64, req *models.ApplicationUpdateRequest) (*models.Application, error) {
+	const operation = "update_application"
+
+	if req == nil {
+		return nil, models.ErrInvalidInput
+	}
+
+	var setClauses []string
+	var args []interface{}
+
+	addSet := func(col string, val interface{}) {
+		args = append(args, val)
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", col, len(args)))
+	}
+
+	if req.Status != nil {
+		if !req.Status.Valid() {
+			return nil, models.ErrInvalidInput
+		}
+		addSet("status", *req.Status)
+	}
+	if req.ContactInfo != nil {
+		addSet("contact_info", *req.ContactInfo)
+	}
+	if req.BoxID != nil {
+		addSet("box_id", *req.BoxID)
+	}
+	if req.SpecialProjectID != nil {
+		addSet("special_project_id", *req.SpecialProjectID)
+	}
+
+	if len(setClauses) == 0 {
+		return nil, models.ErrInvalidInput
+	}
+
+	args = append(args, id)
+	query := fmt.Sprintf(`
+		UPDATE applications
+		SET %s, updated_at = NOW()
+		WHERE id = $%d
+		RETURNING id, type, source, status, customer_name, contact_info,
+		          project_name, box_id, special_project_id, manager_id, created_at, updated_at`,
+		strings.Join(setClauses, ", "), len(args))
+
+	var app models.Application
+	err := r.db.QueryRowxContext(ctx, query, args...).StructScan(&app)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrApplicationNotFound
+		}
+		return nil, checkError(operation, err)
+	}
+	return &app, nil
+}
+
+func (r *ApplicationRepo) DeleteApplication(ctx context.Context, id int64) error {
+	const operation = "delete_application"
+
+	result, err := r.db.ExecContext(ctx, `DELETE FROM applications WHERE id = $1`, id)
+	if err != nil {
+		return checkError(operation, err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return checkError(operation, err)
+	}
+	if affected == 0 {
+		return models.ErrApplicationNotFound
+	}
+	return nil
 }
 
 func buildApplicationWhere(f models.ApplicationFilter) (string, []interface{}) {

@@ -20,7 +20,8 @@ var (
 	ErrValidation             = errors.New("validation error")
 	ErrForbidden              = errors.New("forbidden")
 	ErrCache                  = errors.New("cache error")
-	ErrEmailAlreadyExist      = errors.New("user already exist")
+	ErrEmailAlreadyExist       = errors.New("user already exist")
+	ErrApplicationNotFound     = errors.New("application not found")
 )
 
 // RefreshToken — refresh-токен для аутентификации.
@@ -183,4 +184,11 @@ type Pagination struct {
 type ApplicationListResponse struct {
 	Items      []Application `json:"items"`
 	Pagination Pagination    `json:"pagination"`
+}
+
+type ApplicationUpdateRequest struct {
+	Status           *ApplicationStatus `json:"status,omitempty"`
+	ContactInfo      *string            `json:"contact_info,omitempty"`
+	BoxID            *int64             `json:"box_id,omitempty"`
+	SpecialProjectID *int64             `json:"special_project_id,omitempty"`
 }
