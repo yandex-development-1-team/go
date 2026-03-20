@@ -156,7 +156,7 @@ func (h *applicationHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Status == nil && req.ContactInfo == nil && req.BoxID == nil && req.SpecialProjectID == nil {
+	if !req.HasUpdates() {
 		writeValidationError(w, validationDetail{Field: "body", Message: "at least one field must be provided"})
 		return
 	}

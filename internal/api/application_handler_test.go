@@ -15,7 +15,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-// mockApplicationRepo implements repository.ApplicationRepository for unit tests.
 type mockApplicationRepo struct {
 	createFn      func(ctx context.Context, req *models.ApplicationCreateRequest) (*models.Application, error)
 	listFn        func(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error)
@@ -59,8 +58,6 @@ func sampleApp() *models.Application {
 	}
 }
 
-// ── create ────────────────────────────────────────────────────────────────────
-
 func TestCreate_HappyPath(t *testing.T) {
 	repo := &mockApplicationRepo{
 		createFn: func(_ context.Context, _ *models.ApplicationCreateRequest) (*models.Application, error) {
@@ -94,8 +91,6 @@ func TestCreate_ValidationError(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
-
-// ── list ─────────────────────────────────────────────────────────────────────
 
 func TestList_HappyPath(t *testing.T) {
 	repo := &mockApplicationRepo{
@@ -132,8 +127,6 @@ func TestList_EmptyReturnsEmptySlice(t *testing.T) {
 	assert.NotNil(t, resp.Items)
 	assert.Len(t, resp.Items, 0)
 }
-
-// ── getByID ───────────────────────────────────────────────────────────────────
 
 func TestGetByID_HappyPath(t *testing.T) {
 	repo := &mockApplicationRepo{
@@ -187,8 +180,6 @@ func TestGetByID_ZeroID(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
-
-// ── update ────────────────────────────────────────────────────────────────────
 
 func TestUpdate_HappyPath(t *testing.T) {
 	status := models.ApplicationStatusInProgress
@@ -261,6 +252,18 @@ func TestUpdate_InvalidID(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+func TestUpdate_NegativeID(t *testing.T) {
+	repo := &mockApplicationRepo{}
+	status := models.ApplicationStatusDone
+	body, _ := json.Marshal(models.ApplicationUpdateRequest{Status: &status})
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPut, "/api/v1/applications/-5", bytes.NewReader(body))
+	newHandlerMux(repo).ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestUpdate_AllowedFields(t *testing.T) {
 	contact := "new@example.com"
 	boxID := int64(7)
@@ -284,8 +287,6 @@ func TestUpdate_AllowedFields(t *testing.T) {
 	assert.Equal(t, "new@example.com", app.ContactInfo)
 	assert.Equal(t, int64(7), *app.BoxID)
 }
-
-// ── delete ────────────────────────────────────────────────────────────────────
 
 func TestDelete_HappyPath(t *testing.T) {
 	repo := &mockApplicationRepo{
@@ -321,6 +322,16 @@ func TestDelete_InvalidID(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodDelete, "/api/v1/applications/abc", nil)
+	newHandlerMux(repo).ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestDelete_NegativeID(t *testing.T) {
+	repo := &mockApplicationRepo{}
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodDelete, "/api/v1/applications/-3", nil)
 	newHandlerMux(repo).ServeHTTP(w, r)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)

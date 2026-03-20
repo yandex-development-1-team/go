@@ -98,7 +98,7 @@ func (r *ApplicationRepo) GetApplicationByID(ctx context.Context, id int64) (*mo
 func (r *ApplicationRepo) UpdateApplication(ctx context.Context, id int64, req *models.ApplicationUpdateRequest) (*models.Application, error) {
 	const operation = "update_application"
 
-	if req == nil {
+	if req == nil || !req.HasUpdates() {
 		return nil, models.ErrInvalidInput
 	}
 
@@ -111,9 +111,6 @@ func (r *ApplicationRepo) UpdateApplication(ctx context.Context, id int64, req *
 	}
 
 	if req.Status != nil {
-		if !req.Status.Valid() {
-			return nil, models.ErrInvalidInput
-		}
 		addSet("status", *req.Status)
 	}
 	if req.ContactInfo != nil {
@@ -124,10 +121,6 @@ func (r *ApplicationRepo) UpdateApplication(ctx context.Context, id int64, req *
 	}
 	if req.SpecialProjectID != nil {
 		addSet("special_project_id", *req.SpecialProjectID)
-	}
-
-	if len(setClauses) == 0 {
-		return nil, models.ErrInvalidInput
 	}
 
 	args = append(args, id)

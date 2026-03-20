@@ -20,8 +20,8 @@ var (
 	ErrValidation             = errors.New("validation error")
 	ErrForbidden              = errors.New("forbidden")
 	ErrCache                  = errors.New("cache error")
-	ErrEmailAlreadyExist       = errors.New("user already exist")
-	ErrApplicationNotFound     = errors.New("application not found")
+	ErrEmailAlreadyExist      = errors.New("user already exist")
+	ErrApplicationNotFound    = errors.New("application not found")
 )
 
 // RefreshToken — refresh-токен для аутентификации.
@@ -191,4 +191,8 @@ type ApplicationUpdateRequest struct {
 	ContactInfo      *string            `json:"contact_info,omitempty"`
 	BoxID            *int64             `json:"box_id,omitempty"`
 	SpecialProjectID *int64             `json:"special_project_id,omitempty"`
+}
+
+func (r *ApplicationUpdateRequest) HasUpdates() bool {
+	return r.Status != nil || r.ContactInfo != nil || r.BoxID != nil || r.SpecialProjectID != nil
 }
