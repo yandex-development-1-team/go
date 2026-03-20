@@ -19,6 +19,7 @@ type APIServices struct {
 	BoxService        *apiService.APIBoxService
 	SpecialProjectSvc *service.SpecialProjectService
 	SettingsService   *apiService.SettingsService
+	AnalyticsSvc      *apiService.AnalyticsService
 }
 
 // Server server structure
@@ -55,8 +56,9 @@ func (s *Server) RegisterRoutes() {
 	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
 	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
 	settingsHandler := handlers.NewSettingsHandler(s.services.SettingsService)
+	analyticsHandler := handlers.NewAnalyticsHandler(s.services.AnalyticsSvc)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, boxHandler, specProjHandler, settingsHandler)
+	SetupRoutes(s.router, s.authService.JwtSecret, boxHandler, specProjHandler, settingsHandler, analyticsHandler)
 }
 
 // Run starts the server
