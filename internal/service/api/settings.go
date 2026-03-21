@@ -3,42 +3,14 @@ package service
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
-	"github.com/yandex-development-1-team/go/internal/service/api/models"
-)
-
-// Категории настроек (хранятся в БД)
-const (
-	CategoryNotifications = "notifications"
-	CategoryBooking       = "booking"
-	CategoryGeneral       = "general"
-)
-
-// Ключи раздела notifications
-const (
-	KeyTelegramBotToken    = "telegram_bot_token"
-	KeyAutoReminders       = "auto_reminders"
-	KeyReminderHoursBefore = "reminder_hours_before"
-)
-
-// Ключи раздела booking
-const (
-	KeyMaxSlotsPerEvent         = "max_slots_per_event"
-	KeyAllowOverbooking         = "allow_overbooking"
-	KeyCancellationAllowedHours = "cancellation_allowed_hours"
-)
-
-// Ключи раздела general
-const (
-	KeySiteName     = "site_name"
-	KeyContactEmail = "contact_email"
-	KeyContactPhone = "contact_phone"
+	serviceModels "github.com/yandex-development-1-team/go/internal/service/api/models"
 )
 
 type SettingsService struct {
@@ -49,97 +21,59 @@ func NewSettingsService(settingsRepo repository.SettingsRepository) *SettingsSer
 	return &SettingsService{settingsRepo: settingsRepo}
 }
 
-func (a SettingsService) GetSettings(ctx context.Context) (models.Settings, error) {
-	var settings models.Settings
-
+func (a SettingsService) GetSettings(ctx context.Context) ([]serviceModels.Setting, error) {
 	settingsDB, err := a.settingsRepo.GetSettings(ctx)
 	if err != nil {
 		logger.Error("failed to get settings from service", zap.Error(err))
-		return settings, err
+		return []serviceModels.Setting{}, err
 	}
 
-	for _, row := range settingsDB {
-		switch row.Category {
-		case CategoryNotifications:
-			if err := mapNotification(&settings.Notifications, row.Key.String, row.Value.String); err != nil {
-				return settings, err
-			}
-		case CategoryBooking:
-			if err := mapBooking(&settings.Booking, row.Key.String, row.Value.String); err != nil {
-				return settings, err
-			}
-		case CategoryGeneral:
-			if err := mapGeneral(&settings.General, row.Key.String, row.Value.String); err != nil {
-				return settings, err
-			}
-		}
-	}
+	settings := convertRespDBToRespService(settingsDB)
 
 	return settings, nil
 }
 
-func (a SettingsService) PutSettings(ctx context.Context, newSettings models.SettingsUpdateRequest) (time.Time, error) {
-	updatedAt, err := a.settingsRepo.PutSettings(ctx, newSettings)
+func (a SettingsService) PutSettings(ctx context.Context, reqService []serviceModels.Setting) (time.Time, error) {
+	if len(reqService) == 0 {
+		logger.Error("request settings is empty from repository")
+		return time.Now(), fmt.Errorf("request settings is empty from repository")
+	}
+
+	reqBD := convertReqServiceToReqBD(reqService)
+
+	updatedAt, err := a.settingsRepo.PutSettings(ctx, reqBD)
 	if err != nil {
 		logger.Error("failed to get settings from service", zap.Error(err))
-		return updatedAt, err
+		return updatedAt, fmt.Errorf("failed to get settings from service: %w", err)
 	}
 
 	return updatedAt, nil
 }
 
-func mapNotification(n *models.Notifications, key, value string) error {
-	switch key {
-	case KeyTelegramBotToken:
-		n.TelegramBotToken = value
-	case KeyAutoReminders:
-		val, err := strconv.ParseBool(value)
-		if err != nil {
-			return fmt.Errorf("invalid bool value for %s: %w", KeyAutoReminders, err)
-		}
-		n.AutoReminders = val
-	case KeyReminderHoursBefore:
-		val, err := strconv.Atoi(value)
-		if err != nil {
-			return fmt.Errorf("invalid int value for %s: %w", KeyReminderHoursBefore, err)
-		}
-		n.ReminderHoursBefore = val
+func convertReqServiceToReqBD(reqService []serviceModels.Setting) []models.Setting {
+	var reqBD []models.Setting
+
+	for _, setting := range reqService {
+		reqBD = append(reqBD, models.Setting{
+			Category: setting.Category,
+			Key:      setting.Key,
+			Value:    setting.Value,
+		})
 	}
-	return nil
+
+	return reqBD
 }
 
-func mapBooking(b *models.Booking, key, value string) error {
-	switch key {
-	case KeyMaxSlotsPerEvent:
-		val, err := strconv.Atoi(value)
-		if err != nil {
-			return fmt.Errorf("invalid int value for %s: %w", KeyMaxSlotsPerEvent, err)
-		}
-		b.MaxSlotsPerEvent = val
-	case KeyAllowOverbooking:
-		val, err := strconv.ParseBool(value)
-		if err != nil {
-			return fmt.Errorf("invalid bool value for %s: %w", KeyAllowOverbooking, err)
-		}
-		b.AllowOverbooking = val
-	case KeyCancellationAllowedHours:
-		val, err := strconv.Atoi(value)
-		if err != nil {
-			return fmt.Errorf("invalid int value for %s: %w", KeyCancellationAllowedHours, err)
-		}
-		b.CancellationAllowedHours = val
-	}
-	return nil
-}
+func convertRespDBToRespService(reqService []models.SettingRow) []serviceModels.Setting {
+	var respService []serviceModels.Setting
 
-func mapGeneral(g *models.General, key, value string) error {
-	switch key {
-	case KeySiteName:
-		g.SiteName = value
-	case KeyContactEmail:
-		g.ContactEmail = value
-	case KeyContactPhone:
-		g.ContactPhone = value
+	for _, setting := range reqService {
+		respService = append(respService, serviceModels.Setting{
+			Category: setting.Category,
+			Key:      setting.Key.String,
+			Value:    setting.Value.String,
+		})
 	}
-	return nil
+
+	return respService
 }
