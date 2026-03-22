@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -35,6 +36,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 
 	authResult, err := h.svc.Login(c.Request.Context(), req.Login, req.Password)
 	if err != nil {
+		log.Printf("bind error: %v", err)
 		apierrors.WriteErrorGin(c, err)
 		return
 	}
@@ -75,10 +77,9 @@ func (h *AuthHandler) RegisterHandler(c *gin.Context) {
 	}
 
 	authResult, err := h.svc.Register(c.Request.Context(), &models.UserAPI{
-		Name:  req.Name,
-		Email: req.Email,
-		// Password:    req.Password,
-		Role:        req.Role,
+		Name:        req.Name,
+		LastName:    req.LastName,
+		Email:       req.Email,
 		InviteToken: req.InviteToken,
 	}, req.Password)
 	if err != nil {
@@ -118,9 +119,16 @@ func toUserResponse(user *models.UserAPI) dto.UserResponse {
 		ID:           user.ID,
 		TelegramNick: user.TelegramNick,
 		Name:         user.Name,
+		LastName:     user.LastName,
+		SecondName:   user.SecondName,
 		Email:        user.Email,
+		PhoneNumber:  user.PhoneNumber,
 		Role:         user.Role,
 		Status:       user.Status,
+		Department:   user.Department,
+		Position:     user.Position,
+		ManagerID:    user.ManagerID,
+		InviteToken:  user.InviteToken,
 		Permissions:  user.Permissions,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
