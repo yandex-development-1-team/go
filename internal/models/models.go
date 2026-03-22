@@ -5,6 +5,23 @@ import (
 	"time"
 )
 
+const (
+	PermBookingsView      = "bookings:view"
+	PermBookingsEdit      = "bookings:edit"
+	PermBookingsDelete    = "bookings:delete"
+	PermBoxesCreate       = "boxes:create"
+	PermBoxesEdit         = "boxes:edit"
+	PermBoxesDelete       = "boxes:delete"
+	PermSpecProjectView   = "specproject:view"
+	PermSpecPrijectEdit   = "specproject:edit"
+	PermSpecProjectDelete = "specproject:delete"
+	PermAnalyticsView     = "analytics:view"
+	PermAnalyticsDownload = "analytics:download"
+	PermEvents            = "events:yes"
+	PermAboutUs           = "aboutus:yes"
+	PermFAQ               = "faq:yes"
+)
+
 var (
 	ErrRequestTimeout         = errors.New("request timeout")
 	ErrRequestCanceled        = errors.New("request canceled")
