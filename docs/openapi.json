@@ -207,9 +207,7 @@
               "type": "string",
               "enum": [
                 "active",
-                "hidden",
-                "draft",
-                "processed"
+                "inactive"
               ]
             }
           },
@@ -548,9 +546,7 @@
                     "type": "string",
                     "enum": [
                       "active",
-                      "hidden",
-                      "draft",
-                      "processed"
+                      "inactive"
                     ]
                   }
                 },
