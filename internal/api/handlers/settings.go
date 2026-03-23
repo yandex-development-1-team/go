@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/yandex-development-1-team/go/internal/dto"
-	serviceModels "github.com/yandex-development-1-team/go/internal/service/api/models"
 	"net/http"
 	"strconv"
+
+	"github.com/yandex-development-1-team/go/internal/dto"
+	serviceModels "github.com/yandex-development-1-team/go/internal/service/api/models"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

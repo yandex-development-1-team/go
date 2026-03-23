@@ -55,6 +55,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD} 
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
+      - "${PROMETHEUS_PORT}:${PROMETHEUS_PORT}"
     depends_on:
       db:
         condition: service_healthy
