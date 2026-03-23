@@ -7,7 +7,7 @@ import (
 )
 
 // SetupRoutes configures all API routes according to docs/openapi.json
-func SetupRoutes(router *gin.Engine, jwtSecret []byte, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler) {
+func SetupRoutes(router *gin.Engine, jwtSecret []byte, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler) {
 	apiV1 := router.Group("/api/v1")
 	{
 		protected := apiV1.Group("/")
@@ -18,6 +18,9 @@ func SetupRoutes(router *gin.Engine, jwtSecret []byte, boxHandler *handlers.BoxH
 			setupSettingsRoutes(protected, settingsHandler)
 			setupAnalyticsRoutes(protected, analyticsHandler)
 		}
+		// Public API for Telegram BOT
+		public := apiV1.Group("/public")
+		public.GET("/resources/:slug", recPageHandler.GetPublicResourcePage)
 	}
 }
 

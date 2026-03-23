@@ -49,6 +49,7 @@ func run() error {
 	metrics.Initialize(cfg)
 
 	// --- Infrastructure: DB (sqlx) ---
+	fmt.Println(cfg.DB.PostgresURL)
 	db, err := sql.Open("postgres", cfg.DB.PostgresURL)
 	if err != nil {
 		return fmt.Errorf("db open: %w", err)
@@ -88,6 +89,7 @@ func run() error {
 	txRepo := apiRepository.NewTxRepo(dbSqlx)
 	userRepoAPI := apiRepository.NewUserRepo(dbSqlx)
 	analyticsRepo := repository.NewAnalyticsRepo(dbSqlx)
+	resourcePagepRepo := apiRepository.NewResourcePageRepo(dbSqlx)
 
 	// --- Services ---
 	settingsService := apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
@@ -97,6 +99,7 @@ func run() error {
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
+	resourcePagepService := service.NewResourcePageService(resourcePagepRepo)
 
 	// --- HTTP: metrics + health ---
 	metricsMux := http.NewServeMux()
@@ -122,6 +125,7 @@ func run() error {
 		SpecialProjectSvc: specialProjectService,
 		SettingsService:   settingsService,
 		AnalyticsSvc:      analyticsService,
+		RecPageSvc:        resourcePagepService,
 	}, apiAuthService)
 
 	apiServer.RegisterRoutes()
@@ -146,7 +150,7 @@ func run() error {
 	}
 
 	// --- Telegram bot ---
-	tgBot, err := bot.NewTelegramBot(cfg.TelegramBotToken)
+	tgBot, err := bot.NewTelegramBot(cfg.Telegram)
 	if err != nil {
 		return fmt.Errorf("telegram bot: %w", err)
 	}

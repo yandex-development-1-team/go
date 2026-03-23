@@ -9,23 +9,35 @@ import (
 )
 
 type Config struct {
-	TelegramBotToken  string `mapstructure:"telegram_bot_token"`
-	TelegramBotAPIUrl string `mapstructure:"telegram_bot_api_url"`
+	TelegramBotToken  string         `mapstructure:"telegram_bot_token"`
+	TelegramBotAPIUrl string         `mapstructure:"telegram_bot_api_url"`
+	Telegram          Telegram       `mapstructure:"telegram"`
+	AuthConfig        AuthConfig     `mapstructure:"auth_config"`
+	DB                DatabaseConfig `mapstructure:"db"`
+	Port              int            `mapstructure:"port"`
+	Environment       string         `mapstructure:"environment"`
+	PrometheusPort    int            `mapstructure:"prometheus_port"`
+	LogLevel          string         `mapstructure:"log_level"`
+	HostName          string         `mapstructure:"host_name"`
+	Redis             RedisConfig    `mapstructure:"redis"`
+	Session           SessionConfig  `mapstructure:"session"`
+	MsgRPS            float64        `mapstructure:"msg_rps"`
+	ApiRPS            float64        `mapstructure:"api_rps"`
+	CacheSizeRPS      int            `mapstructure:"cache_size_rps"`
+	APIOnly           bool           `mapstructure:"api_only"` // only API + metrics, no telegram bot
+	CORS              CORSConfig     `mapstructure:"cors"`
+}
 
-	AuthConfig     AuthConfig     `mapstructure:"auth_config"`
-	DB             DatabaseConfig `mapstructure:"db"`
-	Port           int            `mapstructure:"port"`
-	Environment    string         `mapstructure:"environment"`
-	PrometheusPort int            `mapstructure:"prometheus_port"`
-	LogLevel       string         `mapstructure:"log_level"`
-	HostName       string         `mapstructure:"host_name"`
-	Redis          RedisConfig    `mapstructure:"redis"`
-	Session        SessionConfig  `mapstructure:"session"`
-	MsgRPS         float64        `mapstructure:"msg_rps"`
-	ApiRPS         float64        `mapstructure:"api_rps"`
-	CacheSizeRPS   int            `mapstructure:"cache_size_rps"`
-	APIOnly        bool           `mapstructure:"api_only"` // only API + metrics, no telegram bot
-	CORS           CORSConfig     `mapstructure:"cors"`
+type Telegram struct {
+	BotToken string `mapstructure:"bot_token"`
+	ApiUrl   string `mapstructure:"api_url"`
+	Debug    bool   `mapstructure:"debug"`
+
+	Proxy struct {
+		Enabled bool   `mapstructure:"enabled"`
+		Server  string `mapstructure:"server"`
+		Port    string `mapstructure:"port"`
+	} `mapstructure:"proxy"`
 }
 
 // CORSConfig — настройки CORS для HTTP API.
@@ -138,11 +150,13 @@ func loadConfig(paths []string) (*Config, error) {
 		return nil, err
 	}
 
+	fmt.Println(config)
+
 	return config, nil
 }
 
 func setDefaults(v *viper.Viper) {
-	v.SetDefault("telegram_bot_api_url", "https://api.telegram.org")
+	v.SetDefault("telegram.api_url", "https://api.telegram.org")
 	v.SetDefault("port", 8080)
 	v.SetDefault("environment", "dev")
 	v.SetDefault("prometheus_port", 9090)

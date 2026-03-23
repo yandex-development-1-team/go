@@ -46,8 +46,7 @@ func RunMigrations(db *sql.DB) error {
 
 		if err := goose.Up(db, "migrations"); err != nil {
 			logger.Error("Failed to apply migrations",
-				zap.Error(err),
-			)
+				zap.Error(err))
 			return fmt.Errorf("failed to apply migrations: %w", err)
 		}
 
