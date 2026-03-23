@@ -20,7 +20,8 @@ type UserRepository interface {
 
 // SettingsRepository — чтение настроек из хранилища.
 type SettingsRepository interface {
-	GetSettings(ctx context.Context) ([]models.Setting, error)
+	GetSettings(ctx context.Context) ([]models.SettingRow, error)
+	PutSettings(ctx context.Context, newSettings []models.Setting) (time.Time, error)
 }
 
 // RefreshTokenRepository — хранение и инвалидация refresh-токенов.
