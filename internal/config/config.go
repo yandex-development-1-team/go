@@ -9,22 +9,35 @@ import (
 )
 
 type Config struct {
-	TelegramBotToken  string `mapstructure:"telegram_bot_token"`
-	TelegramBotAPIUrl string `mapstructure:"telegram_bot_api_url"`
+	TelegramBotToken  string         `mapstructure:"telegram_bot_token"`
+	TelegramBotAPIUrl string         `mapstructure:"telegram_bot_api_url"`
+	Telegram          Telegram       `mapstructure:"telegram"`
+	AuthConfig        AuthConfig     `mapstructure:"auth_config"`
+	DB                DatabaseConfig `mapstructure:"db"`
+	Port              int            `mapstructure:"port"`
+	Environment       string         `mapstructure:"environment"`
+	PrometheusPort    int            `mapstructure:"prometheus_port"`
+	LogLevel          string         `mapstructure:"log_level"`
+	HostName          string         `mapstructure:"host_name"`
+	Redis             RedisConfig    `mapstructure:"redis"`
+	Session           SessionConfig  `mapstructure:"session"`
+	MsgRPS            float64        `mapstructure:"msg_rps"`
+	ApiRPS            float64        `mapstructure:"api_rps"`
+	CacheSizeRPS      int            `mapstructure:"cache_size_rps"`
+	APIOnly           bool           `mapstructure:"api_only"` // only API + metrics, no telegram bot
+	CORS              CORSConfig     `mapstructure:"cors"`
+}
 
-	DB             DatabaseConfig `mapstructure:"db"`
-	Port           int            `mapstructure:"port"`
-	Environment    string         `mapstructure:"environment"`
-	PrometheusPort int            `mapstructure:"prometheus_port"`
-	LogLevel       string         `mapstructure:"log_level"`
-	HostName       string         `mapstructure:"host_name"`
-	Redis          RedisConfig    `mapstructure:"redis"`
-	Session        SessionConfig  `mapstructure:"session"`
-	MsgRPS         float64        `mapstructure:"msg_rps"`
-	ApiRPS         float64        `mapstructure:"api_rps"`
-	CacheSizeRPS   int            `mapstructure:"cache_size_rps"`
-	APIOnly        bool           `mapstructure:"api_only"` // only API + metrics, no telegram bot
-	CORS           CORSConfig     `mapstructure:"cors"`
+type Telegram struct {
+	BotToken string `mapstructure:"bot_token"`
+	ApiUrl   string `mapstructure:"api_url"`
+	Debug    bool   `mapstructure:"debug"`
+
+	Proxy struct {
+		Enabled bool   `mapstructure:"enabled"`
+		Server  string `mapstructure:"server"`
+		Port    string `mapstructure:"port"`
+	} `mapstructure:"proxy"`
 }
 
 // CORSConfig — настройки CORS для HTTP API.
@@ -71,6 +84,12 @@ type RedisConfig struct {
 
 type SessionConfig struct {
 	TTL time.Duration `mapstructure:"ttl"`
+}
+
+type AuthConfig struct {
+	JWTSecret             string `mapstructure:"jwt_secret"`
+	AccessTokenTTLMinutes int    `mapstructure:"access_token_ttl_minutes"`
+	RefreshTokenTTLDays   int    `mapstructure:"refresh_token_ttl_days"`
 }
 
 var (
@@ -131,11 +150,13 @@ func loadConfig(paths []string) (*Config, error) {
 		return nil, err
 	}
 
+	fmt.Println(config)
+
 	return config, nil
 }
 
 func setDefaults(v *viper.Viper) {
-	v.SetDefault("telegram_bot_api_url", "https://api.telegram.org")
+	v.SetDefault("telegram.api_url", "https://api.telegram.org")
 	v.SetDefault("port", 8080)
 	v.SetDefault("environment", "dev")
 	v.SetDefault("prometheus_port", 9090)
@@ -170,9 +191,9 @@ func bindEnvs(v *viper.Viper) {
 	v.BindEnv("postgres_url", "POSTGRES_URL")
 	v.BindEnv("port", "SERVER_PORT")
 
-	v.BindEnv("db.name", "DB_NAME")
-	v.BindEnv("db.user", "DB_USER")
-	v.BindEnv("db.password", "DB_PASSWORD")
+	v.BindEnv("db.name", "POSTGRES_NAME")
+	v.BindEnv("db.user", "POSTGRES_USER")
+	v.BindEnv("db.password", "POSTGRES_PASSWORD")
 	v.BindEnv("db.ssl_mode", "DB_SSLMODE")
 	v.BindEnv("db.host_port", "DB_HOST_PORT")
 
@@ -187,6 +208,8 @@ func bindEnvs(v *viper.Viper) {
 	v.BindEnv("log_level", "LOG_LEVEL")
 	v.BindEnv("host_name", "HOSTNAME")
 	v.BindEnv("api_only", "API_ONLY")
+
+	v.BindEnv("auth_config.jwt_secret", "JWT_SECRET")
 }
 
 func validateConfig(config *Config) error {

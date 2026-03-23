@@ -17,6 +17,13 @@ import (
 	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
+const (
+	RoleAdmin    = "admin"
+	RoleManager1 = "manager1"
+	RoleManager2 = "manager2"
+	RoleManager3 = "manager3"
+)
+
 // HashPassword hashes a password for storage (e.g. when creating/updating users).
 func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -30,9 +37,10 @@ type AuthService struct {
 	db         *sqlx.DB
 	rtRepo     repository.RefreshTokenRepository
 	userRepo   repository.UserRepository
-	jwtSecret  []byte
+	JwtSecret  []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
+	txRepo     repository.TxRepository
 }
 
 type AccessClaims struct {
@@ -41,12 +49,14 @@ type AccessClaims struct {
 	jwt.RegisteredClaims
 }
 
-func NewAuthService(db *sqlx.DB, rtRepo repository.RefreshTokenRepository, userRepo repository.UserRepository, jwtSecret string, accessTTLMinutes, refreshTTlDays int) *AuthService {
+func NewAuthService(db *sqlx.DB, rtRepo repository.RefreshTokenRepository, userRepo repository.UserRepository,
+	txRepo repository.TxRepository, jwtSecret string, accessTTLMinutes, refreshTTlDays int) *AuthService {
 	return &AuthService{
 		db:         db,
 		rtRepo:     rtRepo,
 		userRepo:   userRepo,
-		jwtSecret:  []byte(jwtSecret),
+		JwtSecret:  []byte(jwtSecret),
+		txRepo:     txRepo,
 		accessTTL:  time.Duration(accessTTLMinutes) * time.Minute,
 		refreshTTL: time.Duration(refreshTTlDays) * time.Hour * 24,
 	}
@@ -98,7 +108,8 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (string,
 		return "", err
 	}
 
-	role := "manager"
+	//todo нужно передавать роль
+	role := RoleManager1
 
 	accessToken, err := s.generateAccessToken(rt.UserID, role)
 	if err != nil {
@@ -128,6 +139,47 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (string,
 	return accessToken, nil
 }
 
+func (s *AuthService) Register(ctx context.Context, user *models.UserAPI, password string) (*models.AuthResult, error) {
+	hashPassword, err := HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken := generateRandomToken()
+	expiresAt := time.Now().Add(s.refreshTTL)
+
+	err = s.txRepo.RunToTx(ctx, func(ctx context.Context) error {
+
+		user, err = s.userRepo.CreateStaff(ctx, user, hashPassword)
+		if err != nil {
+			return err
+		}
+
+		err = s.rtRepo.CreateRefreshToken(ctx, user.ID, refreshToken, expiresAt)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// accessToken
+	accessToken, err := s.generateAccessToken(user.ID, user.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	// в случае успеха коммит и возвращаем User
+	return &models.AuthResult{
+		User:         user,
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	return s.rtRepo.Revoke(ctx, refreshToken)
 }
@@ -145,7 +197,7 @@ func (s *AuthService) generateAccessToken(userID int64, role string) (string, er
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(s.jwtSecret)
+	return token.SignedString(s.JwtSecret)
 }
 
 func generateRandomToken() string {

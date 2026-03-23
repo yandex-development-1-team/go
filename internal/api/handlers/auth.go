@@ -67,6 +67,32 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(dto.RefreshResponse{Token: token})
 }
 
+func (h *AuthHandler) RegisterHandler(c *gin.Context) {
+	var req dto.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректные данные"})
+		return
+	}
+
+	authResult, err := h.svc.Register(c.Request.Context(), &models.UserAPI{
+		Name:  req.Name,
+		Email: req.Email,
+		// Password:    req.Password,
+		Role:        req.Role,
+		InviteToken: req.InviteToken,
+	}, req.Password)
+	if err != nil {
+		apierrors.WriteErrorGin(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.LoginResponse{
+		Token:        authResult.Token,
+		RefreshToken: authResult.RefreshToken,
+		User:         toUserResponse(authResult.User),
+	})
+}
+
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()

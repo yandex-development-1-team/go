@@ -15,6 +15,7 @@ import (
 // UserRepository — доступ к пользователям (например по email для логина).
 type UserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error)
+	CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error)
 }
 
 // SettingsRepository — чтение настроек из хранилища.
@@ -37,6 +38,11 @@ type SpecialProjectRepository interface {
 	List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error)
 	Update(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
 	Delete(ctx context.Context, id int64) error
+}
+
+// TxRepository - атомарность работы с бд
+type TxRepository interface {
+	RunToTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 type ResourcePageRepository interface {

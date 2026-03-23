@@ -18,18 +18,21 @@ import (
 type APIServices struct {
 	BoxService        *apiService.APIBoxService
 	SpecialProjectSvc *service.SpecialProjectService
+	SettingsService   *apiService.SettingsService
+	AnalyticsSvc      *apiService.AnalyticsService
 	RecPageSvc        *service.ResourcePageService
 }
 
 // Server server structure
 type Server struct {
-	router   *gin.Engine
-	services *APIServices
-	srv      *http.Server
+	router      *gin.Engine
+	services    *APIServices
+	srv         *http.Server
+	authService *apiService.AuthService
 }
 
 // New creates a new server (CORS и прочие настройки берутся из cfg).
-func New(cfg *config.Config) *Server {
+func New(cfg *config.Config, services *APIServices, authService *apiService.AuthService) *Server {
 	if cfg.Environment == "dev" {
 		gin.SetMode(gin.DebugMode)
 	} else {
@@ -43,17 +46,22 @@ func New(cfg *config.Config) *Server {
 	router.Use(middleware.CORS(cfg.CORS))
 
 	return &Server{
-		router: router,
+		router:      router,
+		services:    services,
+		authService: authService,
 	}
 }
 
 // RegisterRoutes registers routes
-func (s *Server) RegisterRoutes(services *APIServices) {
-	s.services = services
+func (s *Server) RegisterRoutes() {
 	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
 	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
-	recPageHandler := handlers.NewResourcePageHandler(services.RecPageSvc)
-	SetupRoutes(s.router, boxHandler, specProjHandler, recPageHandler)
+	settingsHandler := handlers.NewSettingsHandler(s.services.SettingsService)
+	analyticsHandler := handlers.NewAnalyticsHandler(s.services.AnalyticsSvc)
+	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
+
+	SetupRoutes(s.router, s.authService.JwtSecret, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler)
+
 }
 
 // Run starts the server

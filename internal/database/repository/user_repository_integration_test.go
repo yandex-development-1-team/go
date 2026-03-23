@@ -91,7 +91,7 @@ func TestGetUser(t *testing.T) {
 		{
 			name:            "correct_data",
 			contextDuration: 2 * time.Second,
-			reqTelegramId:   123456,
+			reqTelegramId:   999001,
 			wantUserName:    "test_name",
 			wantFirstName:   "test_first_name",
 			wantLastName:    "test_last_name",
@@ -151,7 +151,7 @@ func TestUpdateUserGrade(t *testing.T) {
 		{
 			name:            "correct_data",
 			contextDuration: 2 * time.Second,
-			reqTelegramId:   123456,
+			reqTelegramId:   999001,
 			reqGrade:        2,
 			wantErr:         nil,
 		},
@@ -203,7 +203,7 @@ func TestIsAdmin(t *testing.T) {
 		{
 			name:            "correct_data",
 			contextDuration: 2 * time.Second,
-			reqTelegramId:   123456,
+			reqTelegramId:   999999,
 			wantAdmin:       true,
 			wantErr:         nil,
 		},
@@ -229,6 +229,13 @@ func TestIsAdmin(t *testing.T) {
 			wantErr:         models.ErrRequestTimeout,
 		},
 	}
+
+	_, _ = db.Exec(`
+    INSERT INTO users (telegram_id, username, is_admin)
+    VALUES (999999, 'test_name1', true)
+    ON CONFLICT (telegram_id) DO UPDATE SET 
+        username = EXCLUDED.username,
+        is_admin = EXCLUDED.is_admin`)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

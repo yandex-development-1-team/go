@@ -1,5 +1,7 @@
 telegram_bot_token:  # будет переопределено BOT_TOKEN
 telegram_bot_api_url: "https://api.telegram.org"
+
+jwt_secret: #передаем секрет для генерации и проверки токена пользователя
 port: 8080
 environment: "dev"
 prometheus_port: 9090
@@ -9,6 +11,15 @@ cache_size_rps: 128 # total number of maximum limiters in cache
 get_updates_timeout: "30s" # long polling timeout для GetUpdates
 log_level: "info"
 host_name: "host"
+
+telegram:
+  bot_token: # будет переопределено BOT_TOKEN
+  api_url: "https://api.telegram.org"
+  debug: "false"
+  proxy:
+    enabled: "false"
+    server: ""
+    port: ""
 
 db:
   host_port: "db:5432"
