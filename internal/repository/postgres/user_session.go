@@ -46,12 +46,24 @@ func NewSessionRepository(db *sqlx.DB) *pgSessionRepo {
 	return &pgSessionRepo{db: db}
 }
 
-func (r *pgSessionRepo) SaveSession(
-	ctx context.Context,
-	userID int64,
-	state string,
-	data map[string]interface{},
-) error {
+func checkContextError(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return models.ErrRequestCanceled
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return models.ErrRequestTimeout
+		}
+	}
+	return nil
+}
+
+func (r *pgSessionRepo) SaveSession(ctx context.Context, userID int64, state string, data map[string]interface{}) error {
+
+	if err := checkContextError(ctx); err != nil {
+		return err
+	}
+
 	now := time.Now().UTC()
 
 	var stateDataJSON []byte
@@ -65,8 +77,15 @@ func (r *pgSessionRepo) SaveSession(
 		stateDataJSON = []byte("null")
 	}
 
+	if err := checkContextError(ctx); err != nil {
+		return err
+	}
+
 	_, err := r.db.ExecContext(ctx, createsSessionQuery, userID, state, stateDataJSON, now, now)
 	if err != nil {
+		if err := checkContextError(ctx); err != nil {
+			return err
+		}
 		return fmt.Errorf("upsert session for user %d: %w", userID, err)
 	}
 
@@ -74,6 +93,10 @@ func (r *pgSessionRepo) SaveSession(
 }
 
 func (r *pgSessionRepo) GetSession(ctx context.Context, userID int64) (*models.UserSession, error) {
+	if err := checkContextError(ctx); err != nil {
+		return nil, err
+	}
+
 	var row struct {
 		ID           int64     `db:"id"`
 		UserID       int64     `db:"user_id"`
@@ -88,6 +111,9 @@ func (r *pgSessionRepo) GetSession(ctx context.Context, userID int64) (*models.U
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrSessionNotFound
+		}
+		if err := checkContextError(ctx); err != nil {
+			return nil, err
 		}
 		return nil, fmt.Errorf("get session for user %d: %w", userID, err)
 	}
@@ -111,8 +137,15 @@ func (r *pgSessionRepo) GetSession(ctx context.Context, userID int64) (*models.U
 }
 
 func (r *pgSessionRepo) ClearSession(ctx context.Context, userID int64) error {
+	if err := checkContextError(ctx); err != nil {
+		return err
+	}
+
 	result, err := r.db.ExecContext(ctx, deleteSesionQuery, userID)
 	if err != nil {
+		if err := checkContextError(ctx); err != nil {
+			return err
+		}
 		return fmt.Errorf("delete session for user %d: %w", userID, err)
 	}
 
@@ -124,9 +157,15 @@ func (r *pgSessionRepo) ClearSession(ctx context.Context, userID int64) error {
 }
 
 func (r *pgSessionRepo) UpdateSessionState(ctx context.Context, userID int64, newState string) error {
+	if err := checkContextError(ctx); err != nil {
+		return err
+	}
 	result, err := r.db.ExecContext(ctx, updateSessionStateQuery, userID, newState, time.Now().UTC())
 
 	if err != nil {
+		if err := checkContextError(ctx); err != nil {
+			return err
+		}
 		return fmt.Errorf("update session state for user %d: %w", userID, err)
 	}
 
