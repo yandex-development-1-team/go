@@ -82,7 +82,7 @@ func run() error {
 	userRepo := repository.NewUserRepository(dbSqlx)
 	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
 	bookRepo := repository.NewBookingRepository(dbSqlx)
-	sessionRepo := repository.NewSessionRepository(redisClient, repository.WithTTL(cfg.Session.TTL))
+	sessionRepo := apiRepository.NewSessionRepository(dbSqlx)
 	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
 	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
 	refreshTokenRepoRepo := apiRepository.NewRefreshTokenRepo(dbSqlx)
