@@ -18,28 +18,28 @@ type specialProjectRepo struct {
 }
 
 const (
-	createQuery = `
+	createSpecProjectQuery = `
 		INSERT INTO special_projects (title, description, image, is_active_in_bot)
 		VALUES (:title, :description, :image, :is_active_in_bot)
 		RETURNING id, title, description, image, is_active_in_bot, created_at, updated_at
 	`
-	updateQuery = `
+	updateSpecProjectQuery = `
 		UPDATE special_projects 
 		SET title = $1, description = $2, image = $3, is_active_in_bot = $4
 		WHERE id = $5
 		RETURNING title, description, image, is_active_in_bot`
 
-	getByIDQuery = `SELECT * FROM special_projects WHERE id = $1`
+	getSpecProjectByIDQuery = `SELECT * FROM special_projects WHERE id = $1`
 
-	listBaseQuery      = `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
-	listCountBaseQuery = `SELECT COUNT(1) FROM special_projects WHERE 1=1`
+	listSpecProjectsBaseQuery      = `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
+	listSpecProjectsCountBaseQuery = `SELECT COUNT(1) FROM special_projects WHERE 1=1`
 
 	deactivateApplicationsQuery = `
         UPDATE applications 
 		SET status = 'cancelled', updated_at = now()
 		WHERE special_project_id = $1 AND status IN ('queue', 'in_progress')`
 
-	deleteQuery = `
+	deleteSpecProjectQuery = `
     UPDATE special_projects 
     SET deleted_at = now(), updated_at = now(), is_active_in_bot = false
     WHERE id = $1 AND deleted_at IS NULL`
@@ -51,7 +51,7 @@ func NewSpecialProjectRepository(db *sqlx.DB) *specialProjectRepo {
 
 func (r *specialProjectRepo) Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error) {
 
-	err := r.db.QueryRowxContext(ctx, createQuery, proj).StructScan(proj)
+	err := r.db.QueryRowxContext(ctx, createSpecProjectQuery, proj).StructScan(proj)
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" { // duplicate key
 			return nil, fmt.Errorf("special project already exists: %w", err)
@@ -65,7 +65,7 @@ func (r *specialProjectRepo) Create(ctx context.Context, proj *specialproject.DB
 func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*specialproject.DB, error) {
 	var proj specialproject.DB
 
-	err := r.db.GetContext(ctx, &proj, getByIDQuery, id)
+	err := r.db.GetContext(ctx, &proj, getSpecProjectByIDQuery, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, specialproject.ErrNotFound
@@ -77,8 +77,8 @@ func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*specialpro
 
 func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error) {
 	// Base query selecting only required fields for the list endpoint
-	baseQuery := listBaseQuery
-	baseCountQuery := listCountBaseQuery
+	baseQuery := listSpecProjectsBaseQuery
+	baseCountQuery := listSpecProjectsCountBaseQuery
 
 	args := make(map[string]interface{})
 	countArgs := make(map[string]interface{})
@@ -137,7 +137,7 @@ func (r *specialProjectRepo) Update(ctx context.Context, id int64, specialProjec
 
 	var updatedSpecialProject specialproject.DB
 
-	err := r.db.QueryRowContext(ctx, updateQuery,
+	err := r.db.QueryRowContext(ctx, updateSpecProjectQuery,
 		specialProject.Title,
 		specialProject.Description,
 		specialProject.Image,
@@ -168,7 +168,7 @@ func (r specialProjectRepo) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("failed to deactivate special project in applications: %w", err)
 	}
 
-	res, err := tx.ExecContext(ctx, deleteQuery, id)
+	res, err := tx.ExecContext(ctx, deleteSpecProjectQuery, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete special project: %w", err)
 	}
