@@ -24,13 +24,13 @@ func NewServer(db *sqlx.DB, cfg Config) *Server {
 	mux := http.NewServeMux()
 
 	rtRepo := pgrepo.NewRefreshTokenRepo(db)
-	userRepo := pgrepo.NewUserRepo(db)
+	staffRepo := pgrepo.NewStaffRepo(db)
 	txRepo := pgrepo.NewTxRepo(db)
 
 	authSvc := svcapi.NewAuthService(
 		db,
 		rtRepo,
-		userRepo,
+		staffRepo,
 		txRepo,
 		cfg.JWTSecret,
 		cfg.AccessTokenTTLMinutes,

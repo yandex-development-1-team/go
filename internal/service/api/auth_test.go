@@ -21,10 +21,10 @@ import (
 )
 
 var (
-	db       *sqlx.DB
-	rtRepo   *pgrepo.RefreshTokenRepo
-	userRepo *pgrepo.UserRepo
-	svc      *AuthService
+	db        *sqlx.DB
+	rtRepo    *pgrepo.RefreshTokenRepo
+	staffRepo *pgrepo.StaffRepo
+	svc       *AuthService
 )
 
 func TestMain(m *testing.M) {
@@ -40,12 +40,12 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to init db: %s", err.Error())
 	}
 	rtRepo = pgrepo.NewRefreshTokenRepo(db)
-	userRepo = pgrepo.NewUserRepo(db)
+	staffRepo = pgrepo.NewStaffRepo(db)
 	txRepo := pgrepo.NewTxRepo(db)
 	svc = NewAuthService(
 		db,
 		rtRepo,
-		userRepo,
+		staffRepo,
 		txRepo,
 		"test-service",
 		15,

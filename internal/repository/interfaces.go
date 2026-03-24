@@ -12,10 +12,48 @@ import (
 	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
-// UserRepository — доступ к пользователям (например по email для логина).
-type UserRepository interface {
+// StaffRepository — доступ к сотрудникам (таблица staff, логин по email).
+type StaffRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error)
 	CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error)
+}
+
+// TelegramUserRepository — пользователи бота (таблица users, telegram_id).
+type TelegramUserRepository interface {
+	CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) error
+	GetUserByTelegramID(ctx context.Context, telegramID int64) (*models.User, error)
+	UpdateUserGrade(ctx context.Context, telegramID int64, grade int) error
+	IsAdmin(ctx context.Context, telegramID int64) (bool, error)
+}
+
+// BookingRepository — бронирования.
+type BookingRepository interface {
+	CreateBooking(ctx context.Context, b *models.Booking) (int64, error)
+	GetAvailableSlots(ctx context.Context, serviceID int, date time.Time) ([]time.Time, error)
+	GetBookingsByUserID(ctx context.Context, userID int64) ([]models.Booking, error)
+	UpdateBookingStatus(ctx context.Context, bookingID int64, status string) error
+}
+
+// ApplicationRepository — заявки.
+type ApplicationRepository interface {
+	CreateApplication(ctx context.Context, req *models.ApplicationCreateRequest) (*models.Application, error)
+	GetApplications(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error)
+}
+
+// BoxSolutionRepository — коробочные решения (services).
+type BoxSolutionRepository interface {
+	GetServices(ctx context.Context, telegramID int64) ([]models.Service, error)
+	GetServiceByID(ctx context.Context, serviceID int) (models.Service, error)
+	GetAvailableSlotsByServiceID(ctx context.Context, serviceID int) ([]models.AvailableSlot, error)
+	GetAvailableTimeSlotsByDate(ctx context.Context, serviceID int, date string) ([]string, error)
+}
+
+// SessionRepository — сессии пользователей (Redis).
+type SessionRepository interface {
+	SaveSession(ctx context.Context, userID int64, state string, data map[string]interface{}) error
+	GetSession(ctx context.Context, userID int64) (*models.UserSession, error)
+	ClearSession(ctx context.Context, userID int64) error
+	UpdateSessionState(ctx context.Context, userID int64, newState string) error
 }
 
 // SettingsRepository — чтение настроек из хранилища.
@@ -41,29 +79,21 @@ type SpecialProjectRepository interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-// TxRepository - атомарность работы с бд
+// TxRepository — атомарность работы с бд.
 type TxRepository interface {
 	RunToTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
+// ResourcePageRepository — страницы ресурсов.
 type ResourcePageRepository interface {
-	// GetBySlug возвращает страницу по slug без транзакции.
 	GetBySlug(ctx context.Context, slug string) (*resourcepage.ResourcePage, error)
-	// GetBySlugTx возвращает страницу по slug. Может работать внутри транзакции.
-	// lockForUpdate указывает, нужно ли блокировать строку для обновления.
 	GetBySlugTx(ctx context.Context, queryable Queryable, slug string, lockForUpdate bool) (*resourcepage.ResourcePage, error)
-
-	// UpdatePageContentAndLinksTx обновляет title, content и links ВНУТРИ переданной транзакции.
 	UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []resourcepage.Link) error
-
-	// GetAllSummaries возвращает краткую информацию о всех страницах без транзакции.
 	GetAllSummaries(ctx context.Context) ([]*resourcepage.ResourcePage, error)
-
-	// BeginTx начинает новую транзакцию.
 	BeginTx(ctx context.Context) (*sqlx.Tx, error)
 }
 
-// Implements sqlx.DB and sqlx.Tx
+// Queryable — общее для sqlx.DB и sqlx.Tx.
 type Queryable interface {
 	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)

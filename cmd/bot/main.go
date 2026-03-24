@@ -20,12 +20,12 @@ import (
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
-	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/handlers"
 	botHandlers "github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
-	apiRepository "github.com/yandex-development-1-team/go/internal/repository/postgres"
+	"github.com/yandex-development-1-team/go/internal/repository/postgres"
+	"github.com/yandex-development-1-team/go/internal/repository/redis"
 	"github.com/yandex-development-1-team/go/internal/service"
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
@@ -64,7 +64,7 @@ func run() error {
 	dbSqlx := sqlx.NewDb(db, "postgres")
 
 	// --- Infrastructure: Redis ---
-	redisClient, err := repository.NewRedisClient(cfg.Redis)
+	redisClient, err := redis.NewRedisClient(cfg.Redis)
 	if err != nil {
 		return fmt.Errorf("redis: %w", err)
 	}
@@ -79,17 +79,17 @@ func run() error {
 	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
 	// --- Repositories ---
-	userRepo := repository.NewUserRepository(dbSqlx)
-	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
-	bookRepo := repository.NewBookingRepository(dbSqlx)
-	sessionRepo := repository.NewSessionRepository(redisClient, repository.WithTTL(cfg.Session.TTL))
-	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
-	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
-	refreshTokenRepoRepo := apiRepository.NewRefreshTokenRepo(dbSqlx)
-	txRepo := apiRepository.NewTxRepo(dbSqlx)
-	userRepoAPI := apiRepository.NewUserRepo(dbSqlx)
-	analyticsRepo := repository.NewAnalyticsRepo(dbSqlx)
-	resourcePagepRepo := apiRepository.NewResourcePageRepo(dbSqlx)
+	telegramUserRepo := postgres.NewTelegramUserRepository(dbSqlx)
+	boxSolutionRepo := postgres.NewBoxSolutionRepo(dbSqlx)
+	bookRepo := postgres.NewBookingRepository(dbSqlx)
+	sessionRepo := redis.NewSessionRepository(redisClient, redis.WithTTL(cfg.Session.TTL))
+	settingsRepo := postgres.NewSettingsRep(dbSqlx)
+	specialProjectRepo := postgres.NewSpecialProjectRepository(dbSqlx)
+	refreshTokenRepoRepo := postgres.NewRefreshTokenRepo(dbSqlx)
+	txRepo := postgres.NewTxRepo(dbSqlx)
+	staffRepo := postgres.NewStaffRepo(dbSqlx)
+	analyticsRepo := postgres.NewAnalyticsRepo(dbSqlx)
+	resourcePagepRepo := postgres.NewResourcePageRepo(dbSqlx)
 
 	// --- Services ---
 	settingsService := apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
@@ -117,8 +117,8 @@ func run() error {
 	}()
 
 	// --- API server (routers) ---
-	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, userRepoAPI, txRepo, cfg.AuthConfig.JWTSecret,
-		cfg.AuthConfig.RefreshTokenTTLDays, cfg.AuthConfig.AccessTokenTTLMinutes)
+	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, staffRepo, txRepo, cfg.AuthConfig.JWTSecret,
+		cfg.AuthConfig.AccessTokenTTLMinutes, cfg.AuthConfig.RefreshTokenTTLDays)
 
 	apiServer := server.New(&cfg, &server.APIServices{
 		BoxService:        boxService,
@@ -160,7 +160,7 @@ func run() error {
 		return fmt.Errorf("rate limiter: %w", err)
 	}
 
-	startHandler := botHandlers.NewStartHandler(tgBot, userRepo)
+	startHandler := botHandlers.NewStartHandler(tgBot, telegramUserRepo)
 	bcHandler := handlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, keyboard)
 	bsHandler := botHandlers.NewBoxSolutions(tgBot, bsService)
 	infoHandler := botHandlers.NewServiceHandler(boxSolutionRepo, tgBot.Api, startHandler)

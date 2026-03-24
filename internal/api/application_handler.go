@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/repository"
 	"go.uber.org/zap"
 )
 

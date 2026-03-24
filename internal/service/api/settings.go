@@ -10,7 +10,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
-	serviceModels "github.com/yandex-development-1-team/go/internal/service/api/models"
 )
 
 type SettingsService struct {
@@ -21,11 +20,11 @@ func NewSettingsService(settingsRepo repository.SettingsRepository) *SettingsSer
 	return &SettingsService{settingsRepo: settingsRepo}
 }
 
-func (a SettingsService) GetSettings(ctx context.Context) ([]serviceModels.Setting, error) {
+func (a SettingsService) GetSettings(ctx context.Context) ([]models.Setting, error) {
 	settingsDB, err := a.settingsRepo.GetSettings(ctx)
 	if err != nil {
 		logger.Error("failed to get settings from service", zap.Error(err))
-		return []serviceModels.Setting{}, err
+		return []models.Setting{}, err
 	}
 
 	settings := convertRespDBToRespService(settingsDB)
@@ -33,15 +32,13 @@ func (a SettingsService) GetSettings(ctx context.Context) ([]serviceModels.Setti
 	return settings, nil
 }
 
-func (a SettingsService) PutSettings(ctx context.Context, reqService []serviceModels.Setting) (time.Time, error) {
+func (a SettingsService) PutSettings(ctx context.Context, reqService []models.Setting) (time.Time, error) {
 	if len(reqService) == 0 {
 		logger.Error("request settings is empty from repository")
 		return time.Now(), fmt.Errorf("request settings is empty from repository")
 	}
 
-	reqBD := convertReqServiceToReqBD(reqService)
-
-	updatedAt, err := a.settingsRepo.PutSettings(ctx, reqBD)
+	updatedAt, err := a.settingsRepo.PutSettings(ctx, reqService)
 	if err != nil {
 		logger.Error("failed to get settings from service", zap.Error(err))
 		return updatedAt, fmt.Errorf("failed to get settings from service: %w", err)
@@ -50,25 +47,11 @@ func (a SettingsService) PutSettings(ctx context.Context, reqService []serviceMo
 	return updatedAt, nil
 }
 
-func convertReqServiceToReqBD(reqService []serviceModels.Setting) []models.Setting {
-	var reqBD []models.Setting
+func convertRespDBToRespService(reqService []models.SettingRow) []models.Setting {
+	var respService []models.Setting
 
 	for _, setting := range reqService {
-		reqBD = append(reqBD, models.Setting{
-			Category: setting.Category,
-			Key:      setting.Key,
-			Value:    setting.Value,
-		})
-	}
-
-	return reqBD
-}
-
-func convertRespDBToRespService(reqService []models.SettingRow) []serviceModels.Setting {
-	var respService []serviceModels.Setting
-
-	for _, setting := range reqService {
-		respService = append(respService, serviceModels.Setting{
+		respService = append(respService, models.Setting{
 			Category: setting.Category,
 			Key:      setting.Key.String,
 			Value:    setting.Value.String,

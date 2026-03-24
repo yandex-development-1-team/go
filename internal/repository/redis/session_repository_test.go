@@ -1,4 +1,4 @@
-package repository
+package redis
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
+
+	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
 // newTestRepo starts a Redis container via testcontainers and returns a repository and client.
@@ -193,7 +195,7 @@ func TestGetSession_NotFound_ReturnsErrSessionNotFound(t *testing.T) {
 	session, err := repo.GetSession(ctx, 9999)
 
 	assert.Nil(t, session)
-	assert.ErrorIs(t, err, ErrSessionNotFound)
+	assert.ErrorIs(t, err, repository.ErrSessionNotFound)
 }
 
 func TestGetSession_NilStateData_ReturnsEmptyMapNotNil(t *testing.T) {
@@ -247,7 +249,7 @@ func TestGetSession_AfterTTLExpiry_ReturnsNotFound(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	_, err := repo.GetSession(ctx, 13)
-	assert.ErrorIs(t, err, ErrSessionNotFound)
+	assert.ErrorIs(t, err, repository.ErrSessionNotFound)
 }
 
 // ─── ClearSession ─────────────────────────────────────────────────────────────
@@ -283,7 +285,7 @@ func TestClearSession_AfterClear_GetReturnsNotFound(t *testing.T) {
 	require.NoError(t, repo.ClearSession(ctx, userID))
 
 	_, err := repo.GetSession(ctx, userID)
-	assert.ErrorIs(t, err, ErrSessionNotFound)
+	assert.ErrorIs(t, err, repository.ErrSessionNotFound)
 }
 
 func TestClearSession_NonExistent_NoError(t *testing.T) {
@@ -369,7 +371,7 @@ func TestUpdateSessionState_NotFound_ReturnsErrSessionNotFound(t *testing.T) {
 
 	err := repo.UpdateSessionState(ctx, 7777, "any_state")
 
-	assert.ErrorIs(t, err, ErrSessionNotFound)
+	assert.ErrorIs(t, err, repository.ErrSessionNotFound)
 }
 
 // ─── Isolation ────────────────────────────────────────────────────────────────
@@ -407,7 +409,7 @@ func TestSessionIsolation_ClearOneUser_OtherUnaffected(t *testing.T) {
 	require.NoError(t, repo.ClearSession(ctx, 200))
 
 	_, err := repo.GetSession(ctx, 200)
-	assert.ErrorIs(t, err, ErrSessionNotFound, "session 200 must be deleted")
+	assert.ErrorIs(t, err, repository.ErrSessionNotFound, "session 200 must be deleted")
 
 	_, err = repo.GetSession(ctx, 201)
 	assert.NoError(t, err, "session 201 must not be affected")

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/handlers/validation"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/repository"
 	"go.uber.org/zap"
 )
 
@@ -46,15 +46,15 @@ type BookingState struct {
 // BookingService implements a booking service
 type BookingService struct {
 	session repository.SessionRepository
-	repo    *repository.BookingRepo
-	boxRepo *repository.BoxSolutionRepo
+	repo    repository.BookingRepository
+	boxRepo repository.BoxSolutionRepository
 }
 
 // NewBookingService creates a new instance of the booking service
 func NewBookingService(
 	session repository.SessionRepository,
-	repo *repository.BookingRepo,
-	boxRepo *repository.BoxSolutionRepo,
+	repo repository.BookingRepository,
+	boxRepo repository.BoxSolutionRepository,
 ) *BookingService {
 	return &BookingService{
 		session: session,

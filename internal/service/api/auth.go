@@ -36,7 +36,7 @@ func HashPassword(password string) (string, error) {
 type AuthService struct {
 	db         *sqlx.DB
 	rtRepo     repository.RefreshTokenRepository
-	userRepo   repository.UserRepository
+	staffRepo  repository.StaffRepository
 	JwtSecret  []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
@@ -49,12 +49,12 @@ type AccessClaims struct {
 	jwt.RegisteredClaims
 }
 
-func NewAuthService(db *sqlx.DB, rtRepo repository.RefreshTokenRepository, userRepo repository.UserRepository,
+func NewAuthService(db *sqlx.DB, rtRepo repository.RefreshTokenRepository, staffRepo repository.StaffRepository,
 	txRepo repository.TxRepository, jwtSecret string, accessTTLMinutes, refreshTTlDays int) *AuthService {
 	return &AuthService{
 		db:         db,
 		rtRepo:     rtRepo,
-		userRepo:   userRepo,
+		staffRepo:  staffRepo,
 		JwtSecret:  []byte(jwtSecret),
 		txRepo:     txRepo,
 		accessTTL:  time.Duration(accessTTLMinutes) * time.Minute,
@@ -66,7 +66,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 	if len(email) == 0 || len(password) < 8 {
 		return nil, models.ErrInvalidInput
 	}
-	authInfo, err := s.userRepo.GetUserByEmail(ctx, email)
+	authInfo, err := s.staffRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (s *AuthService) Register(ctx context.Context, user *models.UserAPI, passwo
 
 	err = s.txRepo.RunToTx(ctx, func(ctx context.Context) error {
 
-		user, err = s.userRepo.CreateStaff(ctx, user, hashPassword)
+		user, err = s.staffRepo.CreateStaff(ctx, user, hashPassword)
 		if err != nil {
 			return err
 		}

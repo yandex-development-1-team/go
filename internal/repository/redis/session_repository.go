@@ -1,4 +1,4 @@
-package repository
+package redis
 
 import (
 	"context"
@@ -11,18 +11,13 @@ import (
 
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
 const (
-	// defaultSessionTTL is the time-to-live for a session key when no custom TTL is set.
 	defaultSessionTTL = 24 * time.Hour
-
-	// keyPrefix namespaces all session keys in Redis.
-	keyPrefix = "session:user:"
+	keyPrefix         = "session:user:"
 )
-
-// ErrSessionNotFound is returned when a requested session does not exist.
-var ErrSessionNotFound = errors.New("session not found")
 
 type sessionDTO struct {
 	UserID       int64                  `json:"user_id"`
@@ -56,8 +51,7 @@ func NewSessionRepository(client redis.Cmdable, opts ...Option) *SessionRepo {
 	return r
 }
 
-// NewClient builds a *redis.Client from the supplied Config.
-// Call client.Ping to verify connectivity before use.
+// NewRedisClient создаёт *redis.Client из конфигурации.
 func NewRedisClient(cfg config.RedisConfig) (*redis.Client, error) {
 	if cfg.Addr == "" {
 		return nil, fmt.Errorf("redis: address must not be empty")
@@ -115,8 +109,7 @@ func (r *SessionRepo) GetSession(ctx context.Context, userID int64) (*models.Use
 }
 
 func (r *SessionRepo) ClearSession(ctx context.Context, userID int64) error {
-	return withMetricsRedis("Del", func() error {
-
+	return repository.WithRedisMetrics("Del", func() error {
 		key := r.buildKey(userID)
 		if err := r.client.Del(ctx, key).Err(); err != nil {
 			return fmt.Errorf("redis DEL %s: %w", key, err)
@@ -142,14 +135,13 @@ func (r *SessionRepo) buildKey(userID int64) string {
 }
 
 func (r *SessionRepo) getDTO(ctx context.Context, userID int64) (*sessionDTO, error) {
-	return withMetricsRedisValue("getDTO", func() (*sessionDTO, error) {
-
+	return repository.WithRedisMetricsValue("getDTO", func() (*sessionDTO, error) {
 		key := r.buildKey(userID)
 
 		raw, err := r.client.Get(ctx, key).Bytes()
 		if err != nil {
 			if errors.Is(err, redis.Nil) {
-				return nil, ErrSessionNotFound
+				return nil, repository.ErrSessionNotFound
 			}
 			return nil, fmt.Errorf("redis GET %s: %w", key, err)
 		}
@@ -163,7 +155,7 @@ func (r *SessionRepo) getDTO(ctx context.Context, userID int64) (*sessionDTO, er
 }
 
 func (r *SessionRepo) setDTO(ctx context.Context, userID int64, dto sessionDTO) error {
-	return withMetricsRedis("setDTO", func() error {
+	return repository.WithRedisMetrics("setDTO", func() error {
 		key := r.buildKey(userID)
 
 		raw, err := json.Marshal(dto)
@@ -178,7 +170,6 @@ func (r *SessionRepo) setDTO(ctx context.Context, userID int64, dto sessionDTO) 
 	})
 }
 
-// dtoToModel converts the internal DTO to the public domain model.
 func dtoToModel(dto *sessionDTO) *models.UserSession {
 	stateData := dto.StateData
 	if stateData == nil {

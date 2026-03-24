@@ -23,7 +23,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.org/x/crypto/bcrypt"
 
-	repository "github.com/yandex-development-1-team/go/internal/repository/postgres"
+	pgrepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 	service "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
@@ -38,9 +38,9 @@ type seedUserParams struct {
 func setupServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 	t.Helper()
 
-	userRepo := repository.NewUserRepo(db)
-	refreshRepo := repository.NewRefreshTokenRepo(db)
-	txRepo := repository.NewTxRepo(db)
+	userRepo := pgrepo.NewStaffRepo(db)
+	refreshRepo := pgrepo.NewRefreshTokenRepo(db)
+	txRepo := pgrepo.NewTxRepo(db)
 	svc := service.NewAuthService(db, refreshRepo, userRepo, txRepo, "test-secret", 15, 30)
 	handler := NewAuthHandler(svc)
 
@@ -252,9 +252,9 @@ func createDB(container tc.Container) (*sqlx.DB, error) {
 func setupRegisterServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 	t.Helper()
 
-	userRepo := repository.NewUserRepo(db)
-	refreshRepo := repository.NewRefreshTokenRepo(db)
-	txRepo := repository.NewTxRepo(db)
+	userRepo := pgrepo.NewStaffRepo(db)
+	refreshRepo := pgrepo.NewRefreshTokenRepo(db)
+	txRepo := pgrepo.NewTxRepo(db)
 	svc := service.NewAuthService(db, refreshRepo, userRepo, txRepo, "test-secret", 15, 30)
 	handler := NewAuthHandler(svc)
 

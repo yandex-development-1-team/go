@@ -24,9 +24,11 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/yandex-development-1-team/go/internal/config"
-	"github.com/yandex-development-1-team/go/internal/database/repository"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
+	"github.com/yandex-development-1-team/go/internal/repository"
+	"github.com/yandex-development-1-team/go/internal/repository/postgres"
+	reporedis "github.com/yandex-development-1-team/go/internal/repository/redis"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
 
@@ -55,8 +57,8 @@ var (
 	handlerTestDB      *sqlx.DB
 	handlerTestRedis   *redis.Client
 	handlerSessionRepo repository.SessionRepository
-	handlerBookingRepo *repository.BookingRepo
-	handlerBoxRepo     *repository.BoxSolutionRepo
+	handlerBookingRepo *postgres.BookingRepo
+	handlerBoxRepo     *postgres.BoxSolutionRepo
 	handlerService     *botService.BookingService
 )
 
@@ -155,9 +157,9 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to init test data: %s", err.Error())
 	}
 
-	handlerSessionRepo = repository.NewSessionRepository(handlerTestRedis)
-	handlerBookingRepo = repository.NewBookingRepository(handlerTestDB)
-	handlerBoxRepo = repository.NewBoxSolutionRepo(handlerTestDB)
+	handlerSessionRepo = reporedis.NewSessionRepository(handlerTestRedis)
+	handlerBookingRepo = postgres.NewBookingRepository(handlerTestDB)
+	handlerBoxRepo = postgres.NewBoxSolutionRepo(handlerTestDB)
 
 	// Создаем сервис один раз для всех тестов
 	handlerService = botService.NewBookingService(handlerSessionRepo, handlerBookingRepo, handlerBoxRepo)
@@ -371,7 +373,7 @@ func TestBookingFormHandler_StartBooking(t *testing.T) {
 	keyboard := NewKeyboardService()
 
 	// Используем реальный репозиторий вместо мока
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 
 	startHandler := &StartHandler{
 		bot:            mockBot,
@@ -422,7 +424,7 @@ func TestBookingFormHandler_SelectDate(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -485,7 +487,7 @@ func TestBookingFormHandler_SelectUnavailableDate(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -549,7 +551,7 @@ func TestBookingFormHandler_EnterName_Success(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -611,7 +613,7 @@ func TestBookingFormHandler_EnterName_ValidationError(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -675,7 +677,7 @@ func TestBookingFormHandler_EnterOrganization_Success(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -739,7 +741,7 @@ func TestBookingFormHandler_EnterPosition_Success(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -805,7 +807,7 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -870,7 +872,7 @@ func TestBookingFormHandler_BackToMainMenu(t *testing.T) {
 	keyboard := NewKeyboardService()
 
 	// Используем реальный репозиторий вместо мока
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 
 	startHandler := &StartHandler{
 		bot:            mockBot,
@@ -931,7 +933,7 @@ func TestBookingFormHandler_UnknownAction(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
