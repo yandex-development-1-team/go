@@ -20,7 +20,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
-	"github.com/yandex-development-1-team/go/internal/handlers"
 	botHandlers "github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
@@ -45,7 +44,7 @@ func run() error {
 		return fmt.Errorf("config: %w", err)
 	}
 	logger.NewLogger(cfg.Environment, cfg.LogLevel)
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 	metrics.Initialize(cfg)
 
 	// --- Infrastructure: DB (sqlx) ---
@@ -54,7 +53,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("db open: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := db.Ping(); err != nil {
 		return fmt.Errorf("db ping: %w", err)
 	}
@@ -68,7 +67,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("redis: %w", err)
 	}
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -94,7 +93,7 @@ func run() error {
 	// --- Services ---
 	settingsService := apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
 	bookService := botService.NewBookingService(sessionRepo, bookRepo, boxSolutionRepo)
-	keyboard := handlers.NewKeyboardService()
+	keyboard := botHandlers.NewKeyboardService()
 	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
@@ -161,13 +160,13 @@ func run() error {
 	}
 
 	startHandler := botHandlers.NewStartHandler(tgBot, telegramUserRepo)
-	bcHandler := handlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, keyboard)
+	bcHandler := botHandlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, keyboard)
 	bsHandler := botHandlers.NewBoxSolutions(tgBot, bsService)
 	infoHandler := botHandlers.NewServiceHandler(boxSolutionRepo, tgBot.Api, startHandler)
 
 	// Creating a callback router
-	callbackRouter := handlers.NewCallbackRouter(tgBot.Api)
-	msgRouter := handlers.NewMessageRouter(tgBot.Api, startHandler, sessionRepo, bcHandler, msgRL)
+	callbackRouter := botHandlers.NewCallbackRouter(tgBot.Api)
+	msgRouter := botHandlers.NewMessageRouter(tgBot.Api, startHandler, sessionRepo, bcHandler, msgRL)
 
 	// Registering all handlers
 	callbackRouter.Register(botHandlers.CallbackBoxSolutions, bsHandler)

@@ -134,8 +134,10 @@ func csvResult(filename string, headers []string, fill func(*csv.Writer) error) 
 
 func xlsxResult(sheetName, filename string, headers []string, fillRows func(*excelize.File, string)) (ExportResult, error) {
 	f := excelize.NewFile()
-	defer f.Close()
-	f.SetSheetName("Sheet1", sheetName)
+	defer func() { _ = f.Close() }()
+	if err := f.SetSheetName("Sheet1", sheetName); err != nil {
+		return ExportResult{}, err
+	}
 	writeExcelHeaders(f, sheetName, headers)
 	fillRows(f, sheetName)
 	buf, err := f.WriteToBuffer()

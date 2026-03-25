@@ -1,12 +1,14 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/yandex-development-1-team/go/internal/models"
-	service "github.com/yandex-development-1-team/go/internal/service/api"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/yandex-development-1-team/go/internal/models"
+	service "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
 // Auth returns middleware for authorization verification

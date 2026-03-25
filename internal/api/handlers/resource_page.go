@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yandex-development-1-team/go/internal/resourcepage"
+
 	rp "github.com/yandex-development-1-team/go/internal/resourcepage"
 	"github.com/yandex-development-1-team/go/internal/service"
 )
@@ -67,7 +67,7 @@ func (h *ResourcePageHandler) UpdateResourcePage(c *gin.Context) {
 		return
 	}
 
-	var updateReq resourcepage.UpdateRequest
+	var updateReq rp.UpdateRequest
 	if err := c.ShouldBindJSON(&updateReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		return

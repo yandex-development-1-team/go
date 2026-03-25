@@ -3,13 +3,15 @@ package bot
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/handlers/validation"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
-	"go.uber.org/zap"
 )
 
 // State constants of the booking process
@@ -145,7 +147,9 @@ func (s *BookingService) CreateBooking(ctx context.Context, state *BookingState)
 		UpdatedAt:         time.Now(),
 	}
 
-	s.ClearSession(ctx, state.UserID)
+	if err := s.ClearSession(ctx, state.UserID); err != nil {
+		return 0, fmt.Errorf("clear session: %w", err)
+	}
 	return s.repo.CreateBooking(ctx, booking)
 }
 

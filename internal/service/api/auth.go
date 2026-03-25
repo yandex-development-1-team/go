@@ -101,7 +101,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (string,
 	if err != nil {
 		return "", err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	rt, err := s.rtRepo.GetForUpdate(ctx, tx, refreshToken)
 	if err != nil {

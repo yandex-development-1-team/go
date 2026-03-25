@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/yandex-development-1-team/go/internal/repository"
-	"github.com/yandex-development-1-team/go/internal/resourcepage"
 	rp "github.com/yandex-development-1-team/go/internal/resourcepage"
 )
 
@@ -29,7 +29,7 @@ func (r *ResourcePageRepository) GetBySlug(ctx context.Context, slug string) (*r
 
 // GetBySlugTx returns page by slug
 // Use lockForUpdate if needed SELECT ... FOR UPDATE.
-func (r *ResourcePageRepository) GetBySlugTx(ctx context.Context, queryable repository.Queryable, slug string, lockForUpdate bool) (*resourcepage.ResourcePage, error) {
+func (r *ResourcePageRepository) GetBySlugTx(ctx context.Context, queryable repository.Queryable, slug string, lockForUpdate bool) (*rp.ResourcePage, error) {
 	var dbModel rp.DB
 	query := "SELECT slug, title, content, links, updated_at FROM resource_pages WHERE slug = $1"
 	if lockForUpdate {
@@ -54,7 +54,7 @@ func (r *ResourcePageRepository) GetBySlugTx(ctx context.Context, queryable repo
 }
 
 // UpdatePageContentAndLinksTx updates page.
-func (r *ResourcePageRepository) UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []resourcepage.Link) error {
+func (r *ResourcePageRepository) UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []rp.Link) error {
 
 	domainModel := &rp.ResourcePage{
 		Slug:    slug,

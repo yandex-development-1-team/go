@@ -44,7 +44,7 @@ func (u *TelegramUserRepo) CreateUser(ctx context.Context, telegramID int64, use
 		if err != nil {
 			return err
 		}
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		if _, err = tx.ExecContext(ctx, upsertUserQuery, telegramID, userName, firstName, lastName); err != nil {
 			return err
@@ -76,7 +76,7 @@ func (u *TelegramUserRepo) UpdateUserGrade(ctx context.Context, telegramID int64
 		if err != nil {
 			return err
 		}
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		result, err := tx.ExecContext(ctx, updateUserGradeQuery, grade, telegramID)
 		if err != nil {

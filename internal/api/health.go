@@ -131,7 +131,7 @@ func (h *healthHandler) doTelegramCheck(ctx context.Context) healthCheckResult {
 	if err != nil {
 		return healthCheckResult{Status: "fail", Error: err, Time: time.Now()}
 	}
-	resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 400 {
 		return healthCheckResult{Status: "fail", Error: fmt.Errorf("status %d", resp.StatusCode), Time: time.Now()}
 	}

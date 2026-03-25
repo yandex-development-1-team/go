@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/gin-gonic/gin"
+
 	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 )

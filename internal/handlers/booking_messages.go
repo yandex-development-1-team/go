@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.uber.org/zap"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
-	"go.uber.org/zap"
 )
 
 // renderNameInput displays the step of entering the full name
@@ -134,10 +135,18 @@ func (h *BookingFormHandler) stepPositionInput(
 func (h *BookingFormHandler) renderConfirmation(chatID int64, state *botService.BookingState) error {
 	var messageText strings.Builder
 	messageText.WriteString("Подтверждение бронирования\n\n")
-	messageText.WriteString(fmt.Sprintf("Дата: %s\n", state.SelectedDate.Format("02.01.2006")))
-	messageText.WriteString(fmt.Sprintf("ФИО: %s\n", state.GuestName))
-	messageText.WriteString(fmt.Sprintf("Организация: %s\n", state.GuestOrganization))
-	messageText.WriteString(fmt.Sprintf("Должность: %s\n\n", state.GuestPosition))
+	if _, err := fmt.Fprintf(&messageText, "Дата: %s\n", state.SelectedDate.Format("02.01.2006")); err != nil {
+		return fmt.Errorf("format confirmation date: %w", err)
+	}
+	if _, err := fmt.Fprintf(&messageText, "ФИО: %s\n", state.GuestName); err != nil {
+		return fmt.Errorf("format confirmation name: %w", err)
+	}
+	if _, err := fmt.Fprintf(&messageText, "Организация: %s\n", state.GuestOrganization); err != nil {
+		return fmt.Errorf("format confirmation org: %w", err)
+	}
+	if _, err := fmt.Fprintf(&messageText, "Должность: %s\n\n", state.GuestPosition); err != nil {
+		return fmt.Errorf("format confirmation position: %w", err)
+	}
 	messageText.WriteString("Проверьте правильность введенных данных\n")
 
 	keyboard := h.keyboard.ConfirmationKeyboard(botService.StepEnterPosition)

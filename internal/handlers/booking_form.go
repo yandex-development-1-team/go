@@ -49,7 +49,10 @@ func (h *BookingFormHandler) Handle(ctx context.Context, query *tgbotapi.Callbac
 	userID := query.From.ID
 	chatID := query.Message.Chat.ID
 
-	h.bot.Request(tgbotapi.NewCallback(query.ID, ""))
+	if _, err := h.bot.Request(tgbotapi.NewCallback(query.ID, "")); err != nil {
+		logger.Error("answer callback query", zap.Error(err), zap.String("callback_id", query.ID))
+		return fmt.Errorf("answer callback query: %w", err)
+	}
 
 	logger.Info("Booking callback received",
 		zap.Int64("user_id", userID),

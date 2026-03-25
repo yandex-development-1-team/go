@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	"github.com/yandex-development-1-team/go/internal/repository/postgres"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )

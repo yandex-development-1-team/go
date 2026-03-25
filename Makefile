@@ -79,7 +79,7 @@ fmt: fix
 
 ## fix: Fix imports (grouping, unused) and format code. Run before commit.
 fix:
-	$(GO) run golang.org/x/tools/cmd/goimports@latest -w $(GO_FILES)
+	$(GO) run golang.org/x/tools/cmd/goimports@latest -w -local github.com/yandex-development-1-team/go $(GO_FILES)
 	$(GO) fmt ./...
 
 ## vet: Check the code for suspicious structures

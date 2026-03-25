@@ -194,29 +194,30 @@ func setDefaults(v *viper.Viper) {
 }
 
 func bindEnvs(v *viper.Viper) {
-	v.BindEnv("telegram_bot_token", "BOT_TOKEN")
-	v.BindEnv("postgres_url", "POSTGRES_URL")
-	v.BindEnv("port", "SERVER_PORT")
+	// BindEnv returns error only on invalid key; keys are fixed at compile time.
+	_ = v.BindEnv("telegram_bot_token", "BOT_TOKEN")
+	_ = v.BindEnv("postgres_url", "POSTGRES_URL")
+	_ = v.BindEnv("port", "SERVER_PORT")
 
-	v.BindEnv("db.name", "POSTGRES_NAME")
-	v.BindEnv("db.user", "POSTGRES_USER")
-	v.BindEnv("db.password", "POSTGRES_PASSWORD")
-	v.BindEnv("db.ssl_mode", "DB_SSLMODE")
-	v.BindEnv("db.host_port", "DB_HOST_PORT")
+	_ = v.BindEnv("db.name", "POSTGRES_NAME")
+	_ = v.BindEnv("db.user", "POSTGRES_USER")
+	_ = v.BindEnv("db.password", "POSTGRES_PASSWORD")
+	_ = v.BindEnv("db.ssl_mode", "DB_SSLMODE")
+	_ = v.BindEnv("db.host_port", "DB_HOST_PORT")
 
-	v.BindEnv("redis.addr", "REDIS_ADDR")
-	v.BindEnv("redis.password", "REDIS_PASSWORD")
-	v.BindEnv("redis.db", "REDIS_DB")
+	_ = v.BindEnv("redis.addr", "REDIS_ADDR")
+	_ = v.BindEnv("redis.password", "REDIS_PASSWORD")
+	_ = v.BindEnv("redis.db", "REDIS_DB")
 
-	v.BindEnv("prometheus_port", "PROMETHEUS_PORT")
+	_ = v.BindEnv("prometheus_port", "PROMETHEUS_PORT")
 
-	v.BindEnv("environment", "ENVIRONMENT")
+	_ = v.BindEnv("environment", "ENVIRONMENT")
 
-	v.BindEnv("log_level", "LOG_LEVEL")
-	v.BindEnv("host_name", "HOSTNAME")
-	v.BindEnv("api_only", "API_ONLY")
+	_ = v.BindEnv("log_level", "LOG_LEVEL")
+	_ = v.BindEnv("host_name", "HOSTNAME")
+	_ = v.BindEnv("api_only", "API_ONLY")
 
-	v.BindEnv("auth_config.jwt_secret", "JWT_SECRET")
+	_ = v.BindEnv("auth_config.jwt_secret", "JWT_SECRET")
 }
 
 func validateConfig(config *Config) error {

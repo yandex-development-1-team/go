@@ -8,9 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
+	"go.uber.org/zap"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/specialproject"
-	"go.uber.org/zap"
 )
 
 type specialProjectRepo struct {
@@ -106,7 +107,7 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searc
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to prepare count query: %w", err)
 	}
-	defer countStmt.Close()
+	defer func() { _ = countStmt.Close() }()
 
 	var total int
 	err = countStmt.GetContext(ctx, &total, countArgs)
@@ -122,7 +123,7 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searc
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to prepare named query: %w", err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	var projects []*specialproject.DB
 	err = stmt.SelectContext(ctx, &projects, args)

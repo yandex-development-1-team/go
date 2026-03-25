@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/yandex-development-1-team/go/internal/dto"
 	"strconv"
+
+	"github.com/yandex-development-1-team/go/internal/dto"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -36,6 +37,13 @@ func (a SettingsHandler) Get(c *gin.Context) {
 	}
 
 	settingsDTO, err := parseSettings(settings)
+	if err != nil {
+		logger.Error("parse settings", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to build settings response",
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, settingsDTO)
 }

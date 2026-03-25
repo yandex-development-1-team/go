@@ -69,7 +69,9 @@ func (r *MessageRouter) HandleMessage(ctx context.Context, msg *tgbotapi.Message
 
 	switch state.CurrentState {
 	case botService.CallbackBookingPrefix:
-		r.bookHandler.HandleTextMessage(ctxStep, msg)
+		if err := r.bookHandler.HandleTextMessage(ctxStep, msg); err != nil {
+			logger.Error("booking text message", zap.Error(err))
+		}
 	}
 }
 

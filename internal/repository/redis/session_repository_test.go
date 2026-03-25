@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -12,8 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 
+	"github.com/yandex-development-1-team/go/internal/config"
+	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/metrics"
 	"github.com/yandex-development-1-team/go/internal/repository"
 )
+
+func TestMain(m *testing.M) {
+	logger.NewLogger("dev", "debug")
+	metrics.Initialize(config.Config{Environment: "test", HostName: "test"})
+	os.Exit(m.Run())
+}
 
 // newTestRepo starts a Redis container via testcontainers and returns a repository and client.
 // Each test gets a clean instance — no shared state between tests.
