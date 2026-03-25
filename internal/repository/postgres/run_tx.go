@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"context"
@@ -23,7 +23,7 @@ func (u *TxRepo) RunToTx(ctx context.Context, fn func(ctx context.Context) error
 	}
 
 	if err := fn(ctx); err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 

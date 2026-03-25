@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
-	rp "github.com/yandex-development-1-team/go/internal/resourcepage"
 )
 
 type ResourcePageService struct {
@@ -19,11 +19,11 @@ func NewResourcePageService(repo repository.ResourcePageRepository) *ResourcePag
 	return &ResourcePageService{repo: repo}
 }
 
-func (s *ResourcePageService) GetResourcePage(ctx context.Context, slug string) (*rp.ResourcePage, error) {
+func (s *ResourcePageService) GetResourcePage(ctx context.Context, slug string) (*models.ResourcePage, error) {
 	return s.repo.GetBySlug(ctx, slug)
 }
 
-func (s *ResourcePageService) UpdateResourcePage(ctx context.Context, slug string, newPageData *rp.ResourcePage) (*rp.ResourcePage, error) {
+func (s *ResourcePageService) UpdateResourcePage(ctx context.Context, slug string, newPageData *models.ResourcePage) (*models.ResourcePage, error) {
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
@@ -46,12 +46,12 @@ func (s *ResourcePageService) UpdateResourcePage(ctx context.Context, slug strin
 		currentPage.Content = newPageData.Content
 	}
 	if newPageData.Links != nil {
-		newLinksMap := make(map[string]rp.Link, len(newPageData.Links))
+		newLinksMap := make(map[string]models.ResourcePageLink, len(newPageData.Links))
 		for _, link := range newPageData.Links {
 			newLinksMap[link.ID] = link
 		}
 
-		updatedLinks := make([]rp.Link, 0, len(newLinksMap)+len(newPageData.Links))
+		updatedLinks := make([]models.ResourcePageLink, 0, len(newLinksMap)+len(newPageData.Links))
 
 		for _, link := range currentPage.Links {
 			if v, exists := newLinksMap[link.ID]; exists {
@@ -84,7 +84,6 @@ func (s *ResourcePageService) UpdateResourcePage(ctx context.Context, slug strin
 }
 
 func (s *ResourcePageService) DeleteLink(ctx context.Context, slug string, linkID string) error {
-
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -102,7 +101,7 @@ func (s *ResourcePageService) DeleteLink(ctx context.Context, slug string, linkI
 	}
 
 	found := false
-	newLinks := make([]rp.Link, 0, len(currentPage.Links))
+	newLinks := make([]models.ResourcePageLink, 0, len(currentPage.Links))
 	for _, link := range currentPage.Links {
 		if link.ID != linkID {
 			newLinks = append(newLinks, link)
@@ -128,6 +127,6 @@ func (s *ResourcePageService) DeleteLink(ctx context.Context, slug string, linkI
 	return nil
 }
 
-func (s *ResourcePageService) GetAllSummaries(ctx context.Context) ([]*rp.ResourcePage, error) {
+func (s *ResourcePageService) GetAllSummaries(ctx context.Context) ([]*models.ResourcePage, error) {
 	return s.repo.GetAllSummaries(ctx)
 }

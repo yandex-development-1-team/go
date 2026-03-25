@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
-	"github.com/yandex-development-1-team/go/internal/logger"
-	"github.com/yandex-development-1-team/go/internal/specialproject"
 	"go.uber.org/zap"
+
+	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/models"
 )
 
 type specialProjectRepo struct {
@@ -49,33 +50,31 @@ func NewSpecialProjectRepository(db *sqlx.DB) *specialProjectRepo {
 	return &specialProjectRepo{db: db}
 }
 
-func (r *specialProjectRepo) Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error) {
-
+func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
 	err := r.db.QueryRowxContext(ctx, createSpecProjectQuery, proj).StructScan(proj)
 	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" { // duplicate key
-			return nil, fmt.Errorf("special project already exists: %w", err)
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
+			return nil, fmt.Errorf("%w", models.ErrSpecialProjectAlreadyExists)
 		}
 		return nil, fmt.Errorf("repo create: %w", err)
 	}
 	return proj, nil
-
 }
 
-func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*specialproject.DB, error) {
-	var proj specialproject.DB
+func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
+	var proj models.SpecialProjectDB
 
 	err := r.db.GetContext(ctx, &proj, getSpecProjectByIDQuery, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, specialproject.ErrNotFound
+			return nil, models.ErrSpecialProjectNotFound
 		}
 		return nil, fmt.Errorf("repo get by id: %w", err)
 	}
 	return &proj, nil
 }
 
-func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error) {
+func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 	// Base query selecting only required fields for the list endpoint
 	baseQuery := listSpecProjectsBaseQuery
 	baseCountQuery := listSpecProjectsCountBaseQuery
@@ -106,7 +105,7 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searc
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to prepare count query: %w", err)
 	}
-	defer countStmt.Close()
+	defer func() { _ = countStmt.Close() }()
 
 	var total int
 	err = countStmt.GetContext(ctx, &total, countArgs)
@@ -122,9 +121,9 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searc
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to prepare named query: %w", err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
-	var projects []*specialproject.DB
+	var projects []*models.SpecialProjectDB
 	err = stmt.SelectContext(ctx, &projects, args)
 	if err != nil {
 		return nil, 0, fmt.Errorf("repo list: %w", err)
@@ -133,9 +132,8 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searc
 	return projects, total, nil
 }
 
-func (r *specialProjectRepo) Update(ctx context.Context, id int64, specialProject *specialproject.Update) (*specialproject.DB, error) {
-
-	var updatedSpecialProject specialproject.DB
+func (r *specialProjectRepo) Update(ctx context.Context, id int64, specialProject *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error) {
+	var updatedSpecialProject models.SpecialProjectDB
 
 	err := r.db.QueryRowContext(ctx, updateSpecProjectQuery,
 		specialProject.Title,
@@ -146,7 +144,7 @@ func (r *specialProjectRepo) Update(ctx context.Context, id int64, specialProjec
 	).Scan(&updatedSpecialProject.Title, &updatedSpecialProject.Description, &updatedSpecialProject.Image, &updatedSpecialProject.IsActiveInBot)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, specialproject.ErrNotFound
+			return nil, models.ErrSpecialProjectNotFound
 		}
 		return nil, fmt.Errorf("failed to update special project: %w", err)
 	}
@@ -174,7 +172,7 @@ func (r specialProjectRepo) Delete(ctx context.Context, id int64) error {
 	}
 
 	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
-		return specialproject.ErrNotFound
+		return models.ErrSpecialProjectNotFound
 	}
 
 	if err = tx.Commit(); err != nil {

@@ -5,12 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/yandex-development-1-team/go/internal/dto"
-	serviceModels "github.com/yandex-development-1-team/go/internal/service/api/models"
-
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	api "github.com/yandex-development-1-team/go/internal/service/api"
@@ -37,6 +35,13 @@ func (a SettingsHandler) Get(c *gin.Context) {
 	}
 
 	settingsDTO, err := parseSettings(settings)
+	if err != nil {
+		logger.Error("parse settings", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to build settings response",
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, settingsDTO)
 }
@@ -78,8 +83,7 @@ func (a SettingsHandler) Put(c *gin.Context) {
 	})
 }
 
-// parseSettings преобразует срез Setting в SettingsResponse
-func parseSettings(settings []serviceModels.Setting) (*dto.SettingsResponse, error) {
+func parseSettings(settings []models.Setting) (*dto.SettingsResponse, error) {
 	resp := &dto.SettingsResponse{}
 
 	for _, s := range settings {
@@ -158,45 +162,45 @@ func setGeneralField(g *dto.General, key, value string) error {
 	return nil
 }
 
-func prepareSettingsFromRequest(reqDTO dto.SettingsRequest) []serviceModels.Setting {
-	var updates []serviceModels.Setting
+func prepareSettingsFromRequest(reqDTO dto.SettingsRequest) []models.Setting {
+	var updates []models.Setting
 	// Проверяем notifications
 	if reqDTO.Notifications.TelegramBotToken != nil {
-		updates = append(updates, serviceModels.Setting{
+		updates = append(updates, models.Setting{
 			Category: "notifications", Key: "telegram_bot_token", Value: *reqDTO.Notifications.TelegramBotToken})
 	}
 	if reqDTO.Notifications.AutoReminders != nil {
-		updates = append(updates, serviceModels.Setting{
+		updates = append(updates, models.Setting{
 			Category: "notifications", Key: "auto_reminders", Value: fmt.Sprintf("%t", *reqDTO.Notifications.AutoReminders)})
 	}
 	if reqDTO.Notifications.ReminderHoursBefore != nil {
-		updates = append(updates, serviceModels.Setting{
+		updates = append(updates, models.Setting{
 			Category: "notifications", Key: "reminder_hours_before", Value: fmt.Sprintf("%d", *reqDTO.Notifications.ReminderHoursBefore)})
 	}
 
 	// Проверяем booking
 	if reqDTO.Booking.MaxSlotsPerEvent != nil {
-		updates = append(updates, serviceModels.Setting{
+		updates = append(updates, models.Setting{
 			Category: "booking", Key: "max_slots_per_event", Value: fmt.Sprintf("%d", *reqDTO.Booking.MaxSlotsPerEvent)})
 	}
 	if reqDTO.Booking.AllowOverbooking != nil {
-		updates = append(updates, serviceModels.Setting{
+		updates = append(updates, models.Setting{
 			Category: "booking", Key: "allow_overbooking", Value: fmt.Sprintf("%t", *reqDTO.Booking.AllowOverbooking)})
 	}
 	if reqDTO.Booking.CancellationAllowedHours != nil {
-		updates = append(updates, serviceModels.Setting{
+		updates = append(updates, models.Setting{
 			Category: "booking", Key: "cancellation_allowed_hours", Value: fmt.Sprintf("%d", *reqDTO.Booking.CancellationAllowedHours)})
 	}
 
 	// Проверяем general
 	if reqDTO.General.SiteName != nil {
-		updates = append(updates, serviceModels.Setting{Category: "general", Key: "site_name", Value: *reqDTO.General.SiteName})
+		updates = append(updates, models.Setting{Category: "general", Key: "site_name", Value: *reqDTO.General.SiteName})
 	}
 	if reqDTO.General.ContactEmail != nil {
-		updates = append(updates, serviceModels.Setting{Category: "general", Key: "contact_email", Value: *reqDTO.General.ContactEmail})
+		updates = append(updates, models.Setting{Category: "general", Key: "contact_email", Value: *reqDTO.General.ContactEmail})
 	}
 	if reqDTO.General.ContactPhone != nil {
-		updates = append(updates, serviceModels.Setting{Category: "general", Key: "contact_phone", Value: *reqDTO.General.ContactPhone})
+		updates = append(updates, models.Setting{Category: "general", Key: "contact_phone", Value: *reqDTO.General.ContactPhone})
 	}
 
 	return updates

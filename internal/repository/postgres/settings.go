@@ -1,10 +1,11 @@
-package repository
+package postgres
 
 import (
 	"context"
 	"fmt"
-	"github.com/lib/pq"
 	"time"
+
+	"github.com/lib/pq"
 
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"

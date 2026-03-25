@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"context"
@@ -12,21 +12,22 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/yandex-development-1-team/go/internal/config"
+	"github.com/yandex-development-1-team/go/internal/database"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
 var (
-	db       *sqlx.DB
-	repo     BookingRepository
-	repoUser UserRepo
+	db          *sqlx.DB
+	repo        *BookingRepo
+	repoUser    *TelegramUserRepo
+	repoSession *pgSessionRepo
 )
 
 func mustParseTime(layout, value string) *time.Time {
@@ -59,7 +60,8 @@ func TestMain(m *testing.M) {
 	_, _ = db.Exec(`INSERT INTO services (id, name) VALUES (50, 'Race Service') ON CONFLICT DO NOTHING`)
 
 	repo = NewBookingRepository(db)
-	repoUser = *NewUserRepository(db)
+	repoUser = NewTelegramUserRepository(db)
+	repoSession = NewSessionRepository(db)
 
 	code := m.Run()
 
@@ -97,11 +99,11 @@ func createDB(container tc.Container) error {
 		return err
 	}
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	migDir, err := database.ResolveMigrationsDir("")
+	if err != nil {
 		return err
 	}
-
-	if err := goose.UpContext(context.Background(), db.DB, "../../../migrations"); err != nil {
+	if err := database.RunMigrations(db.DB, migDir); err != nil {
 		return err
 	}
 
@@ -109,11 +111,12 @@ func createDB(container tc.Container) error {
 }
 
 func TestCreateBooking(t *testing.T) {
-	var userID int64
-	err := db.QueryRow(`
+	// bookings.user_id FK → users.telegram_id (not users.id)
+	const telegramID int64 = 111
+	_, err := db.Exec(`
         INSERT INTO users (telegram_id, username, email, password_hash) VALUES ($1, $2, $3, $4)
-        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
-        RETURNING id`, 111, "test", "booking_test@test.local", "placeholder").Scan(&userID)
+        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username`,
+		telegramID, "test", "booking_test@test.local", "placeholder")
 	assert.NoError(t, err)
 
 	targetDate := time.Now().AddDate(0, 0, 1).Truncate(24 * time.Hour)
@@ -130,7 +133,7 @@ func TestCreateBooking(t *testing.T) {
 			name:            "correct_data",
 			contextDuration: 5 * time.Second,
 			booking: &models.Booking{
-				UserID:      userID,
+				UserID:      telegramID,
 				ServiceID:   1,
 				BookingDate: targetDate,
 				BookingTime: targetTime,
@@ -145,7 +148,7 @@ func TestCreateBooking(t *testing.T) {
 			name:            "duplicate_slot_error",
 			contextDuration: 5 * time.Second,
 			booking: &models.Booking{
-				UserID:      userID,
+				UserID:      telegramID,
 				ServiceID:   1,
 				BookingDate: targetDate,
 				BookingTime: targetTime,
@@ -153,7 +156,7 @@ func TestCreateBooking(t *testing.T) {
 			},
 			preAction: func() {
 				_, _ = db.Exec(`INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status)
-                    VALUES ($1, 1, $2, $3, 'Owner', 'confirmed')`, userID, targetDate, targetTime)
+                    VALUES ($1, 1, $2, $3, 'Owner', 'confirmed')`, telegramID, targetDate, targetTime)
 			},
 			wantErr: models.ErrSlotOccupied,
 		},
@@ -161,7 +164,7 @@ func TestCreateBooking(t *testing.T) {
 			name:            "request_canceled",
 			contextDuration: 5 * time.Second,
 			booking: &models.Booking{
-				UserID:      userID,
+				UserID:      telegramID,
 				ServiceID:   1,
 				BookingDate: targetDate,
 				BookingTime: targetTime,
@@ -173,7 +176,7 @@ func TestCreateBooking(t *testing.T) {
 			name:            "request_timeout",
 			contextDuration: 1 * time.Microsecond,
 			booking: &models.Booking{
-				UserID:      userID,
+				UserID:      telegramID,
 				ServiceID:   1,
 				GuestName:   "TimeoutUser",
 				BookingDate: targetDate,
@@ -212,11 +215,9 @@ func TestCreateBooking_RaceCondition(t *testing.T) {
 	date := time.Now().AddDate(0, 0, 1).Truncate(24 * time.Hour)
 	slot := mustParseTime("15:04:05", "12:00:00")
 
-	var userID int64
-	_ = db.QueryRow("INSERT INTO users (telegram_id, username, email, password_hash) VALUES (999, 'racer', 'racer@test.local', 'placeholder') ON CONFLICT DO NOTHING RETURNING id").Scan(&userID)
-	if userID == 0 {
-		_ = db.Get(&userID, "SELECT id FROM users WHERE telegram_id = 999")
-	}
+	const telegramID int64 = 999
+	_, _ = db.Exec(`INSERT INTO users (telegram_id, username, email, password_hash) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (telegram_id) DO NOTHING`, telegramID, "racer", "racer@test.local", "placeholder")
 
 	_, _ = db.Exec("DELETE FROM bookings WHERE service_id = $1 AND booking_date = $2", serviceID, date)
 
@@ -226,7 +227,7 @@ func TestCreateBooking_RaceCondition(t *testing.T) {
 	for i := 0; i < goroutines; i++ {
 		go func() {
 			_, err := repo.CreateBooking(context.Background(), &models.Booking{
-				UserID:      userID,
+				UserID:      telegramID,
 				ServiceID:   int16(serviceID),
 				BookingDate: date,
 				BookingTime: slot,
@@ -251,11 +252,11 @@ func TestCreateBooking_RaceCondition(t *testing.T) {
 func TestGetAvailableSlots(t *testing.T) {
 	_, _ = db.Exec("DELETE FROM bookings")
 
-	var userID int64
-	err := db.QueryRow(`
-        INSERT INTO users (telegram_id, username, email, password_hash) VALUES (777, 'slot_tester', 'slot_tester@test.local', 'placeholder')
-        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username
-        RETURNING id`).Scan(&userID)
+	const telegramID int64 = 777
+	_, err := db.Exec(`
+        INSERT INTO users (telegram_id, username, email, password_hash) VALUES ($1, $2, $3, $4)
+        ON CONFLICT (telegram_id) DO UPDATE SET username=EXCLUDED.username`,
+		telegramID, "slot_tester", "slot_tester@test.local", "placeholder")
 	assert.NoError(t, err)
 
 	serviceID := 5
@@ -268,7 +269,7 @@ func TestGetAvailableSlots(t *testing.T) {
         INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status)
         VALUES ($1, $2, $3, $4, 'Guest Pending', 'pending'),
                ($1, $2, $3, $5, 'Guest Confirmed', 'confirmed')`,
-		userID, serviceID, targetDate, slotPending, slotConfirmed)
+		telegramID, serviceID, targetDate, slotPending, slotConfirmed)
 	assert.NoError(t, err)
 
 	slots, err := repo.GetAvailableSlots(context.Background(), serviceID, targetDate)

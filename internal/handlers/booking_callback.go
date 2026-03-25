@@ -8,9 +8,10 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.uber.org/zap"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
-	"go.uber.org/zap"
 )
 
 // stepStartBooking handles the step of starting the booking process
@@ -159,7 +160,9 @@ func (h *BookingFormHandler) stepConfirmation(ctx context.Context, query *tgbota
 	var messageText strings.Builder
 	messageText.WriteString("Бронирование успешно создано!\n\n")
 	messageText.WriteString("Номер бронирования: #")
-	messageText.WriteString(fmt.Sprintf("%d", bookingID))
+	if _, err := fmt.Fprintf(&messageText, "%d", bookingID); err != nil {
+		return fmt.Errorf("format booking id: %w", err)
+	}
 	messageText.WriteString("\nДата: ")
 	messageText.WriteString(state.SelectedDate.Format("02.01.2006"))
 	messageText.WriteString("\nСтатус: Ожидает подтверждения\n\n")
@@ -168,7 +171,9 @@ func (h *BookingFormHandler) stepConfirmation(ctx context.Context, query *tgbota
 	msg := tgbotapi.NewMessage(chatID, successMsg)
 	msg.ParseMode = "Markdown"
 
-	_, err = h.bot.Send(msg)
+	if _, err := h.bot.Send(msg); err != nil {
+		return err
+	}
 
 	logger.Info("Booking confirmed",
 		zap.Int64("booking_id", bookingID),

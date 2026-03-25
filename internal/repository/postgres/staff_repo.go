@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"context"
@@ -27,17 +27,17 @@ const createUserQuery = `
 						created_at, updated_at
 `
 
-type UserRepo struct {
+type StaffRepo struct {
 	db *sqlx.DB
 }
 
-func NewUserRepo(db *sqlx.DB) *UserRepo {
-	return &UserRepo{
+func NewStaffRepo(db *sqlx.DB) *StaffRepo {
+	return &StaffRepo{
 		db: db,
 	}
 }
 
-func (u *UserRepo) CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error) {
+func (u *StaffRepo) CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error) {
 	var user dto.UserRow
 	err := u.db.GetContext(ctx, &user, createUserQuery,
 		userReq.Name,
@@ -56,7 +56,7 @@ func (u *UserRepo) CreateStaff(ctx context.Context, userReq *models.UserAPI, has
 	return toUser(&user), nil
 }
 
-func (u *UserRepo) GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error) {
+func (u *StaffRepo) GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error) {
 	var user dto.UserRow
 	err := u.db.GetContext(ctx, &user, getUserByEmailQuery, email)
 	if errors.Is(err, sql.ErrNoRows) {

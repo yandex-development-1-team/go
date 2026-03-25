@@ -9,7 +9,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/logger"
 )
 
-// Logger logs incoming HTTP requests
 func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()

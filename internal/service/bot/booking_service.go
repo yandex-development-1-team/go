@@ -3,13 +3,15 @@ package bot
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
-	"github.com/yandex-development-1-team/go/internal/database/repository"
+	"go.uber.org/zap"
+
 	"github.com/yandex-development-1-team/go/internal/handlers/validation"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
-	"go.uber.org/zap"
+	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
 // State constants of the booking process
@@ -46,15 +48,15 @@ type BookingState struct {
 // BookingService implements a booking service
 type BookingService struct {
 	session repository.SessionRepository
-	repo    *repository.BookingRepo
-	boxRepo *repository.BoxSolutionRepo
+	repo    repository.BookingRepository
+	boxRepo repository.BoxSolutionRepository
 }
 
 // NewBookingService creates a new instance of the booking service
 func NewBookingService(
 	session repository.SessionRepository,
-	repo *repository.BookingRepo,
-	boxRepo *repository.BoxSolutionRepo,
+	repo repository.BookingRepository,
+	boxRepo repository.BoxSolutionRepository,
 ) *BookingService {
 	return &BookingService{
 		session: session,
@@ -145,7 +147,9 @@ func (s *BookingService) CreateBooking(ctx context.Context, state *BookingState)
 		UpdatedAt:         time.Now(),
 	}
 
-	s.ClearSession(ctx, state.UserID)
+	if err := s.ClearSession(ctx, state.UserID); err != nil {
+		return 0, fmt.Errorf("clear session: %w", err)
+	}
 	return s.repo.CreateBooking(ctx, booking)
 }
 

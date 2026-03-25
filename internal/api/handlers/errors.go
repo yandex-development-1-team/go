@@ -1,6 +1,5 @@
 package handlers
 
-// Message-style response (auth, legacy)
 type MessageStatus string
 
 const (
@@ -20,7 +19,6 @@ type MessageResponse struct {
 	Details []MessageDetail `json:"details,omitempty"`
 }
 
-// Error-style response (REST API, e.g. special_project)
 type ErrorDetail struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
@@ -36,7 +34,6 @@ type ErrorResponse struct {
 	Error ErrorObject `json:"error"`
 }
 
-// Helpers: MessageResponse for auth flow
 func UnauthorizedError(detail string) *MessageResponse {
 	return &MessageResponse{
 		Message: "Неавторизован",

@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
 const (
@@ -63,7 +64,7 @@ func NewBookingRepository(db *sqlx.DB) *BookingRepo {
 func (r *BookingRepo) CreateBooking(ctx context.Context, b *models.Booking) (int64, error) {
 	const operation = "create_booking"
 
-	return withMetricsValue(operation, func() (int64, error) {
+	return repository.WithDBMetricsValue(operation, func() (int64, error) {
 
 		if err := r.validateBooking(b); err != nil {
 			return 0, err
@@ -111,7 +112,7 @@ func (r *BookingRepo) GetAvailableSlots(ctx context.Context, serviceID int, date
 	const operation = "get_available_slots"
 	var slots []time.Time
 
-	return withMetricsValue(operation, func() ([]time.Time, error) {
+	return repository.WithDBMetricsValue(operation, func() ([]time.Time, error) {
 
 		err := r.db.SelectContext(ctx, &slots, getAvailableSlotsQuery, serviceID, date)
 		if err != nil {
@@ -125,7 +126,7 @@ func (r *BookingRepo) GetBookingsByUserID(ctx context.Context, userID int64) ([]
 	const operation = "get_booking_by_id"
 	var bookings []models.Booking
 
-	return withMetricsValue(operation, func() ([]models.Booking, error) {
+	return repository.WithDBMetricsValue(operation, func() ([]models.Booking, error) {
 
 		err := r.db.SelectContext(ctx, &bookings, getBookingsByUserIDQuery, userID)
 		if err != nil {
@@ -138,7 +139,7 @@ func (r *BookingRepo) GetBookingsByUserID(ctx context.Context, userID int64) ([]
 func (r *BookingRepo) UpdateBookingStatus(ctx context.Context, bookingID int64, status string) error {
 	const operation = "update_booking_status"
 
-	return withMetrics(operation, func() error {
+	return repository.WithDBMetrics(operation, func() error {
 
 		if bookingID <= 0 || status == "" {
 			return models.ErrInvalidInput

@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/yandex-development-1-team/go/internal/models"
+	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
 const (
@@ -28,22 +29,22 @@ const (
 		SELECT is_admin FROM users WHERE telegram_id = $1`
 )
 
-type UserRepo struct {
+type TelegramUserRepo struct {
 	db *sqlx.DB
 }
 
-func NewUserRepository(db *sqlx.DB) *UserRepo {
-	return &UserRepo{db: db}
+func NewTelegramUserRepository(db *sqlx.DB) *TelegramUserRepo {
+	return &TelegramUserRepo{db: db}
 }
 
-func (u *UserRepo) CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) error {
+func (u *TelegramUserRepo) CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) error {
 	const operation = "create_user"
-	return withMetrics(operation, func() error {
+	return repository.WithDBMetrics(operation, func() error {
 		tx, err := u.db.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		if _, err = tx.ExecContext(ctx, upsertUserQuery, telegramID, userName, firstName, lastName); err != nil {
 			return err
@@ -52,11 +53,11 @@ func (u *UserRepo) CreateUser(ctx context.Context, telegramID int64, userName, f
 	})
 }
 
-func (u *UserRepo) GetUserByTelegramID(ctx context.Context, telegramID int64) (*models.User, error) {
+func (u *TelegramUserRepo) GetUserByTelegramID(ctx context.Context, telegramID int64) (*models.User, error) {
 	const operation = "get_user"
 	var user models.User
 
-	return withMetricsValue(operation, func() (*models.User, error) {
+	return repository.WithDBMetricsValue(operation, func() (*models.User, error) {
 		err := u.db.GetContext(ctx, &user, getUserByTelegramIDQuery, telegramID)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrUserNotFound
@@ -68,14 +69,14 @@ func (u *UserRepo) GetUserByTelegramID(ctx context.Context, telegramID int64) (*
 	})
 }
 
-func (u *UserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade int) error {
+func (u *TelegramUserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade int) error {
 	const operation = "update_user_grade"
-	return withMetrics(operation, func() error {
+	return repository.WithDBMetrics(operation, func() error {
 		tx, err := u.db.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		result, err := tx.ExecContext(ctx, updateUserGradeQuery, grade, telegramID)
 		if err != nil {
@@ -93,11 +94,11 @@ func (u *UserRepo) UpdateUserGrade(ctx context.Context, telegramID int64, grade 
 	})
 }
 
-func (u *UserRepo) IsAdmin(ctx context.Context, telegramID int64) (bool, error) {
+func (u *TelegramUserRepo) IsAdmin(ctx context.Context, telegramID int64) (bool, error) {
 	const operation = "check_is_admin"
 	var isAdmin bool
 
-	return withMetricsValue(operation, func() (bool, error) {
+	return repository.WithDBMetricsValue(operation, func() (bool, error) {
 		err := u.db.QueryRowContext(ctx, isAdminQuery, telegramID).Scan(&isAdmin)
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, models.ErrUserNotFound

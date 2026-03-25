@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,12 +21,11 @@ import (
 	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
-	"github.com/yandex-development-1-team/go/internal/database/repository"
-	"github.com/yandex-development-1-team/go/internal/handlers"
 	botHandlers "github.com/yandex-development-1-team/go/internal/handlers"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
-	apiRepository "github.com/yandex-development-1-team/go/internal/repository/postgres"
+	"github.com/yandex-development-1-team/go/internal/repository/postgres"
+	"github.com/yandex-development-1-team/go/internal/repository/redis"
 	"github.com/yandex-development-1-team/go/internal/service"
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
@@ -39,36 +39,37 @@ func main() {
 }
 
 func run() error {
-	// --- Config & logging ---
 	cfg, err := config.GetConfig(nil)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
 	logger.NewLogger(cfg.Environment, cfg.LogLevel)
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 	metrics.Initialize(cfg)
 
-	// --- Infrastructure: DB (sqlx) ---
 	fmt.Println(cfg.DB.PostgresURL)
 	db, err := sql.Open("postgres", cfg.DB.PostgresURL)
 	if err != nil {
 		return fmt.Errorf("db open: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := db.Ping(); err != nil {
 		return fmt.Errorf("db ping: %w", err)
 	}
-	if err := database.RunMigrations(db); err != nil {
+	migrationsDir, err := database.ResolveMigrationsDir(cfg.MigrationsDir)
+	if err != nil {
+		return fmt.Errorf("migrations dir: %w", err)
+	}
+	if err := database.RunMigrations(db, migrationsDir); err != nil {
 		return fmt.Errorf("migrations: %w", err)
 	}
 	dbSqlx := sqlx.NewDb(db, "postgres")
 
-	// --- Infrastructure: Redis ---
-	redisClient, err := repository.NewRedisClient(cfg.Redis)
+	redisClient, err := redis.NewRedisClient(cfg.Redis)
 	if err != nil {
 		return fmt.Errorf("redis: %w", err)
 	}
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -78,30 +79,27 @@ func run() error {
 	}
 	logger.Info("redis connected", zap.String("addr", cfg.Redis.Addr))
 
-	// --- Repositories ---
-	userRepo := repository.NewUserRepository(dbSqlx)
-	boxSolutionRepo := repository.NewBoxSolutionRepo(dbSqlx)
-	bookRepo := repository.NewBookingRepository(dbSqlx)
-	sessionRepo := apiRepository.NewSessionRepository(dbSqlx)
-	settingsRepo := apiRepository.NewSettingsRep(dbSqlx)
-	specialProjectRepo := apiRepository.NewSpecialProjectRepository(dbSqlx)
-	refreshTokenRepoRepo := apiRepository.NewRefreshTokenRepo(dbSqlx)
-	txRepo := apiRepository.NewTxRepo(dbSqlx)
-	userRepoAPI := apiRepository.NewUserRepo(dbSqlx)
-	analyticsRepo := repository.NewAnalyticsRepo(dbSqlx)
-	resourcePagepRepo := apiRepository.NewResourcePageRepo(dbSqlx)
+	telegramUserRepo := postgres.NewTelegramUserRepository(dbSqlx)
+	boxSolutionRepo := postgres.NewBoxSolutionRepo(dbSqlx)
+	bookRepo := postgres.NewBookingRepository(dbSqlx)
+	sessionRepo := redis.NewSessionRepository(redisClient, redis.WithTTL(cfg.Session.TTL))
+	settingsRepo := postgres.NewSettingsRep(dbSqlx)
+	specialProjectRepo := postgres.NewSpecialProjectRepository(dbSqlx)
+	refreshTokenRepoRepo := postgres.NewRefreshTokenRepo(dbSqlx)
+	txRepo := postgres.NewTxRepo(dbSqlx)
+	staffRepo := postgres.NewStaffRepo(dbSqlx)
+	analyticsRepo := postgres.NewAnalyticsRepo(dbSqlx)
+	resourcePagepRepo := postgres.NewResourcePageRepo(dbSqlx)
 
-	// --- Services ---
-	settingsService := apiService.NewSettingsService(settingsRepo) // TODO: wire into API routes
+	settingsService := apiService.NewSettingsService(settingsRepo)
 	bookService := botService.NewBookingService(sessionRepo, bookRepo, boxSolutionRepo)
-	keyboard := handlers.NewKeyboardService()
+	keyboard := botHandlers.NewKeyboardService()
 	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
-	resourcePagepService := service.NewResourcePageService(resourcePagepRepo)
+	resourcePageService := service.NewResourcePageService(resourcePagepRepo)
 
-	// --- HTTP: metrics + health ---
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
 	metricsMux.HandleFunc("/health", api.NewHealthHandler(dbSqlx, cfg.TelegramBotAPIUrl))
@@ -111,21 +109,20 @@ func run() error {
 	}
 	go func() {
 		logger.Info("metrics server starting", zap.String("addr", metricsServer.Addr))
-		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("metrics server", zap.Error(err))
 		}
 	}()
 
-	// --- API server (routers) ---
-	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, userRepoAPI, txRepo, cfg.AuthConfig.JWTSecret,
-		cfg.AuthConfig.RefreshTokenTTLDays, cfg.AuthConfig.AccessTokenTTLMinutes)
+	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, staffRepo, txRepo, cfg.AuthConfig.JWTSecret,
+		cfg.AuthConfig.AccessTokenTTLMinutes, cfg.AuthConfig.RefreshTokenTTLDays)
 
 	apiServer := server.New(&cfg, &server.APIServices{
 		BoxService:        boxService,
 		SpecialProjectSvc: specialProjectService,
 		SettingsService:   settingsService,
 		AnalyticsSvc:      analyticsService,
-		RecPageSvc:        resourcePagepService,
+		RecPageSvc:        resourcePageService,
 	}, apiAuthService)
 
 	apiServer.RegisterRoutes()
@@ -140,7 +137,6 @@ func run() error {
 		})
 	}()
 
-	// --- API-only mode: no bot ---
 	if cfg.APIOnly {
 		logger.Info("api_only mode (no bot)")
 		<-ctx.Done()
@@ -149,7 +145,6 @@ func run() error {
 		return shutdown.NewShutdownHandler(nil, dbSqlx, metricsServer, redisClient).WaitForShutdown(shutdownCtx)
 	}
 
-	// --- Telegram bot ---
 	tgBot, err := bot.NewTelegramBot(cfg.Telegram)
 	if err != nil {
 		return fmt.Errorf("telegram bot: %w", err)
@@ -160,16 +155,14 @@ func run() error {
 		return fmt.Errorf("rate limiter: %w", err)
 	}
 
-	startHandler := botHandlers.NewStartHandler(tgBot, userRepo)
-	bcHandler := handlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, keyboard)
+	startHandler := botHandlers.NewStartHandler(tgBot, telegramUserRepo)
+	bcHandler := botHandlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, keyboard)
 	bsHandler := botHandlers.NewBoxSolutions(tgBot, bsService)
 	infoHandler := botHandlers.NewServiceHandler(boxSolutionRepo, tgBot.Api, startHandler)
 
-	// Creating a callback router
-	callbackRouter := handlers.NewCallbackRouter(tgBot.Api)
-	msgRouter := handlers.NewMessageRouter(tgBot.Api, startHandler, sessionRepo, bcHandler, msgRL)
+	callbackRouter := botHandlers.NewCallbackRouter(tgBot.Api)
+	msgRouter := botHandlers.NewMessageRouter(tgBot.Api, startHandler, sessionRepo, bcHandler, msgRL)
 
-	// Registering all handlers
 	callbackRouter.Register(botHandlers.CallbackBoxSolutions, bsHandler)
 	callbackRouter.Register(botService.CallbackBookingPrefix, bcHandler)
 	callbackRouter.Register(botHandlers.CallbackInfoPrefix, infoHandler)
@@ -190,7 +183,6 @@ func run() error {
 		}
 	}()
 
-	// --- Shutdown ---
 	<-ctx.Done()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)

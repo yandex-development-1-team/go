@@ -5,20 +5,18 @@ import (
 	"time"
 )
 
-var ErrSpecProjNotFound = errors.New("special project not found")
+var ErrSpecialProjectAlreadyExists = errors.New("special project with such title already exists")
 
-// SpecialProject — доменная модель спецпроекта (сервисный слой, API).
 type SpecialProject struct {
-	ID            int64
-	Title         string
-	Description   *string
-	Image         string
-	IsActiveInBot bool
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID            int64     `json:"id,omitempty"`
+	Title         string    `json:"title"`
+	Description   *string   `json:"description,omitempty"`
+	Image         string    `json:"image,omitempty"`
+	IsActiveInBot bool      `json:"is_active_in_bot"`
+	CreatedAt     time.Time `json:"created_at,omitempty"`
+	UpdatedAt     time.Time `json:"updated_at,omitempty"`
 }
 
-// SpecialProjectDB — модель спецпроекта для БД (repository).
 type SpecialProjectDB struct {
 	ID            int64     `db:"id"`
 	Title         string    `db:"title"`
@@ -27,4 +25,11 @@ type SpecialProjectDB struct {
 	IsActiveInBot bool      `db:"is_active_in_bot"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
+}
+
+type SpecialProjectUpdate struct {
+	Title         string  `db:"title"`
+	Description   *string `db:"description"`
+	Image         string  `db:"image"`
+	IsActiveInBot bool    `db:"is_active_in_bot"`
 }

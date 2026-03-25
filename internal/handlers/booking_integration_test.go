@@ -12,7 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/yandex-development-1-team/go/internal/database/repository"
+
+	"github.com/yandex-development-1-team/go/internal/repository/postgres"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
 
@@ -26,7 +27,7 @@ func TestBookingFormHandler_FullFlow(t *testing.T) {
 	keyboard := NewKeyboardService()
 
 	// Используем реальный репозиторий вместо мока
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 
 	startHandler := &StartHandler{
 		bot:            mockBot,
@@ -170,7 +171,7 @@ func TestBookingFormHandler_BackNavigation(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -224,7 +225,7 @@ func TestBookingFormHandler_ValidationErrors(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -323,7 +324,7 @@ func TestBookingFormHandler_RaceCondition(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -466,7 +467,7 @@ func TestBookingFormHandler_ConcurrentSessions(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,

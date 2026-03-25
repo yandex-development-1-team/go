@@ -1,6 +1,6 @@
 //go:build integration
 
-package repository
+package postgres
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 )
 
 // Тесты используют общий TestMain и repoUser из booking_repository_test.go (контейнер Postgres + миграции).
-// Запуск: go test -tags=integration ./internal/database/repository/... или make test-integration.
+// Запуск: go test -tags=integration ./internal/repository/postgres/... или make test-integration.
 
 func TestCreateUser(t *testing.T) {
 	tests := []struct {

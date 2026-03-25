@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"context"
@@ -86,16 +86,9 @@ func (r *RefreshTokenRepo) GetForUpdate(ctx context.Context, tx *sqlx.Tx, token 
 
 func (r *RefreshTokenRepo) Revoke(ctx context.Context, token string) error {
 	const op = "revoke_refresh_token"
-	res, err := r.db.ExecContext(ctx, revokeRefreshTokenQuery, token)
+	_, err := r.db.ExecContext(ctx, revokeRefreshTokenQuery, token)
 	if err != nil {
 		return r.checkError(op, err)
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return r.checkError(op, err)
-	}
-	if affected == 0 {
-		return ErrRefreshTokenNotFound
 	}
 	return nil
 }

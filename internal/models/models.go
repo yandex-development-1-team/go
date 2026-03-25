@@ -39,9 +39,9 @@ var (
 	ErrCache                  = errors.New("cache error")
 	ErrEmailAlreadyExist      = errors.New("user already exist")
 	ErrSessionNotFound        = errors.New("session not found")
+	ErrApplicationNotFound    = errors.New("application not found")
 )
 
-// RefreshToken — refresh-токен для аутентификации.
 type RefreshToken struct {
 	ID        int64      `db:"id"`
 	UserID    int64      `db:"user_id"`
@@ -206,4 +206,15 @@ type Pagination struct {
 type ApplicationListResponse struct {
 	Items      []Application `json:"items"`
 	Pagination Pagination    `json:"pagination"`
+}
+
+type ApplicationUpdateRequest struct {
+	Status           *ApplicationStatus `json:"status,omitempty"`
+	ContactInfo      *string            `json:"contact_info,omitempty"`
+	BoxID            *int64             `json:"box_id,omitempty"`
+	SpecialProjectID *int64             `json:"special_project_id,omitempty"`
+}
+
+func (r *ApplicationUpdateRequest) HasUpdates() bool {
+	return r.Status != nil || r.ContactInfo != nil || r.BoxID != nil || r.SpecialProjectID != nil
 }

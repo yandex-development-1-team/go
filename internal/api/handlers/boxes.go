@@ -12,17 +12,14 @@ import (
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
-// BoxHandler handles HTTP requests for boxed solutions
 type BoxHandler struct {
 	boxService *apiService.APIBoxService
 }
 
-// NewBoxHandler creates a new BoxHandler
 func NewBoxHandler(boxService *apiService.APIBoxService) *BoxHandler {
 	return &BoxHandler{boxService: boxService}
 }
 
-// List GET /api/v1/boxes
 func (h *BoxHandler) List(c *gin.Context) {
 	list, err := h.boxService.List(c.Request.Context())
 	if err != nil {
@@ -32,13 +29,10 @@ func (h *BoxHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, list)
 }
 
-// Create POST /api/v1/boxes
 func (h *BoxHandler) Create(c *gin.Context) {
-	// TODO: Implement
 	c.JSON(201, gin.H{"message": "BoxHandler.Create - not implemented yet"})
 }
 
-// GetByID GET /api/v1/boxes/:id
 func (h *BoxHandler) GetByID(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -59,7 +53,6 @@ func (h *BoxHandler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, box)
 }
 
-// Update PUT /api/v1/boxes/:id
 func (h *BoxHandler) Update(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -86,7 +79,6 @@ func (h *BoxHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, box)
 }
 
-// Delete DELETE /api/v1/boxes/:id
 func (h *BoxHandler) Delete(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -103,13 +95,11 @@ func (h *BoxHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Коробочное решение успешно удалено"})
 }
 
-// UploadImage POST /api/v1/boxes/:id/image
 func (h *BoxHandler) UploadImage(c *gin.Context) {
 	id := c.Param("id")
 	c.JSON(200, gin.H{"message": "BoxHandler.UploadImage - not implemented yet", "id": id})
 }
 
-// UpdateStatus PUT /api/v1/boxes/:id/status
 func (h *BoxHandler) UpdateStatus(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -143,7 +133,6 @@ func (h *BoxHandler) UpdateStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// Export GET /api/v1/boxes/export
 func (h *BoxHandler) Export(c *gin.Context) {
 	status := c.Query("status")
 	format := c.DefaultQuery("format", "pdf")

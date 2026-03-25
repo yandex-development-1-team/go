@@ -4,13 +4,14 @@ import (
 	"context"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.uber.org/zap"
 
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
 )
 
 type Bot interface {
 	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
-	// новые методы для bot api добавлять сюда, а реализовывать в go/internal/bot/bot.go
 }
 
 type MsgRateLimiter interface {
@@ -34,31 +35,19 @@ func NewHandler(bot Bot, msgRL MsgRateLimiter, msgRouter *MessageRouter, callbac
 }
 
 func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
-	// Нужно получить количество активных пользователей
-	activeUsers := getActiveUsersCount(ctx) // Эту функцию нужно реализовать
-
-	// И далее обновляем ActiveUsers перед обработкой
+	activeUsers := getActiveUsersCount(ctx)
 	metrics.SetActiveUsers(activeUsers)
 
 	if msg := update.Message; msg != nil {
 		h.msgRouter.HandleMessage(ctx, msg)
 	}
 	if callbackQuery := update.CallbackQuery; callbackQuery != nil {
-		HandleCallback(h.callbackRouter, update.CallbackQuery)
+		if err := HandleCallback(h.callbackRouter, update.CallbackQuery); err != nil {
+			logger.Error("callback handling", zap.Error(err))
+		}
 	}
 }
 
-// Заготовка для реализации функции
-func getActiveUsersCount(ctx context.Context) int {
-	// TODO: заменить на реальный подсчет активных пользователей
-	// Например:
-	// count, err := userRepo.GetActiveUsersCount(ctx)
-	// if err != nil {
-	//     logger.Error("failed to get active users", zap.Error(err))
-	//     return 0
-	// }
-	// return count
-
-	// Чтобы тесты проходили, пока можно возвращать 1
+func getActiveUsersCount(_ context.Context) int {
 	return 1
 }

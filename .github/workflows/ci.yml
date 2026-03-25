@@ -1,10 +1,13 @@
 name: CI
 
+# Запуск: любой push (все ветки), любой pull_request, вручную (Actions → CI → Run workflow).
 on:
   push:
-    branches: [main, master]
+    branches:
+      - '**'
   pull_request:
-    branches: [main, master]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,78 +23,54 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          # Версия из go.mod (1.26) подхватывается setup-go; линтер совместим
-          version: v2.4.0
+          version: v2.11.4
           args: --timeout=5m
 
   test:
-    name: Test (unit)
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      - name: Run unit tests
-        run: go test ./... -count=1 -race -timeout=10m -v 2>&1 | tee test.log
-
-      - name: Upload test log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-log
-          path: test.log
-
-  test-integration:
-    name: Test (integration, DB)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-
-      - name: Run integration tests
-        run: go test -tags=integration ./... -count=1 -v -timeout=15m 2>&1 | tee test-integration.log
+      - name: Run tests
+        run: go test -tags=integration ./... -count=1 -race -timeout=30m -v 2>&1 | tee test.log
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
 
-      - name: Upload integration test log on failure
+      - name: Upload test log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: test-integration-log
-          path: test-integration.log
+          name: test-log
+          path: test.log
 
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum

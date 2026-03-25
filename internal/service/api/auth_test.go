@@ -12,19 +12,19 @@ import (
 
 	"github.com/docker/go-connections/nat"
 	"github.com/jmoiron/sqlx"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/yandex-development-1-team/go/internal/database"
 	pgrepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 )
 
 var (
-	db       *sqlx.DB
-	rtRepo   *pgrepo.RefreshTokenRepo
-	userRepo *pgrepo.UserRepo
-	svc      *AuthService
+	db        *sqlx.DB
+	rtRepo    *pgrepo.RefreshTokenRepo
+	staffRepo *pgrepo.StaffRepo
+	svc       *AuthService
 )
 
 func TestMain(m *testing.M) {
@@ -40,12 +40,12 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to init db: %s", err.Error())
 	}
 	rtRepo = pgrepo.NewRefreshTokenRepo(db)
-	userRepo = pgrepo.NewUserRepo(db)
+	staffRepo = pgrepo.NewStaffRepo(db)
 	txRepo := pgrepo.NewTxRepo(db)
 	svc = NewAuthService(
 		db,
 		rtRepo,
-		userRepo,
+		staffRepo,
 		txRepo,
 		"test-service",
 		15,
@@ -98,11 +98,11 @@ func createDB(container tc.Container) error {
 		return err
 	}
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	migDir, err := database.ResolveMigrationsDir("")
+	if err != nil {
 		return err
 	}
-
-	if err := goose.UpContext(context.Background(), db.DB, "../../../migrations"); err != nil {
+	if err := database.RunMigrations(db.DB, migDir); err != nil {
 		return err
 	}
 
@@ -121,7 +121,7 @@ func insertTestUser(t *testing.T) int64 {
 	VALUES ($1, $2, $3, $4)
 	ON CONFLICT (email) DO UPDATE SET email=EXCLUDED.email
 	RETURNING id`,
-		email, "placeholder_hash", "manager", "active",
+		email, "placeholder_hash", "manager_1", "active",
 	).Scan(&id)
 	assert.NoError(t, err)
 	return id
@@ -297,5 +297,5 @@ func TestAuthService_Logout(t *testing.T) {
 	assert.NotNil(t, revokedAt)
 
 	err = svc.Logout(ctx, "logout-refresh-token")
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }

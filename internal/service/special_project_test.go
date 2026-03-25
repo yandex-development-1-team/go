@@ -11,39 +11,38 @@ import (
 
 	"github.com/yandex-development-1-team/go/internal/models"
 	repository "github.com/yandex-development-1-team/go/internal/repository"
-	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
 type mockSpecialProjectRepo struct {
-	createFn  func(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error)
-	getByIDFn func(ctx context.Context, id int64) (*specialproject.DB, error)
-	listFn    func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error)
-	updateFn  func(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
+	createFn  func(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error)
+	getByIDFn func(ctx context.Context, id int64) (*models.SpecialProjectDB, error)
+	listFn    func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
+	updateFn  func(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error)
 	deleteFn  func(ctx context.Context, id int64) error
 }
 
-func (m *mockSpecialProjectRepo) Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error) {
+func (m *mockSpecialProjectRepo) Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
 	if m.createFn != nil {
 		return m.createFn(ctx, proj)
 	}
 	return nil, nil
 }
 
-func (m *mockSpecialProjectRepo) GetByID(ctx context.Context, id int64) (*specialproject.DB, error) {
+func (m *mockSpecialProjectRepo) GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
 	if m.getByIDFn != nil {
 		return m.getByIDFn(ctx, id)
 	}
 	return nil, nil
 }
 
-func (m *mockSpecialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error) {
+func (m *mockSpecialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 	if m.listFn != nil {
 		return m.listFn(ctx, statusFilter, searchQuery, limit, offset)
 	}
 	return nil, 0, nil
 }
 
-func (m *mockSpecialProjectRepo) Update(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
+func (m *mockSpecialProjectRepo) Update(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error) {
 	if m.updateFn != nil {
 		return m.updateFn(ctx, id, update)
 	}
@@ -66,33 +65,33 @@ func TestSpecialProjectService_Create(t *testing.T) {
 	t.Run("empty title returns error", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.Create(ctx, &specialproject.Project{Title: ""})
+		_, err := svc.Create(ctx, &models.SpecialProject{Title: ""})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "title is required")
 	})
 
 	t.Run("already exists maps to ErrAlreadyExists", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			createFn: func(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error) {
-				return nil, specialproject.ErrAlreadyExists
+			createFn: func(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
+				return nil, models.ErrSpecialProjectAlreadyExists
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.Create(ctx, &specialproject.Project{Title: "Duplicate"})
+		_, err := svc.Create(ctx, &models.SpecialProject{Title: "Duplicate"})
 		require.Error(t, err)
-		assert.ErrorIs(t, err, specialproject.ErrAlreadyExists)
+		assert.ErrorIs(t, err, models.ErrSpecialProjectAlreadyExists)
 	})
 
 	t.Run("success creates and returns domain", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			createFn: func(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error) {
+			createFn: func(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
 				proj.ID = 1
 				return proj, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
 		desc := "desc"
-		got, err := svc.Create(ctx, &specialproject.Project{
+		got, err := svc.Create(ctx, &models.SpecialProject{
 			Title:         "Test",
 			Description:   &desc,
 			Image:         "img",
@@ -110,20 +109,20 @@ func TestSpecialProjectService_GetByID(t *testing.T) {
 
 	t.Run("not found maps to ErrNotFound", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			getByIDFn: func(ctx context.Context, id int64) (*specialproject.DB, error) {
-				return nil, specialproject.ErrNotFound
+			getByIDFn: func(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
+				return nil, models.ErrSpecialProjectNotFound
 			},
 		}
 		svc := NewSpecialProjectService(repo)
 		_, err := svc.GetByID(ctx, 999)
 		require.Error(t, err)
-		assert.ErrorIs(t, err, specialproject.ErrNotFound)
+		assert.ErrorIs(t, err, models.ErrSpecialProjectNotFound)
 	})
 
 	t.Run("success returns domain", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			getByIDFn: func(ctx context.Context, id int64) (*specialproject.DB, error) {
-				return &specialproject.DB{ID: id, Title: "T", IsActiveInBot: true}, nil
+			getByIDFn: func(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
+				return &models.SpecialProjectDB{ID: id, Title: "T", IsActiveInBot: true}, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
@@ -141,7 +140,7 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 	t.Run("invalid id <= 0", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.Update(ctx, 0, &specialproject.Project{Title: "T"})
+		_, err := svc.Update(ctx, 0, &models.SpecialProject{Title: "T"})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, models.ErrInvalidInput)
 	})
@@ -158,27 +157,27 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 		repo := &mockSpecialProjectRepo{}
 		svc := NewSpecialProjectService(repo)
 		longTitle := strings.Repeat("x", 256)
-		_, err := svc.Update(ctx, 1, &specialproject.Project{Title: longTitle})
+		_, err := svc.Update(ctx, 1, &models.SpecialProject{Title: longTitle})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, models.ErrInvalidInput)
 	})
 
 	t.Run("not found maps to ErrNotFound", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			updateFn: func(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
-				return nil, specialproject.ErrNotFound
+			updateFn: func(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error) {
+				return nil, models.ErrSpecialProjectNotFound
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.Update(ctx, 1, &specialproject.Project{Title: "T"})
+		_, err := svc.Update(ctx, 1, &models.SpecialProject{Title: "T"})
 		require.Error(t, err)
-		assert.ErrorIs(t, err, specialproject.ErrNotFound)
+		assert.ErrorIs(t, err, models.ErrSpecialProjectNotFound)
 	})
 
 	t.Run("success returns updated domain", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			updateFn: func(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error) {
-				return &specialproject.DB{
+			updateFn: func(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error) {
+				return &models.SpecialProjectDB{
 					ID: id, Title: update.Title, Description: update.Description,
 					Image: update.Image, IsActiveInBot: update.IsActiveInBot,
 				}, nil
@@ -186,7 +185,7 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 		}
 		svc := NewSpecialProjectService(repo)
 		desc := "new desc"
-		got, err := svc.Update(ctx, 1, &specialproject.Project{
+		got, err := svc.Update(ctx, 1, &models.SpecialProject{
 			Title: "Updated", Description: &desc, Image: "img2", IsActiveInBot: false,
 		})
 		require.NoError(t, err)
@@ -210,13 +209,13 @@ func TestSpecialProjectService_DeleteSpecialProject(t *testing.T) {
 	t.Run("not found maps to ErrNotFound", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
 			deleteFn: func(ctx context.Context, id int64) error {
-				return specialproject.ErrNotFound
+				return models.ErrSpecialProjectNotFound
 			},
 		}
 		svc := NewSpecialProjectService(repo)
 		err := svc.Delete(ctx, 999)
 		require.Error(t, err)
-		assert.ErrorIs(t, err, specialproject.ErrNotFound)
+		assert.ErrorIs(t, err, models.ErrSpecialProjectNotFound)
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -240,8 +239,8 @@ func TestSpecialProjectService_List(t *testing.T) {
 
 	t.Run("success returns list", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error) {
-				return []*specialproject.DB{
+			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+				return []*models.SpecialProjectDB{
 					{ID: 1, Title: "A", IsActiveInBot: true},
 					{ID: 2, Title: "B", IsActiveInBot: false},
 				}, 10, nil
@@ -259,7 +258,7 @@ func TestSpecialProjectService_List(t *testing.T) {
 	t.Run("repo error propagated", func(t *testing.T) {
 		repoErr := errors.New("db error")
 		repo := &mockSpecialProjectRepo{
-			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error) {
+			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 				return nil, 0, repoErr
 			},
 		}

@@ -12,37 +12,59 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-func withMetricsValue[T any](operation string, repo func() (T, error)) (T, error) {
+// ErrSessionNotFound возвращается, если сессии пользователя в Redis нет.
+var ErrSessionNotFound = errors.New("session not found")
+
+// WithDBMetrics оборачивает операцию к Postgres метриками и нормализацией ошибок.
+func WithDBMetrics(operation string, fn func() error) error {
 	start := time.Now()
-	result, err := repo()
+	err := fn()
 	seconds := time.Since(start).Minutes()
 
 	metrics.ObserveDatabaseQueryDuration(operation, seconds)
 	if err != nil {
 		metrics.IncDatabaseErrors(operation)
-		return result, checkError(operation, err)
-	}
-
-	return result, err
-}
-
-func withMetrics(operation string, repo func() error) error {
-	start := time.Now()
-	err := repo()
-	seconds := time.Since(start).Minutes()
-
-	metrics.ObserveDatabaseQueryDuration(operation, seconds)
-	if err != nil {
-		metrics.IncDatabaseErrors(operation)
-		return checkError(operation, err)
+		return CheckDBError(operation, err)
 	}
 
 	return err
 }
 
-func withMetricsRedisValue[T any](operation string, repo func() (T, error)) (T, error) {
+// WithDBMetricsValue то же, что WithDBMetrics, для функций с возвращаемым значением.
+func WithDBMetricsValue[T any](operation string, fn func() (T, error)) (T, error) {
 	start := time.Now()
-	result, err := repo()
+	result, err := fn()
+	seconds := time.Since(start).Minutes()
+
+	metrics.ObserveDatabaseQueryDuration(operation, seconds)
+	if err != nil {
+		metrics.IncDatabaseErrors(operation)
+		return result, CheckDBError(operation, err)
+	}
+
+	return result, err
+}
+
+// WithRedisMetrics оборачивает операцию к Redis метриками.
+func WithRedisMetrics(operation string, fn func() error) error {
+	start := time.Now()
+	err := fn()
+	seconds := time.Since(start).Seconds()
+
+	metrics.ObserveCacheSetDuration(operation, seconds)
+	if err != nil {
+		metrics.IncCacheErrors(operation)
+		logger.Error("redis_error", zap.Error(err), zap.String("operation", operation))
+		return err
+	}
+
+	return err
+}
+
+// WithRedisMetricsValue то же, что WithRedisMetrics, для функций с возвращаемым значением.
+func WithRedisMetricsValue[T any](operation string, fn func() (T, error)) (T, error) {
+	start := time.Now()
+	result, err := fn()
 	seconds := time.Since(start).Seconds()
 
 	metrics.ObserveCacheSetDuration(operation, seconds)
@@ -58,22 +80,8 @@ func withMetricsRedisValue[T any](operation string, repo func() (T, error)) (T, 
 	return result, err
 }
 
-func withMetricsRedis(operation string, repo func() error) error {
-	start := time.Now()
-	err := repo()
-	seconds := time.Since(start).Seconds()
-
-	metrics.ObserveCacheSetDuration(operation, seconds)
-	if err != nil {
-		metrics.IncCacheErrors(operation)
-		logger.Error("redis_error", zap.Error(err), zap.String("operation", operation))
-		return err
-	}
-
-	return err
-}
-
-func checkError(operation string, err error) error {
+// CheckDBError приводит сырую ошибку Postgres к доменным sentinel-ам.
+func CheckDBError(operation string, err error) error {
 	if errors.Is(err, models.ErrUnauthorized) {
 		return models.ErrUnauthorized
 	}
@@ -91,6 +99,10 @@ func checkError(operation string, err error) error {
 	if errors.Is(err, models.ErrUserNotFound) {
 		logger.Info("user_not_found", zap.Error(err), zap.String("operation", operation))
 		return models.ErrUserNotFound
+	}
+	if errors.Is(err, models.ErrApplicationNotFound) {
+		logger.Info("application_not_found", zap.Error(err), zap.String("operation", operation))
+		return models.ErrApplicationNotFound
 	}
 	if errors.Is(err, context.Canceled) {
 		logger.Info("canceled_by_context", zap.Error(err), zap.String("operation", operation))

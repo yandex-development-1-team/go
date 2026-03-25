@@ -8,7 +8,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/metrics"
 )
 
-// Metrics collects HTTP request metrics for Prometheus
 func Metrics() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()

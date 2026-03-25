@@ -6,7 +6,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/config"
 )
 
-// CORS returns middleware that sets CORS headers from cfg.
 func CORS(cfg config.CORSConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if cfg.AllowOrigin != "" {

@@ -1,47 +1,10 @@
+# Полный стек: инфра + приложение.
+# Локально: make run-local (подмешивает docker-compose.local.infra.yml и docker-compose.local.app.yml).
+
+include:
+  - path: docker-compose.infra.yml
+
 services:
-
-  db:
-    image: postgres:16-alpine
-    container_name: booking_bot_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"     # if it's nessesary
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: booking_bot_redis
-    restart: unless-stopped
-    environment:
-      REDIS_DB: ${REDIS_DB} 
-      REDIS_PASSWORD: ${REDIS_PASSWORD} 
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD} 
-      --appendonly yes
-      --appendfsync everysec
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
-    ports:
-      - "6379:6379"     # if it's nesessary
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      # -a needed cause of --requirepass
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
 
   app:
     build: .
@@ -51,23 +14,18 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-      REDIS_DB: ${REDIS_DB} 
-      REDIS_PASSWORD: ${REDIS_PASSWORD} 
-    ports:
-      - "${SERVER_PORT}:${SERVER_PORT}"
-      - "${PROMETHEUS_PORT}:${PROMETHEUS_PORT}"
+      POSTGRES_NAME: ${DB_NAME}
+      REDIS_DB: ${REDIS_DB}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      DB_HOST_PORT: db:5432
+      REDIS_ADDR: redis:6379
+      BOT_TOKEN: ${BOT_TOKEN}
+      API_ONLY: ${API_ONLY:-false}
+      SERVER_PORT: ${SERVER_PORT}
+      PROMETHEUS_PORT: ${PROMETHEUS_PORT}
+      JWT_SECRET: ${JWT_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:${PROMETHEUS_PORT}/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 15s   # awaiting for miggrations 
-
-volumes:
-  postgres_data:
-  redis_data:

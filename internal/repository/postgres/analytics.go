@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/yandex-development-1-team/go/internal/dto"
+	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
 const analyticsExportLimit = 10_000
@@ -65,7 +66,7 @@ func NewAnalyticsRepo(db *sqlx.DB) *AnalyticsRepo {
 func (r *AnalyticsRepo) GetBoxesAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) ([]dto.AnalyticsBoxRow, error) {
 	const operation = "get_boxes_analytics"
 	var rows []dto.AnalyticsBoxRow
-	return withMetricsValue(operation, func() ([]dto.AnalyticsBoxRow, error) {
+	return repository.WithDBMetricsValue(operation, func() ([]dto.AnalyticsBoxRow, error) {
 		err := r.db.SelectContext(ctx, &rows, getBoxesAnalyticsQuery, dateFrom, dateTo, analyticsExportLimit)
 		return rows, err
 	})
@@ -74,7 +75,7 @@ func (r *AnalyticsRepo) GetBoxesAnalytics(ctx context.Context, dateFrom, dateTo 
 func (r *AnalyticsRepo) GetUsersAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) ([]dto.AnalyticsUserRow, error) {
 	const operation = "get_users_analytics"
 	var rows []dto.AnalyticsUserRow
-	return withMetricsValue(operation, func() ([]dto.AnalyticsUserRow, error) {
+	return repository.WithDBMetricsValue(operation, func() ([]dto.AnalyticsUserRow, error) {
 		err := r.db.SelectContext(ctx, &rows, getUsersAnalyticsQuery, dateFrom, dateTo, analyticsExportLimit)
 		return rows, err
 	})

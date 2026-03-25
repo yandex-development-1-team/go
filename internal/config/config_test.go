@@ -1,17 +1,23 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
 
 func TestLoadConfig(t *testing.T) {
+	configYAML := filepath.Join("..", "..", "config", "config.yaml")
+	if _, err := os.Stat(configYAML); err != nil {
+		t.Skip("нет локального config/config.yaml:", err)
+	}
 
 	paths := []string{"../../config"}
 
 	cfg, err := GetConfig(paths)
 	if err != nil {
-		t.Errorf("GetConfig error: %v", err)
+		t.Fatalf("GetConfig error: %v", err)
 	}
 
 	v := reflect.ValueOf(cfg)

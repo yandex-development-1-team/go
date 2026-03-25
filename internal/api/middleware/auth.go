@@ -1,15 +1,16 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/yandex-development-1-team/go/internal/models"
-	service "github.com/yandex-development-1-team/go/internal/service/api"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/yandex-development-1-team/go/internal/models"
+	service "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
-// Auth returns middleware for authorization verification
 func Auth(jwtSecret []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -60,7 +61,6 @@ func Auth(jwtSecret []byte) gin.HandlerFunc {
 	}
 }
 
-// RequireAdmin returns middleware for verification role admin
 func RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exists := c.Get("role")

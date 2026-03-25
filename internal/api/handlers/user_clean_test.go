@@ -18,14 +18,14 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.org/x/crypto/bcrypt"
 
-	repository "github.com/yandex-development-1-team/go/internal/repository/postgres"
+	"github.com/yandex-development-1-team/go/internal/database"
+	pgrepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 	service "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
@@ -64,9 +64,9 @@ type seedUserParams struct {
 func setupServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 	t.Helper()
 
-	userRepo := repository.NewUserRepo(db)
-	refreshRepo := repository.NewRefreshTokenRepo(db)
-	txRepo := repository.NewTxRepo(db)
+	userRepo := pgrepo.NewStaffRepo(db)
+	refreshRepo := pgrepo.NewRefreshTokenRepo(db)
+	txRepo := pgrepo.NewTxRepo(db)
 	svc := service.NewAuthService(db, refreshRepo, userRepo, txRepo, "test-secret", 15, 30)
 	handler := NewAuthHandler(svc)
 
@@ -89,20 +89,6 @@ func seedUser(t *testing.T, db *sqlx.DB, p seedUserParams) {
 }
 
 func TestHandleLogin(t *testing.T) {
-	// ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	// defer cancel()
-
-	// container, err := startContainer()
-	// require.NoError(t, err)
-	// defer func() {
-	// 	require.NoError(t, container.Terminate(ctx))
-	// }()
-
-	// db, err := createDB(container)
-	// require.NoError(t, err)
-	// defer db.Close()
-
-	// очищаем таблицу перед тестами
 	_, err := db.Exec(`TRUNCATE TABLE staff CASCADE`)
 
 	server := setupServer(t, db)
@@ -110,7 +96,6 @@ func TestHandleLogin(t *testing.T) {
 	validHash, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
 	require.NoError(t, err)
 
-	// role — только 'admin' или 'manager', нет 'user'
 	seedUser(t, db, seedUserParams{
 		TelegramNick: "nick1",
 		FirstName:    "John",
@@ -214,20 +199,6 @@ func TestHandleLogin(t *testing.T) {
 }
 
 func TestRegisterHandler(t *testing.T) {
-	// ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	// defer cancel()
-
-	// container, err := startContainer()
-	// require.NoError(t, err)
-	// defer func() {
-	// 	require.NoError(t, container.Terminate(ctx))
-	// }()
-
-	// db, err := createDB(container)
-	// require.NoError(t, err)
-	// defer db.Close()
-
-	// очищаем таблицу перед тестами
 	_, err := db.Exec(`TRUNCATE TABLE staff CASCADE`)
 
 	server := setupRegisterServer(t, db)
@@ -236,6 +207,8 @@ func TestRegisterHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	seedStaff(t, db, "existing@example.com", string(validHash))
+
+	const inviteOK = "invite-token-ok"
 
 	tests := []struct {
 		name       string
@@ -246,10 +219,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "успешная регистрация",
 			body: map[string]string{
-				"first_name": "New User",
-				"last_name":  "User",
-				"email":      "newuser@example.com",
-				"password":   "password123",
+				"first_name":   "New User",
+				"last_name":    "User",
+				"email":        "newuser@example.com",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusOK,
 			checkBody: func(t *testing.T, body map[string]any) {
@@ -265,10 +239,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "email уже существует",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "existing@example.com",
-				"password":   "password123",
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "existing@example.com",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusConflict,
 			checkBody:  checkServiceErrorBody,
@@ -276,10 +251,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "пустое имя",
 			body: map[string]string{
-				"first_name": "",
-				"last_name":  "User",
-				"email":      "test@example.com",
-				"password":   "password123",
+				"first_name":   "",
+				"last_name":    "User",
+				"email":        "test@example.com",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -287,10 +263,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "имя короче 2 символов",
 			body: map[string]string{
-				"first_name": "A",
-				"last_name":  "User",
-				"email":      "test@example.com",
-				"password":   "password123",
+				"first_name":   "A",
+				"last_name":    "User",
+				"email":        "test@example.com",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -298,10 +275,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "пустой email",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "",
-				"password":   "password123",
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -309,10 +287,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "невалидный email",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "not-an-email",
-				"password":   "password123",
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "not-an-email",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -320,10 +299,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "пароль короче 8 символов",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "test2@example.com",
-				"password":   "123",
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "test2@example.com",
+				"password":     "123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -331,10 +311,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "пароль длиннее 72 символов",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "test3@example.com",
-				"password":   strings.Repeat("a", 73),
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "test3@example.com",
+				"password":     strings.Repeat("a", 73),
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -370,7 +351,6 @@ func TestRegisterHandler(t *testing.T) {
 	}
 }
 
-// checkServiceErrorBody проверяет формат ServiceErrorResponse: {"errors": ["..."]}.
 func checkServiceErrorBody(t *testing.T, body map[string]any) {
 	errors, ok := body["errors"].([]any)
 	require.True(t, ok, "expected 'errors' array in body: %v", body)
@@ -378,7 +358,6 @@ func checkServiceErrorBody(t *testing.T, body map[string]any) {
 }
 
 func startContainer() (tc.Container, error) {
-	// настройка testcontainers postgres
 	req := tc.ContainerRequest{
 		Image:        "postgres:latest",
 		ExposedPorts: []string{"5432/tcp"},
@@ -397,7 +376,6 @@ func startContainer() (tc.Container, error) {
 			WithStartupTimeout(120 * time.Second),
 	}
 
-	// генерация контейнера
 	dbContainer, err := tc.GenericContainer(
 		context.Background(),
 		tc.GenericContainerRequest{
@@ -413,9 +391,6 @@ func startContainer() (tc.Container, error) {
 }
 
 func createDB(container tc.Container) (*sqlx.DB, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
 	host, _ := container.Host(context.Background())
 	port, _ := container.MappedPort(context.Background(), "5432")
 
@@ -428,11 +403,11 @@ func createDB(container tc.Container) (*sqlx.DB, error) {
 		return nil, err
 	}
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	migDir, err := database.ResolveMigrationsDir("")
+	if err != nil {
 		return nil, err
 	}
-
-	if err := goose.UpContext(ctx, db.DB, "../../../migrations"); err != nil {
+	if err := database.RunMigrations(db.DB, migDir); err != nil {
 		return nil, err
 	}
 
@@ -442,9 +417,9 @@ func createDB(container tc.Container) (*sqlx.DB, error) {
 func setupRegisterServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 	t.Helper()
 
-	userRepo := repository.NewUserRepo(db)
-	refreshRepo := repository.NewRefreshTokenRepo(db)
-	txRepo := repository.NewTxRepo(db)
+	userRepo := pgrepo.NewStaffRepo(db)
+	refreshRepo := pgrepo.NewRefreshTokenRepo(db)
+	txRepo := pgrepo.NewTxRepo(db)
 	svc := service.NewAuthService(db, refreshRepo, userRepo, txRepo, "test-secret", 15, 30)
 	handler := NewAuthHandler(svc)
 

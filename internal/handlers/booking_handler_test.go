@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,20 +12,22 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/pressly/goose/v3"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"go.uber.org/zap"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	"github.com/yandex-development-1-team/go/internal/config"
-	"github.com/yandex-development-1-team/go/internal/database/repository"
+	"github.com/yandex-development-1-team/go/internal/database"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
+	"github.com/yandex-development-1-team/go/internal/repository"
+	"github.com/yandex-development-1-team/go/internal/repository/postgres"
+	reporedis "github.com/yandex-development-1-team/go/internal/repository/redis"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
 
@@ -55,73 +56,13 @@ var (
 	handlerTestDB      *sqlx.DB
 	handlerTestRedis   *redis.Client
 	handlerSessionRepo repository.SessionRepository
-	handlerBookingRepo *repository.BookingRepo
-	handlerBoxRepo     *repository.BoxSolutionRepo
+	handlerBookingRepo *postgres.BookingRepo
+	handlerBoxRepo     *postgres.BoxSolutionRepo
 	handlerService     *botService.BookingService
 )
 
 // TestUserID — константа для тестового пользователя
 const TestUserID = int64(12345)
-
-// Собственная реализация RunMigrations для тестов
-func runMigrations(db *sql.DB, migrationsPath string) error {
-	if err := goose.SetDialect("postgres"); err != nil {
-		return fmt.Errorf("failed to set goose dialect: %w", err)
-	}
-
-	versionBefore, err := goose.GetDBVersion(db)
-	if err != nil {
-		return fmt.Errorf("failed to get DB version: %w", err)
-	}
-	logger.Info("Current database version",
-		zap.Int64("version", versionBefore),
-	)
-
-	migrations, err := goose.CollectMigrations(migrationsPath, 0, goose.MaxVersion)
-	if err != nil {
-		return fmt.Errorf("failed to collect migrations: %w", err)
-	}
-
-	pendingCount := 0
-	for _, m := range migrations {
-		if m.Version > versionBefore {
-			pendingCount++
-		}
-	}
-
-	if pendingCount > 0 {
-		logger.Info("Found pending migrations",
-			zap.Int("count", pendingCount),
-		)
-
-		if err := goose.Up(db, migrationsPath); err != nil {
-			logger.Error("Failed to apply migrations",
-				zap.Error(err),
-			)
-			return fmt.Errorf("failed to apply migrations: %w", err)
-		}
-
-		versionAfter, err := goose.GetDBVersion(db)
-		if err != nil {
-			logger.Error("Failed to get DB version after migration",
-				zap.Error(err),
-			)
-			return fmt.Errorf("failed to get DB version: %w", err)
-		}
-
-		logger.Info("Migrations applied successfully",
-			zap.Int("applied_count", pendingCount),
-			zap.Int64("version_before", versionBefore),
-			zap.Int64("version_after", versionAfter),
-		)
-	} else {
-		logger.Info("Database is up to date",
-			zap.Int64("version", versionBefore),
-		)
-	}
-
-	return nil
-}
 
 func TestMain(m *testing.M) {
 	logger.NewLogger("dev", "debug")
@@ -155,9 +96,9 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to init test data: %s", err.Error())
 	}
 
-	handlerSessionRepo = repository.NewSessionRepository(handlerTestRedis)
-	handlerBookingRepo = repository.NewBookingRepository(handlerTestDB)
-	handlerBoxRepo = repository.NewBoxSolutionRepo(handlerTestDB)
+	handlerSessionRepo = reporedis.NewSessionRepository(handlerTestRedis)
+	handlerBookingRepo = postgres.NewBookingRepository(handlerTestDB)
+	handlerBoxRepo = postgres.NewBoxSolutionRepo(handlerTestDB)
 
 	// Создаем сервис один раз для всех тестов
 	handlerService = botService.NewBookingService(handlerSessionRepo, handlerBookingRepo, handlerBoxRepo)
@@ -212,8 +153,11 @@ func initPostgresDB(container tc.Container) error {
 		return err
 	}
 
-	migrationsPath := "../../migrations"
-	if err := runMigrations(handlerTestDB.DB, migrationsPath); err != nil {
+	migrationsPath, err := database.ResolveMigrationsDir("")
+	if err != nil {
+		return fmt.Errorf("migrations dir: %w", err)
+	}
+	if err := database.RunMigrations(handlerTestDB.DB, migrationsPath); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -371,7 +315,7 @@ func TestBookingFormHandler_StartBooking(t *testing.T) {
 	keyboard := NewKeyboardService()
 
 	// Используем реальный репозиторий вместо мока
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 
 	startHandler := &StartHandler{
 		bot:            mockBot,
@@ -422,7 +366,7 @@ func TestBookingFormHandler_SelectDate(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -485,7 +429,7 @@ func TestBookingFormHandler_SelectUnavailableDate(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -549,7 +493,7 @@ func TestBookingFormHandler_EnterName_Success(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -611,7 +555,7 @@ func TestBookingFormHandler_EnterName_ValidationError(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -675,7 +619,7 @@ func TestBookingFormHandler_EnterOrganization_Success(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -739,7 +683,7 @@ func TestBookingFormHandler_EnterPosition_Success(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -805,7 +749,7 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
@@ -870,7 +814,7 @@ func TestBookingFormHandler_BackToMainMenu(t *testing.T) {
 	keyboard := NewKeyboardService()
 
 	// Используем реальный репозиторий вместо мока
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 
 	startHandler := &StartHandler{
 		bot:            mockBot,
@@ -931,7 +875,7 @@ func TestBookingFormHandler_UnknownAction(t *testing.T) {
 	mockBot := new(MockBotAPI)
 	keyboard := NewKeyboardService()
 
-	userRepo := repository.NewUserRepository(handlerTestDB)
+	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
