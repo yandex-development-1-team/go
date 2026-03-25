@@ -129,3 +129,129 @@ func TestApplicationRepo_GetApplications(t *testing.T) {
 		}
 	})
 }
+
+func TestApplicationRepo_GetApplicationByID(t *testing.T) {
+	appRepo := NewApplicationRepository(db)
+	ctx := context.Background()
+
+	created, err := appRepo.CreateApplication(ctx, &models.ApplicationCreateRequest{
+		Type:         models.ApplicationTypeBox,
+		Source:       models.ApplicationSourceManual,
+		CustomerName: "GetByID User",
+		ContactInfo:  "getbyid@example.com",
+	})
+	require.NoError(t, err)
+
+	t.Run("happy path — existing id", func(t *testing.T) {
+		app, err := appRepo.GetApplicationByID(ctx, created.ID)
+		require.NoError(t, err)
+		assert.Equal(t, created.ID, app.ID)
+		assert.Equal(t, models.ApplicationTypeBox, app.Type)
+		assert.Equal(t, "GetByID User", app.CustomerName)
+		assert.Equal(t, "getbyid@example.com", app.ContactInfo)
+	})
+
+	t.Run("not found — unknown id", func(t *testing.T) {
+		_, err := appRepo.GetApplicationByID(ctx, -1)
+		assert.ErrorIs(t, err, models.ErrApplicationNotFound)
+	})
+}
+
+func TestApplicationRepo_UpdateApplication(t *testing.T) {
+	appRepo := NewApplicationRepository(db)
+	ctx := context.Background()
+
+	created, err := appRepo.CreateApplication(ctx, &models.ApplicationCreateRequest{
+		Type:         models.ApplicationTypeSpecialProject,
+		Source:       models.ApplicationSourceManual,
+		CustomerName: "Update User",
+		ContactInfo:  "update@example.com",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, models.ApplicationStatusQueue, created.Status)
+
+	t.Run("DoD: status changes and is visible in list", func(t *testing.T) {
+		newStatus := models.ApplicationStatusInProgress
+		updated, err := appRepo.UpdateApplication(ctx, created.ID, &models.ApplicationUpdateRequest{
+			Status: &newStatus,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, models.ApplicationStatusInProgress, updated.Status)
+		assert.Equal(t, created.ID, updated.ID)
+
+		fetched, err := appRepo.GetApplicationByID(ctx, created.ID)
+		require.NoError(t, err)
+		assert.Equal(t, models.ApplicationStatusInProgress, fetched.Status)
+	})
+
+	t.Run("DoD: contact_info update", func(t *testing.T) {
+		newContact := "updated@example.com"
+		updated, err := appRepo.UpdateApplication(ctx, created.ID, &models.ApplicationUpdateRequest{
+			ContactInfo: &newContact,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "updated@example.com", updated.ContactInfo)
+	})
+
+	t.Run("DoD: box_id update visible in card", func(t *testing.T) {
+		boxID := int64(1)
+		updated, err := appRepo.UpdateApplication(ctx, created.ID, &models.ApplicationUpdateRequest{
+			BoxID: &boxID,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), *updated.BoxID)
+
+		fetched, err := appRepo.GetApplicationByID(ctx, created.ID)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), *fetched.BoxID)
+	})
+
+	t.Run("not found — unknown id", func(t *testing.T) {
+		newStatus := models.ApplicationStatusDone
+		_, err := appRepo.UpdateApplication(ctx, -1, &models.ApplicationUpdateRequest{
+			Status: &newStatus,
+		})
+		assert.ErrorIs(t, err, models.ErrApplicationNotFound)
+	})
+
+	t.Run("invalid input — no fields", func(t *testing.T) {
+		_, err := appRepo.UpdateApplication(ctx, created.ID, &models.ApplicationUpdateRequest{})
+		assert.ErrorIs(t, err, models.ErrInvalidInput)
+	})
+
+	t.Run("invalid input — nil request", func(t *testing.T) {
+		_, err := appRepo.UpdateApplication(ctx, created.ID, nil)
+		assert.ErrorIs(t, err, models.ErrInvalidInput)
+	})
+}
+
+func TestApplicationRepo_DeleteApplication(t *testing.T) {
+	appRepo := NewApplicationRepository(db)
+	ctx := context.Background()
+
+	created, err := appRepo.CreateApplication(ctx, &models.ApplicationCreateRequest{
+		Type:         models.ApplicationTypeBox,
+		Source:       models.ApplicationSourceTelegramBot,
+		CustomerName: "Delete User",
+		ContactInfo:  "delete@example.com",
+	})
+	require.NoError(t, err)
+
+	t.Run("happy path — existing application deleted", func(t *testing.T) {
+		err := appRepo.DeleteApplication(ctx, created.ID)
+		require.NoError(t, err)
+
+		_, err = appRepo.GetApplicationByID(ctx, created.ID)
+		assert.ErrorIs(t, err, models.ErrApplicationNotFound)
+	})
+
+	t.Run("not found — already deleted", func(t *testing.T) {
+		err := appRepo.DeleteApplication(ctx, created.ID)
+		assert.ErrorIs(t, err, models.ErrApplicationNotFound)
+	})
+
+	t.Run("not found — unknown id", func(t *testing.T) {
+		err := appRepo.DeleteApplication(ctx, -1)
+		assert.ErrorIs(t, err, models.ErrApplicationNotFound)
+	})
+}

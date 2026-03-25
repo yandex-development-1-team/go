@@ -100,6 +100,10 @@ func CheckDBError(operation string, err error) error {
 		logger.Info("user_not_found", zap.Error(err), zap.String("operation", operation))
 		return models.ErrUserNotFound
 	}
+	if errors.Is(err, models.ErrApplicationNotFound) {
+		logger.Info("application_not_found", zap.Error(err), zap.String("operation", operation))
+		return models.ErrApplicationNotFound
+	}
 	if errors.Is(err, context.Canceled) {
 		logger.Info("canceled_by_context", zap.Error(err), zap.String("operation", operation))
 		return models.ErrRequestCanceled

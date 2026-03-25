@@ -37,6 +37,9 @@ type BookingRepository interface {
 type ApplicationRepository interface {
 	CreateApplication(ctx context.Context, req *models.ApplicationCreateRequest) (*models.Application, error)
 	GetApplications(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error)
+	GetApplicationByID(ctx context.Context, id int64) (*models.Application, error)
+	UpdateApplication(ctx context.Context, id int64, req *models.ApplicationUpdateRequest) (*models.Application, error)
+	DeleteApplication(ctx context.Context, id int64) error
 }
 
 // BoxSolutionRepository — коробочные решения (services).
