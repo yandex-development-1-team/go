@@ -3,14 +3,12 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-
 	"strconv"
-
-	"github.com/yandex-development-1-team/go/internal/dto"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	api "github.com/yandex-development-1-team/go/internal/service/api"

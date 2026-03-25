@@ -18,5 +18,5 @@ INSERT INTO resource_pages (slug, title, content) VALUES
 
 
 -- +goose Down
-DROP TABLE IF EXISTS resourse_pages
+DROP TABLE IF EXISTS resourse_pages;
 

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -96,6 +97,6 @@ type ResourcePageRepository interface {
 // Queryable — общее для sqlx.DB и sqlx.Tx.
 type Queryable interface {
 	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 }

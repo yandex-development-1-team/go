@@ -157,8 +157,6 @@ func loadConfig(paths []string) (*Config, error) {
 		return nil, err
 	}
 
-	fmt.Println(config)
-
 	return config, nil
 }
 
