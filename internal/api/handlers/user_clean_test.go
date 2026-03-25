@@ -208,6 +208,8 @@ func TestRegisterHandler(t *testing.T) {
 
 	seedStaff(t, db, "existing@example.com", string(validHash))
 
+	const inviteOK = "invite-token-ok"
+
 	tests := []struct {
 		name       string
 		body       any
@@ -217,10 +219,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "успешная регистрация",
 			body: map[string]string{
-				"first_name": "New User",
-				"last_name":  "User",
-				"email":      "newuser@example.com",
-				"password":   "password123",
+				"first_name":   "New User",
+				"last_name":    "User",
+				"email":        "newuser@example.com",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusOK,
 			checkBody: func(t *testing.T, body map[string]any) {
@@ -236,10 +239,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "email уже существует",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "existing@example.com",
-				"password":   "password123",
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "existing@example.com",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusConflict,
 			checkBody:  checkServiceErrorBody,
@@ -247,10 +251,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "пустое имя",
 			body: map[string]string{
-				"first_name": "",
-				"last_name":  "User",
-				"email":      "test@example.com",
-				"password":   "password123",
+				"first_name":   "",
+				"last_name":    "User",
+				"email":        "test@example.com",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -258,10 +263,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "имя короче 2 символов",
 			body: map[string]string{
-				"first_name": "A",
-				"last_name":  "User",
-				"email":      "test@example.com",
-				"password":   "password123",
+				"first_name":   "A",
+				"last_name":    "User",
+				"email":        "test@example.com",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -269,10 +275,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "пустой email",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "",
-				"password":   "password123",
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -280,10 +287,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "невалидный email",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "not-an-email",
-				"password":   "password123",
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "not-an-email",
+				"password":     "password123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -291,10 +299,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "пароль короче 8 символов",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "test2@example.com",
-				"password":   "123",
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "test2@example.com",
+				"password":     "123",
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
@@ -302,10 +311,11 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "пароль длиннее 72 символов",
 			body: map[string]string{
-				"first_name": "Test User",
-				"last_name":  "User",
-				"email":      "test3@example.com",
-				"password":   strings.Repeat("a", 73),
+				"first_name":   "Test User",
+				"last_name":    "User",
+				"email":        "test3@example.com",
+				"password":     strings.Repeat("a", 73),
+				"invite_token": inviteOK,
 			},
 			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
