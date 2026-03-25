@@ -13,7 +13,19 @@ SRC_DIR=./cmd/bot
 BUILD_DIR=./bin
 GO_FILES=$(shell find . -type f -name '*.go' ! -path './vendor/*')
 
-.PHONY: migration migration-create migration-rollback generate-mocks fmt fix lint lint-fix vet help
+# Docker Compose (локальный стек: loopback + healthcheck в overlay)
+COMPOSE_FILE=docker-compose.yml
+COMPOSE_INFRA=docker-compose.infra.yml
+COMPOSE_LOCAL_INFRA=docker-compose.local.infra.yml
+COMPOSE_LOCAL_APP=docker-compose.local.app.yml
+
+# Фронтенд в отдельном репозитории: make run-frontend FRONTEND_DIR=../your-frontend
+FRONTEND_DIR?=
+FRONTEND_SCRIPT_FULL?=dev
+FRONTEND_SCRIPT_LOCAL_API?=dev:local-api
+
+.PHONY: migration migration-create migration-rollback generate-mocks fmt fix lint lint-fix vet help \
+	run-local run-local-api stop-local run-frontend run-frontend-local-api
 
 all: build
 
@@ -28,6 +40,30 @@ build:
 ## run: run the application
 run:
 	$(GORUN) $(SRC_DIR)/*.go
+
+## run-local: Docker — инфра + app (бот, если API_ONLY=false). Порты на 127.0.0.1
+run-local:
+	@test -f .env || (echo "Создайте .env из .env.example"; exit 1)
+	docker compose -f $(COMPOSE_FILE) -f $(COMPOSE_LOCAL_INFRA) -f $(COMPOSE_LOCAL_APP) up -d --build
+
+## run-local-api: Docker — только Postgres и Redis на 127.0.0.1 (бэкенд: make run + env из .env.local.api)
+run-local-api:
+	@test -f .env || (echo "Создайте .env из .env.example"; exit 1)
+	docker compose -f $(COMPOSE_INFRA) -f $(COMPOSE_LOCAL_INFRA) up -d
+
+## stop-local: остановить контейнеры локального проекта compose
+stop-local:
+	docker compose -f $(COMPOSE_FILE) -f $(COMPOSE_LOCAL_INFRA) -f $(COMPOSE_LOCAL_APP) down
+
+## run-frontend: npm в FRONTEND_DIR (полный бэкенд в Docker после run-local)
+run-frontend:
+	@test -n "$(FRONTEND_DIR)" || (echo "Задайте FRONTEND_DIR=путь/к/фронту"; exit 1)
+	cd "$(FRONTEND_DIR)" && npm run $(FRONTEND_SCRIPT_FULL)
+
+## run-frontend-local-api: npm в FRONTEND_DIR (инфра в Docker, API на хосте)
+run-frontend-local-api:
+	@test -n "$(FRONTEND_DIR)" || (echo "Задайте FRONTEND_DIR=путь/к/фронту"; exit 1)
+	cd "$(FRONTEND_DIR)" && npm run $(FRONTEND_SCRIPT_LOCAL_API)
 
 ## clean: delete binary
 clean:	

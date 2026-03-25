@@ -141,6 +141,13 @@ func loadConfig(paths []string) (*Config, error) {
 		return nil, fmt.Errorf("error parsing config.yml: %w", err)
 	}
 
+	if config.Telegram.BotToken == "" && config.TelegramBotToken != "" {
+		config.Telegram.BotToken = config.TelegramBotToken
+	}
+	if config.TelegramBotToken == "" && config.Telegram.BotToken != "" {
+		config.TelegramBotToken = config.Telegram.BotToken
+	}
+
 	if config.DB.Name != "" {
 		config.DB.PostgresURL = fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 			config.DB.User, config.DB.Password, config.DB.HostPort, config.DB.Name, config.DB.SslMode)
@@ -213,8 +220,8 @@ func bindEnvs(v *viper.Viper) {
 }
 
 func validateConfig(config *Config) error {
-	if config.TelegramBotToken == "" {
-		return fmt.Errorf("telegram_bot_token is empty")
+	if !config.APIOnly && config.Telegram.BotToken == "" {
+		return fmt.Errorf("telegram bot token is empty")
 	}
 
 	if config.DB.PostgresURL == "" {

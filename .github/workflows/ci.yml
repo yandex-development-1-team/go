@@ -28,15 +28,15 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
+      # v6 не поддерживает бинарь golangci-lint v2.x; для version: v2.4.0 нужен action >= v7
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          # Версия из go.mod (1.26) подхватывается setup-go; линтер совместим
           version: v2.4.0
           args: --timeout=5m
 
   test:
-    name: Test (unit)
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,8 +48,13 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      - name: Run unit tests
-        run: go test ./... -count=1 -race -timeout=10m -v 2>&1 | tee test.log
+      # Один прогон: обычные тесты + //go:build integration + Testcontainers (Postgres/Redis).
+      # Раньше было два job'а с go test ./... — пакеты с TestMain гонялись дважды; без -tags=integration
+      # не собирались integration-only файлы.
+      - name: Run tests
+        run: go test -tags=integration ./... -count=1 -race -timeout=30m -v 2>&1 | tee test.log
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "true"
 
       - name: Upload test log on failure
         if: failure()
@@ -57,31 +62,6 @@ jobs:
         with:
           name: test-log
           path: test.log
-
-  test-integration:
-    name: Test (integration, DB)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-
-      - name: Run integration tests
-        run: go test -tags=integration ./... -count=1 -v -timeout=15m 2>&1 | tee test-integration.log
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: "true"
-
-      - name: Upload integration test log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-integration-log
-          path: test-integration.log
 
   build:
     name: Build
