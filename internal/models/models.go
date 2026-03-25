@@ -48,17 +48,22 @@ type User struct {
 
 // UserAPI is the API/domain representation of a user (auth and handlers).
 type UserAPI struct {
-	ID           int64  `json:"id"`
-	TelegramNick string `json:"telegram_nick"`
-	Name         string `json:"name"`
-	Email        string `json:"email"`
-	// Password     string
-	InviteToken string
-	Role        string    `json:"role"`
-	Status      string    `json:"status"`
-	Permissions []string  `json:"permissions"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID           int64
+	TelegramNick string
+	Name         string
+	LastName     string
+	SecondName   string
+	Email        string
+	PhoneNumber  string
+	Role         string
+	Status       string
+	Department   string
+	Position     string
+	ManagerID    int64
+	InviteToken  string
+	Permissions  []string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // UserWithAuth holds user and password hash for auth flow.

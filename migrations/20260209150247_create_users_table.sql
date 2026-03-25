@@ -2,7 +2,7 @@
 
 -- +goose StatementBegin
 DO $$ BEGIN
-    CREATE TYPE user_role_type AS ENUM ('admin', 'manager');
+    CREATE TYPE user_role_type AS ENUM ('admin', 'manager_1', 'manager_2', 'manager_3', 'user');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
     grade SMALLINT DEFAULT 0,
     is_admin BOOLEAN DEFAULT FALSE,
     password_hash TEXT NOT NULL DEFAULT '',
-    role user_role_type DEFAULT 'manager',
+    role user_role_type DEFAULT 'user',
     status user_status_type DEFAULT 'invited',
     invite_token TEXT,
     permissions TEXT[] DEFAULT '{}',
