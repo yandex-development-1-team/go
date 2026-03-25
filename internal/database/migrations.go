@@ -10,27 +10,24 @@ import (
 	"github.com/yandex-development-1-team/go/internal/logger"
 )
 
-// RunMigrations применяет миграции и логирует результат
-func RunMigrations(db *sql.DB) error {
+func RunMigrations(db *sql.DB, migrationsDir string) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("failed to set goose dialect: %w", err)
 	}
 
-	// Получаем текущую версию БД
 	versionBefore, err := goose.GetDBVersion(db)
 	if err != nil {
 		return fmt.Errorf("failed to get DB version: %w", err)
 	}
 	logger.Info("Current database version",
 		zap.Int64("version", versionBefore),
+		zap.String("migrations_dir", migrationsDir),
 	)
-	// Собираем все миграции для подсчёта ожидающих
-	migrations, err := goose.CollectMigrations("migrations", 0, goose.MaxVersion)
+	migrations, err := goose.CollectMigrations(migrationsDir, 0, goose.MaxVersion)
 	if err != nil {
 		return fmt.Errorf("failed to collect migrations: %w", err)
 	}
 
-	// Считаем количество миграций, которые новее текущей версии
 	pendingCount := 0
 	for _, m := range migrations {
 		if m.Version > versionBefore {
@@ -38,19 +35,17 @@ func RunMigrations(db *sql.DB) error {
 		}
 	}
 
-	// Если есть ожидающие миграции — применяем и логируем
 	if pendingCount > 0 {
 		logger.Info("Found pending migrations",
 			zap.Int("count", pendingCount),
 		)
 
-		if err := goose.Up(db, "migrations"); err != nil {
+		if err := goose.Up(db, migrationsDir); err != nil {
 			logger.Error("Failed to apply migrations",
 				zap.Error(err))
 			return fmt.Errorf("failed to apply migrations: %w", err)
 		}
 
-		// Получаем новую версию
 		versionAfter, err := goose.GetDBVersion(db)
 		if err != nil {
 			logger.Error("Failed to get DB version after migration",
@@ -59,7 +54,6 @@ func RunMigrations(db *sql.DB) error {
 			return fmt.Errorf("failed to get DB version: %w", err)
 		}
 
-		// Логируем точное количество применённых миграций
 		logger.Info("Migrations applied successfully",
 			zap.Int("applied_count", pendingCount),
 			zap.Int64("version_before", versionBefore),

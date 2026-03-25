@@ -26,6 +26,7 @@ type Config struct {
 	CacheSizeRPS      int            `mapstructure:"cache_size_rps"`
 	APIOnly           bool           `mapstructure:"api_only"` // only API + metrics, no telegram bot
 	CORS              CORSConfig     `mapstructure:"cors"`
+	MigrationsDir     string         `mapstructure:"migrations_dir"`
 }
 
 type Telegram struct {
@@ -216,6 +217,7 @@ func bindEnvs(v *viper.Viper) {
 	_ = v.BindEnv("api_only", "API_ONLY")
 
 	_ = v.BindEnv("auth_config.jwt_secret", "JWT_SECRET")
+	_ = v.BindEnv("migrations_dir", "MIGRATIONS_DIR")
 }
 
 func validateConfig(config *Config) error {

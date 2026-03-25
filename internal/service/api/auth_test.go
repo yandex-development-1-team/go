@@ -12,11 +12,11 @@ import (
 
 	"github.com/docker/go-connections/nat"
 	"github.com/jmoiron/sqlx"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/yandex-development-1-team/go/internal/database"
 	pgrepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 )
 
@@ -98,11 +98,11 @@ func createDB(container tc.Container) error {
 		return err
 	}
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	migDir, err := database.ResolveMigrationsDir("")
+	if err != nil {
 		return err
 	}
-
-	if err := goose.UpContext(context.Background(), db.DB, "../../../migrations"); err != nil {
+	if err := database.RunMigrations(db.DB, migDir); err != nil {
 		return err
 	}
 

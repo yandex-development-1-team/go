@@ -57,7 +57,11 @@ func run() error {
 	if err := db.Ping(); err != nil {
 		return fmt.Errorf("db ping: %w", err)
 	}
-	if err := database.RunMigrations(db); err != nil {
+	migrationsDir, err := database.ResolveMigrationsDir(cfg.MigrationsDir)
+	if err != nil {
+		return fmt.Errorf("migrations dir: %w", err)
+	}
+	if err := database.RunMigrations(db, migrationsDir); err != nil {
 		return fmt.Errorf("migrations: %w", err)
 	}
 	dbSqlx := sqlx.NewDb(db, "postgres")

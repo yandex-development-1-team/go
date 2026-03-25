@@ -18,13 +18,13 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/yandex-development-1-team/go/internal/database"
 	pgrepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 	service "github.com/yandex-development-1-team/go/internal/service/api"
 )
@@ -413,9 +413,6 @@ func startContainer() (tc.Container, error) {
 }
 
 func createDB(container tc.Container) (*sqlx.DB, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
 	host, _ := container.Host(context.Background())
 	port, _ := container.MappedPort(context.Background(), "5432")
 
@@ -428,11 +425,11 @@ func createDB(container tc.Container) (*sqlx.DB, error) {
 		return nil, err
 	}
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	migDir, err := database.ResolveMigrationsDir("")
+	if err != nil {
 		return nil, err
 	}
-
-	if err := goose.UpContext(ctx, db.DB, "../../../migrations"); err != nil {
+	if err := database.RunMigrations(db.DB, migDir); err != nil {
 		return nil, err
 	}
 

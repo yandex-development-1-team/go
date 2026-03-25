@@ -1,10 +1,13 @@
 name: CI
 
+# Запуск: любой push (все ветки), любой pull_request, вручную (Actions → CI → Run workflow).
 on:
   push:
-    branches: [main, master]
+    branches:
+      - '**'
   pull_request:
-    branches: [main, master]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
