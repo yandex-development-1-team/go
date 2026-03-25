@@ -21,6 +21,7 @@ var (
 	ErrForbidden              = errors.New("forbidden")
 	ErrCache                  = errors.New("cache error")
 	ErrEmailAlreadyExist      = errors.New("user already exist")
+	ErrSessionNotFound        = errors.New("session not found")
 )
 
 // RefreshToken — refresh-токен для аутентификации.
