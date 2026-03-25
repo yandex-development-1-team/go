@@ -1,6 +1,6 @@
 //go:build integration
 
-package repository
+package postgres
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-// Тесты используют общий TestMain и repoSession из session_repository_test.go (контейнер Postgres + миграции).
+// Тесты используют общий TestMain и repoSession из booking_repository_test.go (контейнер Postgres + миграции).
 // Запуск: go test -tags=integration ./internal/repository/postgres/... или make test-integration.
 
 // createTestUser создает тестового пользователя
