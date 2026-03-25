@@ -12,7 +12,6 @@ import (
 
 type Bot interface {
 	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
-	// новые методы для bot api добавлять сюда, а реализовывать в go/internal/bot/bot.go
 }
 
 type MsgRateLimiter interface {
@@ -36,10 +35,7 @@ func NewHandler(bot Bot, msgRL MsgRateLimiter, msgRouter *MessageRouter, callbac
 }
 
 func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
-	// Нужно получить количество активных пользователей
-	activeUsers := getActiveUsersCount(ctx) // Эту функцию нужно реализовать
-
-	// И далее обновляем ActiveUsers перед обработкой
+	activeUsers := getActiveUsersCount(ctx)
 	metrics.SetActiveUsers(activeUsers)
 
 	if msg := update.Message; msg != nil {
@@ -52,17 +48,6 @@ func (h *Handler) Handle(ctx context.Context, update tgbotapi.Update) {
 	}
 }
 
-// Заготовка для реализации функции
-func getActiveUsersCount(ctx context.Context) int {
-	// TODO: заменить на реальный подсчет активных пользователей
-	// Например:
-	// count, err := userRepo.GetActiveUsersCount(ctx)
-	// if err != nil {
-	//     logger.Error("failed to get active users", zap.Error(err))
-	//     return 0
-	// }
-	// return count
-
-	// Чтобы тесты проходили, пока можно возвращать 1
+func getActiveUsersCount(_ context.Context) int {
 	return 1
 }

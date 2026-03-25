@@ -89,20 +89,6 @@ func seedUser(t *testing.T, db *sqlx.DB, p seedUserParams) {
 }
 
 func TestHandleLogin(t *testing.T) {
-	// ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	// defer cancel()
-
-	// container, err := startContainer()
-	// require.NoError(t, err)
-	// defer func() {
-	// 	require.NoError(t, container.Terminate(ctx))
-	// }()
-
-	// db, err := createDB(container)
-	// require.NoError(t, err)
-	// defer db.Close()
-
-	// очищаем таблицу перед тестами
 	_, err := db.Exec(`TRUNCATE TABLE staff CASCADE`)
 
 	server := setupServer(t, db)
@@ -110,7 +96,6 @@ func TestHandleLogin(t *testing.T) {
 	validHash, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
 	require.NoError(t, err)
 
-	// role — только 'admin' или 'manager', нет 'user'
 	seedUser(t, db, seedUserParams{
 		TelegramNick: "nick1",
 		FirstName:    "John",
@@ -214,20 +199,6 @@ func TestHandleLogin(t *testing.T) {
 }
 
 func TestRegisterHandler(t *testing.T) {
-	// ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	// defer cancel()
-
-	// container, err := startContainer()
-	// require.NoError(t, err)
-	// defer func() {
-	// 	require.NoError(t, container.Terminate(ctx))
-	// }()
-
-	// db, err := createDB(container)
-	// require.NoError(t, err)
-	// defer db.Close()
-
-	// очищаем таблицу перед тестами
 	_, err := db.Exec(`TRUNCATE TABLE staff CASCADE`)
 
 	server := setupRegisterServer(t, db)
@@ -370,7 +341,6 @@ func TestRegisterHandler(t *testing.T) {
 	}
 }
 
-// checkServiceErrorBody проверяет формат ServiceErrorResponse: {"errors": ["..."]}.
 func checkServiceErrorBody(t *testing.T, body map[string]any) {
 	errors, ok := body["errors"].([]any)
 	require.True(t, ok, "expected 'errors' array in body: %v", body)
@@ -378,7 +348,6 @@ func checkServiceErrorBody(t *testing.T, body map[string]any) {
 }
 
 func startContainer() (tc.Container, error) {
-	// настройка testcontainers postgres
 	req := tc.ContainerRequest{
 		Image:        "postgres:latest",
 		ExposedPorts: []string{"5432/tcp"},
@@ -397,7 +366,6 @@ func startContainer() (tc.Container, error) {
 			WithStartupTimeout(120 * time.Second),
 	}
 
-	// генерация контейнера
 	dbContainer, err := tc.GenericContainer(
 		context.Background(),
 		tc.GenericContainerRequest{

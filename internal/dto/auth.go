@@ -6,20 +6,17 @@ import (
 	"github.com/lib/pq"
 )
 
-// LoginRequest — тело запроса POST /api/v1/auth/login.
 type LoginRequest struct {
 	Login    string `json:"login"     binding:"required,email,max=255"`
 	Password string `json:"password"  binding:"required,min=8,max=72"`
 }
 
-// LoginResponse — успешный ответ логина (token + user).
 type LoginResponse struct {
 	Token        string       `json:"token"`
 	RefreshToken string       `json:"refresh_token"`
 	User         UserResponse `json:"user"`
 }
 
-// UserResponse — пользователь в ответах API (auth, users).
 type UserResponse struct {
 	ID           int64     `json:"id"`
 	TelegramNick string    `json:"telegram_nick"`
@@ -39,7 +36,6 @@ type UserResponse struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-// UserRow - пользователь в запросах таблицы staff
 type UserRow struct {
 	ID           int64          `db:"id"`
 	TelegramNick *string        `db:"telegram_nick"`
@@ -60,17 +56,14 @@ type UserRow struct {
 	UpdatedAt    time.Time      `db:"updated_at"`
 }
 
-// RefreshRequest — body для POST /api/v1/auth/refresh
 type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-// RefreshResponse — ответ с новым access token
 type RefreshResponse struct {
 	Token string `json:"token"`
 }
 
-// RegisterRequest - body для POST /api/auth/register
 type RegisterRequest struct {
 	Name        string `json:"first_name"         binding:"required,min=2,max=255"`
 	LastName    string `json:"last_name"          binding:"required,min=2,max=255"`
@@ -79,12 +72,10 @@ type RegisterRequest struct {
 	InviteToken string `json:"invite_token"       binding:"required,min=2,max=255"`
 }
 
-// LogoutRequest — body для POST /api/v1/auth/logout
 type LogoutRequest struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-// LogoutResponse — ответ после logout
 type LogoutResponse struct {
 	Message string `json:"message"`
 }

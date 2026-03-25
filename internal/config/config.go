@@ -24,7 +24,7 @@ type Config struct {
 	MsgRPS            float64        `mapstructure:"msg_rps"`
 	ApiRPS            float64        `mapstructure:"api_rps"`
 	CacheSizeRPS      int            `mapstructure:"cache_size_rps"`
-	APIOnly           bool           `mapstructure:"api_only"` // only API + metrics, no telegram bot
+	APIOnly           bool           `mapstructure:"api_only"`
 	CORS              CORSConfig     `mapstructure:"cors"`
 	MigrationsDir     string         `mapstructure:"migrations_dir"`
 }
@@ -41,7 +41,6 @@ type Telegram struct {
 	} `mapstructure:"proxy"`
 }
 
-// CORSConfig — настройки CORS для HTTP API.
 type CORSConfig struct {
 	AllowOrigin      string `mapstructure:"allow_origin"`
 	AllowMethods     string `mapstructure:"allow_methods"`

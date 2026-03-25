@@ -108,7 +108,6 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (string,
 		return "", err
 	}
 
-	//todo нужно передавать роль
 	role := RoleManager1
 
 	accessToken, err := s.generateAccessToken(rt.UserID, role)

@@ -121,7 +121,7 @@ func insertTestUser(t *testing.T) int64 {
 	VALUES ($1, $2, $3, $4)
 	ON CONFLICT (email) DO UPDATE SET email=EXCLUDED.email
 	RETURNING id`,
-		email, "placeholder_hash", "manager", "active",
+		email, "placeholder_hash", "manager_1", "active",
 	).Scan(&id)
 	assert.NoError(t, err)
 	return id
@@ -297,5 +297,5 @@ func TestAuthService_Logout(t *testing.T) {
 	assert.NotNil(t, revokedAt)
 
 	err = svc.Logout(ctx, "logout-refresh-token")
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }

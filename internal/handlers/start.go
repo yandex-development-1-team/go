@@ -32,8 +32,6 @@ func NewStartHandler(bot StartHandlerBot, userRepository UserRepository) *StartH
 	}
 }
 
-// Callback-данные для inline-кнопок главного меню
-// Используются как callback_data при нажатии на кнопки после /start
 const (
 	CallbackBoxSolutions    = "box_solutions"
 	CallbackVisitGuide      = "visit_guide"
@@ -43,22 +41,16 @@ const (
 	CallbackSupport         = "support"
 )
 
-// WelcomeText - Приветственное сообщение при команде /start
-// ErrMessageUser - Текст об ошибке при работе с БД
 const (
 	WelcomeText    = "👋 Добро пожаловать в Bot Яндекса!\n\nВыберите интересующую вас опцию:"
 	ErrMessageUser = "Произошла ошибка, попробуйте позже."
 )
 
-// HandleStart обрабатывает команду /start
 func (sh *StartHandler) HandleStart(ctx context.Context, msg *tgbotapi.Message) error {
-	// Инкрементируем MessagesReceived
 	metrics.IncMessagesReceived()
 
-	// Засекаем время для MessageProcessingDuration
 	startTime := time.Now()
 
-	// Записываем длительность обработки в конце
 	defer func() {
 		duration := time.Since(startTime).Seconds()
 		metrics.ObserveMessageProcessingDuration(duration)
@@ -76,10 +68,8 @@ func (sh *StartHandler) HandleStart(ctx context.Context, msg *tgbotapi.Message) 
 		zap.Int64("chat_id", chatID),
 	)
 
-	// TODO: включить создание пользователя при старте
 	if sh.userRepository != nil {
 		if err := sh.userRepository.CreateUser(ctx, telegramID, username, firstName, lastName); err != nil {
-			// При ошибке создания пользователя инкрементируем MessagesErrors
 			metrics.IncMessagesErrors()
 
 			logger.Error("database error in CreateUser",
@@ -91,8 +81,6 @@ func (sh *StartHandler) HandleStart(ctx context.Context, msg *tgbotapi.Message) 
 			errMsg := tgbotapi.NewMessage(chatID, ErrMessageUser)
 			if _, sendErr := sh.bot.Send(errMsg); sendErr != nil {
 				logger.Error("failed to send error message", zap.Error(sendErr))
-
-				// При ошибке отправки сообщения об ошибке инкрементируем MessagesErrors
 				metrics.IncMessagesErrors()
 			}
 			return err
@@ -103,8 +91,6 @@ func (sh *StartHandler) HandleStart(ctx context.Context, msg *tgbotapi.Message) 
 	reply.ReplyMarkup = mainMenuKeyboard()
 
 	if _, err := sh.bot.Send(reply); err != nil {
-
-		// При ошибке отправки инкрементируем MessagesErrors
 		metrics.IncMessagesErrors()
 		logger.Error("failed to send start message", zap.Int64("chat_id", chatID), zap.Error(err))
 		return err
@@ -125,7 +111,6 @@ func (sh *StartHandler) Handle(ctx context.Context, query *tgbotapi.CallbackQuer
 	return nil
 }
 
-// mainMenuKeyboard возвращает разметку inline-кнопок главного меню
 func mainMenuKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(

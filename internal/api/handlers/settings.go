@@ -83,7 +83,6 @@ func (a SettingsHandler) Put(c *gin.Context) {
 	})
 }
 
-// parseSettings преобразует срез Setting в SettingsResponse
 func parseSettings(settings []models.Setting) (*dto.SettingsResponse, error) {
 	resp := &dto.SettingsResponse{}
 

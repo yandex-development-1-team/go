@@ -42,7 +42,6 @@ var (
 	ErrApplicationNotFound    = errors.New("application not found")
 )
 
-// RefreshToken — refresh-токен для аутентификации.
 type RefreshToken struct {
 	ID        int64      `db:"id"`
 	UserID    int64      `db:"user_id"`

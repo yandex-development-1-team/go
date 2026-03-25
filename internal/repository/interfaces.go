@@ -11,13 +11,11 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-// StaffRepository — доступ к сотрудникам (таблица staff, логин по email).
 type StaffRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error)
 	CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error)
 }
 
-// TelegramUserRepository — пользователи бота (таблица users, telegram_id).
 type TelegramUserRepository interface {
 	CreateUser(ctx context.Context, telegramID int64, userName, firstName, lastName string) error
 	GetUserByTelegramID(ctx context.Context, telegramID int64) (*models.User, error)
@@ -25,7 +23,6 @@ type TelegramUserRepository interface {
 	IsAdmin(ctx context.Context, telegramID int64) (bool, error)
 }
 
-// BookingRepository — бронирования.
 type BookingRepository interface {
 	CreateBooking(ctx context.Context, b *models.Booking) (int64, error)
 	GetAvailableSlots(ctx context.Context, serviceID int, date time.Time) ([]time.Time, error)
@@ -33,7 +30,6 @@ type BookingRepository interface {
 	UpdateBookingStatus(ctx context.Context, bookingID int64, status string) error
 }
 
-// ApplicationRepository — заявки.
 type ApplicationRepository interface {
 	CreateApplication(ctx context.Context, req *models.ApplicationCreateRequest) (*models.Application, error)
 	GetApplications(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error)
@@ -42,7 +38,6 @@ type ApplicationRepository interface {
 	DeleteApplication(ctx context.Context, id int64) error
 }
 
-// BoxSolutionRepository — коробочные решения (services).
 type BoxSolutionRepository interface {
 	GetServices(ctx context.Context, telegramID int64) ([]models.Service, error)
 	GetServiceByID(ctx context.Context, serviceID int) (models.Service, error)
@@ -50,7 +45,6 @@ type BoxSolutionRepository interface {
 	GetAvailableTimeSlotsByDate(ctx context.Context, serviceID int, date string) ([]string, error)
 }
 
-// SessionRepository — сессии пользователей (Redis).
 type SessionRepository interface {
 	SaveSession(ctx context.Context, userID int64, state string, data map[string]interface{}) error
 	GetSession(ctx context.Context, userID int64) (*models.UserSession, error)
@@ -58,13 +52,11 @@ type SessionRepository interface {
 	UpdateSessionState(ctx context.Context, userID int64, newState string) error
 }
 
-// SettingsRepository — чтение настроек из хранилища.
 type SettingsRepository interface {
 	GetSettings(ctx context.Context) ([]models.SettingRow, error)
 	PutSettings(ctx context.Context, newSettings []models.Setting) (time.Time, error)
 }
 
-// RefreshTokenRepository — хранение и инвалидация refresh-токенов.
 type RefreshTokenRepository interface {
 	Create(ctx context.Context, rt *models.RefreshToken) error
 	CreateRefreshToken(ctx context.Context, userID int64, token string, expiresAt time.Time) error
@@ -72,7 +64,6 @@ type RefreshTokenRepository interface {
 	Revoke(ctx context.Context, token string) error
 }
 
-// SpecialProjectRepository — CRUD for spesial projects.
 type SpecialProjectRepository interface {
 	Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error)
 	GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error)
@@ -81,12 +72,10 @@ type SpecialProjectRepository interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-// TxRepository — атомарность работы с бд.
 type TxRepository interface {
 	RunToTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
-// ResourcePageRepository — страницы ресурсов.
 type ResourcePageRepository interface {
 	GetBySlug(ctx context.Context, slug string) (*models.ResourcePage, error)
 	GetBySlugTx(ctx context.Context, queryable Queryable, slug string, lockForUpdate bool) (*models.ResourcePage, error)
@@ -95,7 +84,6 @@ type ResourcePageRepository interface {
 	BeginTx(ctx context.Context) (*sqlx.Tx, error)
 }
 
-// Queryable — общее для sqlx.DB и sqlx.Tx.
 type Queryable interface {
 	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)

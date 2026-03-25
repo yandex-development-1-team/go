@@ -14,7 +14,6 @@ import (
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
-// APIServices contains API services
 type APIServices struct {
 	BoxService        *apiService.APIBoxService
 	SpecialProjectSvc *service.SpecialProjectService
@@ -23,7 +22,6 @@ type APIServices struct {
 	RecPageSvc        *service.ResourcePageService
 }
 
-// Server server structure
 type Server struct {
 	router      *gin.Engine
 	services    *APIServices
@@ -31,7 +29,6 @@ type Server struct {
 	authService *apiService.AuthService
 }
 
-// New creates a new server (CORS и прочие настройки берутся из cfg).
 func New(cfg *config.Config, services *APIServices, authService *apiService.AuthService) *Server {
 	if cfg.Environment == "dev" {
 		gin.SetMode(gin.DebugMode)
@@ -52,19 +49,18 @@ func New(cfg *config.Config, services *APIServices, authService *apiService.Auth
 	}
 }
 
-// RegisterRoutes registers routes
 func (s *Server) RegisterRoutes() {
+	authHandler := handlers.NewAuthHandler(s.authService)
 	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
 	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
 	settingsHandler := handlers.NewSettingsHandler(s.services.SettingsService)
 	analyticsHandler := handlers.NewAnalyticsHandler(s.services.AnalyticsSvc)
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler)
+	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler)
 
 }
 
-// Run starts the server
 func (s *Server) Run(cfg *config.Config) error {
 	s.srv = &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
@@ -77,7 +73,6 @@ func (s *Server) Run(cfg *config.Config) error {
 	return nil
 }
 
-// Shutdown stops the server. No-op if Run was not called.
 func (s *Server) Shutdown(ctx context.Context) error {
 	if s.srv == nil {
 		return nil
