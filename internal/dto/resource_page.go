@@ -1,19 +1,28 @@
 package dto
 
-import "github.com/yandex-development-1-team/go/internal/resourcepage"
+import "github.com/yandex-development-1-team/go/internal/models"
 
-// ResourcePageUpdateRequest DTO for updating a resource page.
-// Using pointers to allow optional fields.
 type ResourcePageUpdateRequest struct {
-	Title   *string              `json:"title,omitempty"`
-	Content *string              `json:"content,omitempty"`
-	Links   *[]resourcepage.Link `json:"links,omitempty"` // Optional array of links
+	Slug    string                     `json:"slug,omitempty"`
+	Title   *string                    `json:"title,omitempty"`
+	Content *string                    `json:"content,omitempty"`
+	Links   *[]models.ResourcePageLink `json:"links,omitempty"`
 }
 
-// ResourcePagePublic DTO for the public endpoint.
-// Excludes slug and updated_at.
+type ResourcePageResponse struct {
+	Title   string                     `json:"title,omitempty"`
+	Content *string                    `json:"content,omitempty"`
+	Links   *[]models.ResourcePageLink `json:"links,omitempty"`
+}
+
+type ResourcePageResponsePublic struct {
+	Title   string                     `json:"title,omitempty"`
+	Content *string                    `json:"content,omitempty"`
+	Links   *[]models.ResourcePageLink `json:"links,omitempty"`
+}
+
 type ResourcePagePublic struct {
-	Title   string              `json:"title"`
-	Content string              `json:"content"`
-	Links   []resourcepage.Link `json:"links"`
+	Title   string                    `json:"title"`
+	Content string                    `json:"content"`
+	Links   []models.ResourcePageLink `json:"links"`
 }

@@ -10,8 +10,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
-	rp "github.com/yandex-development-1-team/go/internal/resourcepage"
 )
 
 type ResourcePageRepository struct {
@@ -22,15 +22,12 @@ func NewResourcePageRepo(db *sqlx.DB) *ResourcePageRepository {
 	return &ResourcePageRepository{db: db}
 }
 
-// GetBySlug returns page by slug without lock for update and transaction
-func (r *ResourcePageRepository) GetBySlug(ctx context.Context, slug string) (*rp.ResourcePage, error) {
+func (r *ResourcePageRepository) GetBySlug(ctx context.Context, slug string) (*models.ResourcePage, error) {
 	return r.GetBySlugTx(ctx, r.db, slug, false)
 }
 
-// GetBySlugTx returns page by slug
-// Use lockForUpdate if needed SELECT ... FOR UPDATE.
-func (r *ResourcePageRepository) GetBySlugTx(ctx context.Context, queryable repository.Queryable, slug string, lockForUpdate bool) (*rp.ResourcePage, error) {
-	var dbModel rp.DB
+func (r *ResourcePageRepository) GetBySlugTx(ctx context.Context, queryable repository.Queryable, slug string, lockForUpdate bool) (*models.ResourcePage, error) {
+	var dbModel models.ResourcePageDB
 	query := "SELECT slug, title, content, links, updated_at FROM resource_pages WHERE slug = $1"
 	if lockForUpdate {
 		query += " FOR UPDATE"
@@ -40,7 +37,7 @@ func (r *ResourcePageRepository) GetBySlugTx(ctx context.Context, queryable repo
 	err := queryable.GetContext(ctx, &dbModel, query, slug)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, rp.ErrNotFound
+			return nil, models.ErrResourcePageNotFound
 		}
 		return nil, err
 	}
@@ -53,10 +50,8 @@ func (r *ResourcePageRepository) GetBySlugTx(ctx context.Context, queryable repo
 	return domainModel, nil
 }
 
-// UpdatePageContentAndLinksTx updates page.
-func (r *ResourcePageRepository) UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []rp.Link) error {
-
-	domainModel := &rp.ResourcePage{
+func (r *ResourcePageRepository) UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []models.ResourcePageLink) error {
+	domainModel := &models.ResourcePage{
 		Slug:    slug,
 		Title:   title,
 		Content: content,
@@ -87,14 +82,13 @@ func (r *ResourcePageRepository) UpdatePageContentAndLinksTx(ctx context.Context
 		return fmt.Errorf("error updating resource page in transaction: %w", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("resource page with slug '%s' not found", slug)
+		return models.ErrResourcePageNotFound
 	}
 
 	return nil
 }
 
-// GetAllSummaries gets all pages info.
-func (r *ResourcePageRepository) GetAllSummaries(ctx context.Context) ([]*rp.ResourcePage, error) {
+func (r *ResourcePageRepository) GetAllSummaries(ctx context.Context) ([]*models.ResourcePage, error) {
 	query := "SELECT slug, title, updated_at FROM resource_pages ORDER BY updated_at DESC;"
 	var dbModels []struct {
 		Slug      string    `db:"slug"`
@@ -107,9 +101,9 @@ func (r *ResourcePageRepository) GetAllSummaries(ctx context.Context) ([]*rp.Res
 		return nil, fmt.Errorf("error querying resource page summaries: %w", err)
 	}
 
-	domainModels := make([]*rp.ResourcePage, len(dbModels))
+	domainModels := make([]*models.ResourcePage, len(dbModels))
 	for i, dbMod := range dbModels {
-		domainModels[i] = &rp.ResourcePage{
+		domainModels[i] = &models.ResourcePage{
 			Slug:      dbMod.Slug,
 			Title:     dbMod.Title,
 			UpdatedAt: dbMod.UpdatedAt.Format(time.RFC3339),
@@ -123,12 +117,12 @@ func (r *ResourcePageRepository) BeginTx(ctx context.Context) (*sqlx.Tx, error) 
 	return r.db.BeginTxx(ctx, nil)
 }
 
-func toDomainDB(dbModel *rp.DB) (*rp.ResourcePage, error) {
+func toDomainDB(dbModel *models.ResourcePageDB) (*models.ResourcePage, error) {
 	if dbModel == nil {
 		return nil, nil
 	}
 
-	var links []rp.Link
+	var links []models.ResourcePageLink
 	if len(dbModel.LinksJSON) > 0 {
 		if err := json.Unmarshal(dbModel.LinksJSON, &links); err != nil {
 			return nil, err
@@ -140,7 +134,7 @@ func toDomainDB(dbModel *rp.DB) (*rp.ResourcePage, error) {
 		content = *dbModel.Content
 	}
 
-	return &rp.ResourcePage{
+	return &models.ResourcePage{
 		Slug:      dbModel.Slug,
 		Title:     dbModel.Title,
 		Content:   content,
@@ -150,7 +144,7 @@ func toDomainDB(dbModel *rp.DB) (*rp.ResourcePage, error) {
 	}, nil
 }
 
-func toRepoDB(domainModel *rp.ResourcePage) (*rp.DB, error) {
+func toRepoDB(domainModel *models.ResourcePage) (*models.ResourcePageDB, error) {
 	if domainModel == nil {
 		return nil, nil
 	}
@@ -165,7 +159,7 @@ func toRepoDB(domainModel *rp.ResourcePage) (*rp.DB, error) {
 		contentPtr = &domainModel.Content
 	}
 
-	return &rp.DB{
+	return &models.ResourcePageDB{
 		Slug:      domainModel.Slug,
 		Title:     domainModel.Title,
 		Content:   contentPtr,

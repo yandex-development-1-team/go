@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/yandex-development-1-team/go/internal/models"
-	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
 // Пакет предназначен для использования из Gin-хендлеров и middleware.
@@ -36,8 +35,7 @@ var errMappings = []errMapping{
 	{models.ErrInvalidCredentials, http.StatusUnauthorized, "Неверный логин или пароль"},
 	{models.ErrUserNotFound, http.StatusNotFound, "Пользователь не найден"},
 	{models.ErrBookingNotFound, http.StatusNotFound, "Заявка не найдена"},
-	{models.ErrSpecProjNotFound, http.StatusNotFound, "Спецпроект не найден"},
-	{specialproject.ErrNotFound, http.StatusNotFound, "Спецпроект не найден"},
+	{models.ErrSpecialProjectNotFound, http.StatusNotFound, "Спецпроект не найден"},
 	{models.ErrSlotOccupied, http.StatusConflict, "Выбранный слот уже занят"},
 	{models.ErrInvalidInput, http.StatusBadRequest, "Некорректные данные"},
 	{models.ErrRequestCanceled, 499, "Запрос отменён"},

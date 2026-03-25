@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,7 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	rp "github.com/yandex-development-1-team/go/internal/resourcepage"
+	"github.com/yandex-development-1-team/go/internal/dto"
+	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/service"
 )
 
@@ -21,7 +23,6 @@ func NewResourcePageHandler(service *service.ResourcePageService) *ResourcePageH
 	return &ResourcePageHandler{service: service}
 }
 
-// listResourcePages handles GET /api/v1/resources
 func (h *ResourcePageHandler) ListResourcePages(c *gin.Context) {
 	ctx := c.Request.Context()
 	summaries, err := h.service.GetAllSummaries(ctx)
@@ -34,7 +35,6 @@ func (h *ResourcePageHandler) ListResourcePages(c *gin.Context) {
 	c.JSON(http.StatusOK, summaries)
 }
 
-// getResourcePage handles GET /api/v1/resources/{slug}
 func (h *ResourcePageHandler) GetResourcePage(c *gin.Context) {
 	slug := c.Param("slug")
 	if slug == "" {
@@ -45,7 +45,7 @@ func (h *ResourcePageHandler) GetResourcePage(c *gin.Context) {
 	ctx := c.Request.Context()
 	page, err := h.service.GetResourcePage(ctx, slug)
 	if err != nil {
-		if fmt.Sprintf("%v", err) == fmt.Sprintf("resource page with slug '%s' not found", slug) {
+		if errors.Is(err, models.ErrResourcePageNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
 			return
 		}
@@ -54,12 +54,9 @@ func (h *ResourcePageHandler) GetResourcePage(c *gin.Context) {
 		return
 	}
 
-	apiResponse := toAPIResponse(page)
-
-	c.JSON(http.StatusOK, apiResponse)
+	c.JSON(http.StatusOK, toAPIResponse(page))
 }
 
-// updateResourcePage handles PUT /api/v1/resources/{slug}
 func (h *ResourcePageHandler) UpdateResourcePage(c *gin.Context) {
 	slug := c.Param("slug")
 	if slug == "" {
@@ -67,7 +64,7 @@ func (h *ResourcePageHandler) UpdateResourcePage(c *gin.Context) {
 		return
 	}
 
-	var updateReq rp.UpdateRequest
+	var updateReq dto.ResourcePageUpdateRequest
 	if err := c.ShouldBindJSON(&updateReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		return
@@ -82,7 +79,7 @@ func (h *ResourcePageHandler) UpdateResourcePage(c *gin.Context) {
 
 	updatedPage, err := h.service.UpdateResourcePage(ctx, slug, newPageData)
 	if err != nil {
-		if fmt.Sprintf("%v", err) == fmt.Sprintf("resource page with slug '%s' not found", slug) {
+		if errors.Is(err, models.ErrResourcePageNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
 			return
 		}
@@ -95,11 +92,9 @@ func (h *ResourcePageHandler) UpdateResourcePage(c *gin.Context) {
 		return
 	}
 
-	apiResponse := toAPIResponse(updatedPage)
-	c.JSON(http.StatusOK, apiResponse)
+	c.JSON(http.StatusOK, toAPIResponse(updatedPage))
 }
 
-// getPublicResourcePage handles GET /api/v1/public/resources/{slug}
 func (h *ResourcePageHandler) GetPublicResourcePage(c *gin.Context) {
 	slug := c.Param("slug")
 	if slug == "" {
@@ -110,7 +105,7 @@ func (h *ResourcePageHandler) GetPublicResourcePage(c *gin.Context) {
 	ctx := c.Request.Context()
 	page, err := h.service.GetResourcePage(ctx, slug)
 	if err != nil {
-		if fmt.Sprintf("%v", err) == fmt.Sprintf("resource page with slug '%s' not found", slug) {
+		if errors.Is(err, models.ErrResourcePageNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
 			return
 		}
@@ -119,12 +114,9 @@ func (h *ResourcePageHandler) GetPublicResourcePage(c *gin.Context) {
 		return
 	}
 
-	apiResponse := toAPIResponsePublic(page)
-
-	c.JSON(http.StatusOK, apiResponse)
+	c.JSON(http.StatusOK, toAPIResponsePublic(page))
 }
 
-// deleteLink handles DELETE /api/v1/resources/{slug}/{id}
 func (h *ResourcePageHandler) DeleteLink(c *gin.Context) {
 	slug := c.Param("slug")
 	id := c.Param("id")
@@ -137,7 +129,7 @@ func (h *ResourcePageHandler) DeleteLink(c *gin.Context) {
 	ctx := c.Request.Context()
 	err := h.service.DeleteLink(ctx, slug, id)
 	if err != nil {
-		if fmt.Sprintf("%v", err) == fmt.Sprintf("resource page with slug '%s' not found", slug) {
+		if errors.Is(err, models.ErrResourcePageNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Page Not Found"})
 			return
 		}
@@ -153,7 +145,7 @@ func (h *ResourcePageHandler) DeleteLink(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func toAPIResponse(domainModel *rp.ResourcePage) *rp.Response {
+func toAPIResponse(domainModel *models.ResourcePage) *dto.ResourcePageResponse {
 	if domainModel == nil {
 		return nil
 	}
@@ -163,19 +155,19 @@ func toAPIResponse(domainModel *rp.ResourcePage) *rp.Response {
 		contentPtr = &domainModel.Content
 	}
 
-	var linksPtr *[]rp.Link
+	var linksPtr *[]models.ResourcePageLink
 	if len(domainModel.Links) > 0 {
 		linksPtr = &domainModel.Links
 	}
 
-	return &rp.Response{
+	return &dto.ResourcePageResponse{
 		Title:   domainModel.Title,
 		Content: contentPtr,
 		Links:   linksPtr,
 	}
 }
 
-func toAPIResponsePublic(domainModel *rp.ResourcePage) *rp.ResponsePublic {
+func toAPIResponsePublic(domainModel *models.ResourcePage) *dto.ResourcePageResponsePublic {
 	if domainModel == nil {
 		return nil
 	}
@@ -185,24 +177,24 @@ func toAPIResponsePublic(domainModel *rp.ResourcePage) *rp.ResponsePublic {
 		contentPtr = &domainModel.Content
 	}
 
-	var linksPtr *[]rp.Link
+	var linksPtr *[]models.ResourcePageLink
 	if len(domainModel.Links) > 0 {
 		linksPtr = &domainModel.Links
 	}
 
-	return &rp.ResponsePublic{
+	return &dto.ResourcePageResponsePublic{
 		Title:   domainModel.Title,
 		Content: contentPtr,
 		Links:   linksPtr,
 	}
 }
 
-func toDomainFromAPIUpdateRequest(apiReq *rp.UpdateRequest) (*rp.ResourcePage, error) {
+func toDomainFromAPIUpdateRequest(apiReq *dto.ResourcePageUpdateRequest) (*models.ResourcePage, error) {
 	if apiReq == nil {
 		return nil, nil
 	}
 
-	domainUpdate := &rp.ResourcePage{}
+	domainUpdate := &models.ResourcePage{}
 
 	if apiReq.Title != nil {
 		domainUpdate.Title = *apiReq.Title
@@ -211,7 +203,6 @@ func toDomainFromAPIUpdateRequest(apiReq *rp.UpdateRequest) (*rp.ResourcePage, e
 		domainUpdate.Content = *apiReq.Content
 	}
 	if apiReq.Links != nil {
-
 		for _, newLink := range *apiReq.Links {
 			parsedURL, err := url.ParseRequestURI(newLink.URL)
 			if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
@@ -219,7 +210,7 @@ func toDomainFromAPIUpdateRequest(apiReq *rp.UpdateRequest) (*rp.ResourcePage, e
 			}
 		}
 
-		newLinks := make([]rp.Link, len(*apiReq.Links))
+		newLinks := make([]models.ResourcePageLink, len(*apiReq.Links))
 		copy(newLinks, *apiReq.Links)
 		domainUpdate.Links = newLinks
 	}

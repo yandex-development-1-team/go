@@ -8,10 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/service"
-	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
 type SpecialProjectHandler struct {
@@ -22,11 +22,11 @@ func NewSpecialProjectHandler(svc *service.SpecialProjectService) *SpecialProjec
 	return &SpecialProjectHandler{svc: svc}
 }
 
-func toDomain(req *specialproject.CreateRequest) *specialproject.Project {
+func toDomainFromCreate(req *dto.SpecialProjectCreateRequest) *models.SpecialProject {
 	if req == nil {
 		return nil
 	}
-	return &specialproject.Project{
+	return &models.SpecialProject{
 		Title:         req.Title,
 		Description:   req.Description,
 		Image:         req.Image,
@@ -34,11 +34,11 @@ func toDomain(req *specialproject.CreateRequest) *specialproject.Project {
 	}
 }
 
-func toResponse(domain *specialproject.Project) *specialproject.Response {
+func toSpecialProjectResponse(domain *models.SpecialProject) *dto.SpecialProjectResponse {
 	if domain == nil {
 		return nil
 	}
-	return &specialproject.Response{
+	return &dto.SpecialProjectResponse{
 		ID:            domain.ID,
 		Title:         domain.Title,
 		Description:   domain.Description,
@@ -49,13 +49,13 @@ func toResponse(domain *specialproject.Project) *specialproject.Response {
 	}
 }
 
-func toItemList(domain []*specialproject.Project) []specialproject.ListItem {
+func toItemList(domain []*models.SpecialProject) []dto.SpecialProjectListItem {
 	if domain == nil {
 		return nil
 	}
-	result := make([]specialproject.ListItem, 0, len(domain))
+	result := make([]dto.SpecialProjectListItem, 0, len(domain))
 	for _, item := range domain {
-		result = append(result, specialproject.ListItem{
+		result = append(result, dto.SpecialProjectListItem{
 			ID:            item.ID,
 			Title:         item.Title,
 			IsActiveInBot: item.IsActiveInBot,
@@ -64,23 +64,21 @@ func toItemList(domain []*specialproject.Project) []specialproject.ListItem {
 	return result
 }
 
-// POST /api/v1/special-projects
 func (h *SpecialProjectHandler) CreateSpecialProject(c *gin.Context) {
-	var req specialproject.CreateRequest
+	var req dto.SpecialProjectCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_error", "details": err.Error()})
 		return
 	}
-	proj := toDomain(&req)
+	proj := toDomainFromCreate(&req)
 	project, err := h.svc.Create(c.Request.Context(), proj)
 	if err != nil {
 		sendSpecialProjectErr(c, &proj.ID, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toResponse(project))
+	c.JSON(http.StatusCreated, toSpecialProjectResponse(project))
 }
 
-// GET /api/v1/special-projects
 func (h *SpecialProjectHandler) ListSpecialProjects(c *gin.Context) {
 	status := c.Query("status")
 	search := c.Query("search")
@@ -115,11 +113,14 @@ func (h *SpecialProjectHandler) ListSpecialProjects(c *gin.Context) {
 	}
 	items := toItemList(domainlist)
 
-	c.JSON(http.StatusOK, specialproject.ResponseList{Items: items,
-		Pagination: specialproject.Pagination{Total: total, Limit: limit, Offset: offset}})
+	c.JSON(http.StatusOK, dto.SpecialProjectListResponse{
+		Items: items,
+		Pagination: dto.Pagination{
+			Total: total, Limit: limit, Offset: offset,
+		},
+	})
 }
 
-// GET /api/v1/special-projects/{id}
 func (h *SpecialProjectHandler) GetSpecialProjectByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -132,10 +133,9 @@ func (h *SpecialProjectHandler) GetSpecialProjectByID(c *gin.Context) {
 		sendSpecialProjectErr(c, &id, err)
 		return
 	}
-	c.JSON(http.StatusOK, toResponse(project))
+	c.JSON(http.StatusOK, toSpecialProjectResponse(project))
 }
 
-// PUT /api/v1/special-projects/{id}
 func (h *SpecialProjectHandler) UpdateSpecialProject(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -143,7 +143,7 @@ func (h *SpecialProjectHandler) UpdateSpecialProject(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_id"})
 		return
 	}
-	var payload specialproject.Project
+	var payload models.SpecialProject
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_error", "details": err.Error()})
 		return
@@ -153,10 +153,9 @@ func (h *SpecialProjectHandler) UpdateSpecialProject(c *gin.Context) {
 		sendSpecialProjectErr(c, &id, err)
 		return
 	}
-	c.JSON(http.StatusOK, toResponse(updated))
+	c.JSON(http.StatusOK, toSpecialProjectResponse(updated))
 }
 
-// DELETE /api/v1/special-projects/{id}
 func (h *SpecialProjectHandler) DeleteSpecialProject(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -175,7 +174,7 @@ func sendSpecialProjectErr(c *gin.Context, id *int64, err error) {
 	switch {
 	case errors.Is(err, models.ErrInvalidInput):
 		c.JSON(http.StatusBadRequest, gin.H{"error": models.ErrInvalidInput.Error()})
-	case errors.Is(err, specialproject.ErrNotFound):
+	case errors.Is(err, models.ErrSpecialProjectNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": http.StatusText(http.StatusNotFound)})
 	default:
 		if id != nil {

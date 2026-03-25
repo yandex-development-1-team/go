@@ -9,8 +9,6 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/yandex-development-1-team/go/internal/models"
-	"github.com/yandex-development-1-team/go/internal/resourcepage"
-	"github.com/yandex-development-1-team/go/internal/specialproject"
 )
 
 // StaffRepository — доступ к сотрудникам (таблица staff, логин по email).
@@ -73,10 +71,10 @@ type RefreshTokenRepository interface {
 
 // SpecialProjectRepository — CRUD for spesial projects.
 type SpecialProjectRepository interface {
-	Create(ctx context.Context, proj *specialproject.DB) (*specialproject.DB, error)
-	GetByID(ctx context.Context, id int64) (*specialproject.DB, error)
-	List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*specialproject.DB, int, error)
-	Update(ctx context.Context, id int64, update *specialproject.Update) (*specialproject.DB, error)
+	Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error)
+	GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error)
+	List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
+	Update(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error)
 	Delete(ctx context.Context, id int64) error
 }
 
@@ -87,10 +85,10 @@ type TxRepository interface {
 
 // ResourcePageRepository — страницы ресурсов.
 type ResourcePageRepository interface {
-	GetBySlug(ctx context.Context, slug string) (*resourcepage.ResourcePage, error)
-	GetBySlugTx(ctx context.Context, queryable Queryable, slug string, lockForUpdate bool) (*resourcepage.ResourcePage, error)
-	UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []resourcepage.Link) error
-	GetAllSummaries(ctx context.Context) ([]*resourcepage.ResourcePage, error)
+	GetBySlug(ctx context.Context, slug string) (*models.ResourcePage, error)
+	GetBySlugTx(ctx context.Context, queryable Queryable, slug string, lockForUpdate bool) (*models.ResourcePage, error)
+	UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []models.ResourcePageLink) error
+	GetAllSummaries(ctx context.Context) ([]*models.ResourcePage, error)
 	BeginTx(ctx context.Context) (*sqlx.Tx, error)
 }
 
