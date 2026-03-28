@@ -20,6 +20,7 @@ type APIServices struct {
 	SettingsService   *apiService.SettingsService
 	AnalyticsSvc      *apiService.AnalyticsService
 	RecPageSvc        *service.ResourcePageService
+	UsersAdmin        *apiService.UsersAdminService
 }
 
 type Server struct {
@@ -56,9 +57,19 @@ func (s *Server) RegisterRoutes() {
 	settingsHandler := handlers.NewSettingsHandler(s.services.SettingsService)
 	analyticsHandler := handlers.NewAnalyticsHandler(s.services.AnalyticsSvc)
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
+	usersHandler := handlers.NewUsersHandler(s.services.UsersAdmin)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler)
-
+	SetupRoutes(
+		s.router,
+		s.authService.JwtSecret,
+		authHandler,
+		boxHandler,
+		specProjHandler,
+		settingsHandler,
+		analyticsHandler,
+		recPageHandler,
+		usersHandler,
+	)
 }
 
 func (s *Server) Run(cfg *config.Config) error {

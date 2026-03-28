@@ -7,7 +7,17 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 )
 
-func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler) {
+func SetupRoutes(
+	router *gin.Engine,
+	jwtSecret []byte,
+	authHandler *handlers.AuthHandler,
+	boxHandler *handlers.BoxHandler,
+	specProjHandler *handlers.SpecialProjectHandler,
+	settingsHandler *handlers.SettingsHandler,
+	analyticsHandler *handlers.AnalyticsHandler,
+	recPageHandler *handlers.ResourcePageHandler,
+	usersHandler *handlers.UsersHandler,
+) {
 	apiV1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(apiV1, authHandler)
@@ -19,9 +29,20 @@ func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.Aut
 			setupSpecialProjectRoutes(protected, specProjHandler)
 			setupSettingsRoutes(protected, settingsHandler)
 			setupAnalyticsRoutes(protected, analyticsHandler)
+			setupUsersRoutes(protected, usersHandler)
 		}
 		public := apiV1.Group("/public")
 		public.GET("/resources/:slug", recPageHandler.GetPublicResourcePage)
+	}
+}
+
+func setupUsersRoutes(rg *gin.RouterGroup, h *handlers.UsersHandler) {
+	users := rg.Group("/users")
+	users.Use(middleware.RequireAdmin())
+	{
+		users.POST("", h.Create)
+		users.PUT("/:id", h.Update)
+		users.PUT("/:id/block", h.Block)
 	}
 }
 

@@ -28,6 +28,11 @@ const (
 		UPDATE refresh_tokens
 		SET revoked_at = NOW()
 		WHERE token = $1 AND revoked_at IS NULL`
+
+	revokeRefreshTokensByUserQuery = `
+		UPDATE refresh_tokens
+		SET revoked_at = NOW()
+		WHERE user_id = $1 AND revoked_at IS NULL`
 )
 
 var (
@@ -104,4 +109,9 @@ func (r *RefreshTokenRepo) checkError(operation string, err error) error {
 	}
 	logger.Error("database_error", zap.Error(err), zap.String("operation", operation))
 	return ErrRTDatabase
+}
+
+func (r *RefreshTokenRepo) RevokeByUserID(ctx context.Context, userID int64) error {
+	_, err := r.db.ExecContext(ctx, revokeRefreshTokensByUserQuery, userID)
+	return err
 }

@@ -117,12 +117,15 @@ func run() error {
 	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, staffRepo, txRepo, cfg.AuthConfig.JWTSecret,
 		cfg.AuthConfig.AccessTokenTTLMinutes, cfg.AuthConfig.RefreshTokenTTLDays)
 
+	usersAdminSvc := apiService.NewUsersAdminService(staffRepo, refreshTokenRepoRepo)
+
 	apiServer := server.New(&cfg, &server.APIServices{
 		BoxService:        boxService,
 		SpecialProjectSvc: specialProjectService,
 		SettingsService:   settingsService,
 		AnalyticsSvc:      analyticsService,
 		RecPageSvc:        resourcePageService,
+		UsersAdmin:        usersAdminSvc,
 	}, apiAuthService)
 
 	apiServer.RegisterRoutes()

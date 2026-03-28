@@ -14,6 +14,9 @@ import (
 type StaffRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error)
 	CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error)
+	CreateStaffByAdmin(ctx context.Context, req *models.StaffAdminCreate) (*models.UserAPI, error)
+	UpdateStaff(ctx context.Context, id int64, req *models.StaffAdminUpdate) (*models.UserAPI, error)
+	BlockStaff(ctx context.Context, id int64) (*models.UserAPI, error)
 }
 
 type TelegramUserRepository interface {
@@ -62,6 +65,7 @@ type RefreshTokenRepository interface {
 	CreateRefreshToken(ctx context.Context, userID int64, token string, expiresAt time.Time) error
 	GetForUpdate(ctx context.Context, tx *sqlx.Tx, token string) (*models.RefreshToken, error)
 	Revoke(ctx context.Context, token string) error
+	RevokeByUserID(ctx context.Context, userID int64) error
 }
 
 type SpecialProjectRepository interface {
