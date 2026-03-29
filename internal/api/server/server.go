@@ -20,6 +20,7 @@ type APIServices struct {
 	SettingsService   *apiService.SettingsService
 	AnalyticsSvc      *apiService.AnalyticsService
 	RecPageSvc        *service.ResourcePageService
+	UserSvc           *apiService.UserService
 }
 
 type Server struct {
@@ -56,8 +57,9 @@ func (s *Server) RegisterRoutes() {
 	settingsHandler := handlers.NewSettingsHandler(s.services.SettingsService)
 	analyticsHandler := handlers.NewAnalyticsHandler(s.services.AnalyticsSvc)
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
+	userHandler := handlers.NewUserHandler(s.services.UserSvc)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler)
+	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler)
 
 }
 
