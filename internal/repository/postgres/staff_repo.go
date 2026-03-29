@@ -153,12 +153,12 @@ func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit
 	args = append(args, limit, offset)
 
 	type userRow struct {
-		ID           int64       `db:"id"`
-		TelegramNick *string     `db:"telegram_nick"`
-		FirstName    string      `db:"first_name"`
-		LastName     string      `db:"last_name"`
-		Role         string      `db:"role"`
-		Status       string      `db:"status"`
+		ID           int64        `db:"id"`
+		TelegramNick *string      `db:"telegram_nick"`
+		FirstName    string       `db:"first_name"`
+		LastName     string       `db:"last_name"`
+		Role         string       `db:"role"`
+		Status       string       `db:"status"`
 		CreatedAt    sql.NullTime `db:"created_at"`
 	}
 
@@ -194,17 +194,17 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		WHERE id = $1`
 
 	type userRow struct {
-		ID           int64       `db:"id"`
-		TelegramNick *string     `db:"telegram_nick"`
-		FirstName    string      `db:"first_name"`
-		LastName     string      `db:"last_name"`
-		SecondName   string      `db:"second_name"`
-		Email        string      `db:"email"`
-		PhoneNumber  *string     `db:"phone_number"`
-		Role         string      `db:"role"`
-		Status       string      `db:"status"`
-		Department   *string     `db:"department"`
-		Position     *string     `db:"position"`
+		ID           int64        `db:"id"`
+		TelegramNick *string      `db:"telegram_nick"`
+		FirstName    string       `db:"first_name"`
+		LastName     string       `db:"last_name"`
+		SecondName   string       `db:"second_name"`
+		Email        string       `db:"email"`
+		PhoneNumber  *string      `db:"phone_number"`
+		Role         string       `db:"role"`
+		Status       string       `db:"status"`
+		Department   *string      `db:"department"`
+		Position     *string      `db:"position"`
 		CreatedAt    sql.NullTime `db:"created_at"`
 		UpdatedAt    sql.NullTime `db:"updated_at"`
 	}
@@ -225,10 +225,10 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		ORDER BY b.created_at DESC`
 
 	type bookingRow struct {
-		ID          int64       `db:"id"`
-		ServiceName string      `db:"service_name"`
+		ID          int64        `db:"id"`
+		ServiceName string       `db:"service_name"`
 		BookingDate sql.NullTime `db:"booking_date"`
-		Status      string      `db:"status"`
+		Status      string       `db:"status"`
 		CreatedAt   sql.NullTime `db:"created_at"`
 	}
 
@@ -256,7 +256,7 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		ORDER BY b.booking_date DESC`
 
 	type visitRow struct {
-		BoxName   string      `db:"box_name"`
+		BoxName   string       `db:"box_name"`
 		VisitedAt sql.NullTime `db:"visited_at"`
 	}
 
