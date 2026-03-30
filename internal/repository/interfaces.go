@@ -8,12 +8,15 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
 type StaffRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error)
 	CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error)
+	List(ctx context.Context, role, status, search string, limit, offset int) ([]dto.UserListItem, int, error)
+	GetByID(ctx context.Context, id int64) (*dto.UserWithDetails, error)
 }
 
 type TelegramUserRepository interface {

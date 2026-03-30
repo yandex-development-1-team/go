@@ -99,6 +99,7 @@ func run() error {
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
 	resourcePageService := service.NewResourcePageService(resourcePagepRepo)
+	userService := apiService.NewUserService(staffRepo)
 
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
@@ -123,6 +124,7 @@ func run() error {
 		SettingsService:   settingsService,
 		AnalyticsSvc:      analyticsService,
 		RecPageSvc:        resourcePageService,
+		UserSvc:           userService,
 	}, apiAuthService)
 
 	apiServer.RegisterRoutes()
