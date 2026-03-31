@@ -44,6 +44,8 @@ var errMappings = []errMapping{
 	{models.ErrRequestTimeout, http.StatusGatewayTimeout, "Превышено время ожидания"},
 	{models.ErrDatabase, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
 	{models.ErrCache, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
+	{models.ErrBoxNotFound, http.StatusNotFound, "Бокс не найден"},
+	{models.ErrEventNotFound, http.StatusNotFound, "Событие не найдено"},
 }
 
 const defaultMessage = "Произошла ошибка. Попробуйте позже."
