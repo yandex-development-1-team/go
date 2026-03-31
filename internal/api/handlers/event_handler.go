@@ -62,28 +62,19 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 // ListEvents: GET /api/v1/events
 func (h *EventHandler) ListEvents(c *gin.Context) {
 	var query dto.EventListQuery
+	// Теперь ShouldBindQuery сам превратит строку "2026-03-20" в объект time.Time
 	if err := c.ShouldBindQuery(&query); err != nil {
 		apierrors.WriteErrorGin(c, models.ErrInvalidInput)
 		return
 	}
 
 	filter := models.EventFilter{
-		BoxID:  query.BoxID,
-		Status: query.Status,
-		Limit:  query.Limit,  // Теперь берется из DTO с дефолтом
-		Offset: query.Offset, // Теперь берется из DTO с дефолтом
-	}
-
-	// Парсинг дат оставляем простым
-	if query.DateFrom != "" {
-		if t, err := time.Parse("2006-01-02", query.DateFrom); err == nil {
-			filter.DateFrom = &t
-		}
-	}
-	if query.DateTo != "" {
-		if t, err := time.Parse("2006-01-02", query.DateTo); err == nil {
-			filter.DateTo = &t
-		}
+		BoxID:    query.BoxID,
+		DateFrom: query.DateFrom,
+		DateTo:   query.DateTo,
+		Status:   query.Status,
+		Limit:    query.Limit,
+		Offset:   query.Offset,
 	}
 
 	items, total, err := h.repo.List(c.Request.Context(), filter)

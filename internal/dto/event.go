@@ -14,12 +14,12 @@ type EventCreateRequest struct {
 }
 
 type EventListQuery struct {
-	BoxID    *int64  `form:"box_id"`
-	DateFrom string  `form:"date_from"`
-	DateTo   string  `form:"date_to"`
-	Status   *string `form:"status"`
-	Limit    int     `form:"limit,default=50"`
-	Offset   int     `form:"offset,default=0"`
+	BoxID    *int64     `form:"box_id"`
+	DateFrom *time.Time `form:"date_from" time_format:"2006-01-02"`
+	DateTo   *time.Time `form:"date_to"   time_format:"2006-01-02"`
+	Status   *string    `form:"status"`
+	Limit    int        `form:"limit,default=50"`
+	Offset   int        `form:"offset,default=0"`
 }
 
 type EventRow struct {
