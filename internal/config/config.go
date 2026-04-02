@@ -27,6 +27,7 @@ type Config struct {
 	APIOnly           bool           `mapstructure:"api_only"`
 	CORS              CORSConfig     `mapstructure:"cors"`
 	MigrationsDir     string         `mapstructure:"migrations_dir"`
+	Email             EmailConfig    `mapstructure:"email"`
 }
 
 type Telegram struct {
@@ -90,6 +91,15 @@ type AuthConfig struct {
 	JWTSecret             string `mapstructure:"jwt_secret"`
 	AccessTokenTTLMinutes int    `mapstructure:"access_token_ttl_minutes"`
 	RefreshTokenTTLDays   int    `mapstructure:"refresh_token_ttl_days"`
+}
+
+type EmailConfig struct {
+	SMTPHost     string `mapstructure:"smtp_host"`
+	SMTPPort     int    `mapstructure:"smtp_port"`
+	SMTPUsername string `mapstructure:"smtp_username"`
+	SMTPPassword string `mapstructure:"smtp_password"`
+	FromEmail    string `mapstructure:"from_email"`
+	BaseURL      string `mapstructure:"base_url"`
 }
 
 var (

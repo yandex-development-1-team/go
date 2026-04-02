@@ -33,6 +33,8 @@ func setupAuthRoutes(rg *gin.RouterGroup, h *handlers.AuthHandler) {
 		auth.POST("/register", h.RegisterHandler)
 		auth.POST("/refresh", h.HandleRefresh)
 		auth.POST("/logout", h.HandleLogout)
+		auth.POST("/forgot-password", h.HandleForgotPassword)
+		auth.POST("/reset-password", h.HandleResetPassword)
 	}
 }
 

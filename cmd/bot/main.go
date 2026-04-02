@@ -90,6 +90,8 @@ func run() error {
 	staffRepo := postgres.NewStaffRepo(dbSqlx)
 	analyticsRepo := postgres.NewAnalyticsRepo(dbSqlx)
 	resourcePagepRepo := postgres.NewResourcePageRepo(dbSqlx)
+	passwordResetRepo := postgres.NewPasswordResetRepository(dbSqlx)
+	emailService := apiService.NewEmailService(cfg.Email)
 
 	settingsService := apiService.NewSettingsService(settingsRepo)
 	bookService := botService.NewBookingService(sessionRepo, bookRepo, boxSolutionRepo)
@@ -115,7 +117,7 @@ func run() error {
 		}
 	}()
 
-	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, staffRepo, txRepo, cfg.AuthConfig.JWTSecret,
+	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, passwordResetRepo, staffRepo, emailService, txRepo, cfg.AuthConfig.JWTSecret,
 		cfg.AuthConfig.AccessTokenTTLMinutes, cfg.AuthConfig.RefreshTokenTTLDays)
 
 	apiServer := server.New(&cfg, &server.APIServices{
