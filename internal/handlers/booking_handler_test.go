@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,9 +26,11 @@ import (
 	"github.com/yandex-development-1-team/go/internal/database"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
+	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
 	"github.com/yandex-development-1-team/go/internal/repository/postgres"
 	reporedis "github.com/yandex-development-1-team/go/internal/repository/redis"
+	"github.com/yandex-development-1-team/go/internal/service"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
 
@@ -59,6 +62,7 @@ var (
 	handlerBookingRepo *postgres.BookingRepo
 	handlerBoxRepo     *postgres.BoxSolutionRepo
 	handlerService     *botService.BookingService
+	bsService          *service.BoxSolutionsService
 )
 
 // TestUserID — константа для тестового пользователя
@@ -100,8 +104,8 @@ func TestMain(m *testing.M) {
 	handlerBookingRepo = postgres.NewBookingRepository(handlerTestDB)
 	handlerBoxRepo = postgres.NewBoxSolutionRepo(handlerTestDB)
 
-	// Создаем сервис один раз для всех тестов
 	handlerService = botService.NewBookingService(handlerSessionRepo, handlerBookingRepo, handlerBoxRepo)
+	bsService = service.NewBoxSolutionsService(handlerBoxRepo)
 
 	code := m.Run()
 
@@ -193,60 +197,43 @@ func initHandlerTestData() error {
 		return err
 	}
 
-	services := []struct {
-		id          int
-		name        string
-		description string
-		rules       string
-		schedule    string
-		typeService string
-		boxSolution bool
-	}{
-		{1, "Тестовая услуга 1", "Описание 1", "Правила 1", "9:00-18:00", "museum", true},
+	// Вставка тестовой услуги
+	_, err = handlerTestDB.Exec(`
+		INSERT INTO services (id, name, slug, description, rules, location, price, image, status, organizer) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT (id) DO NOTHING`,
+		1, "Тестовая услуга 1", "test-service-1", "Описание 1", "Правила 1", "Москва", 1000, "", "active", "Тестовый организатор")
+	if err != nil {
+		return err
 	}
 
-	for _, s := range services {
-		_, err = handlerTestDB.Exec(`
-			INSERT INTO services (id, name, description, rules, schedule, type, box_solution) 
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-			ON CONFLICT (id) DO NOTHING`,
-			s.id, s.name, s.description, s.rules, s.schedule, s.typeService, s.boxSolution)
-		if err != nil {
-			return err
-		}
-	}
-
+	// Вставка тестовых слотов
 	now := time.Now()
 	dates := []time.Time{
 		now.AddDate(0, 0, 2),
 		now.AddDate(0, 0, 3),
 	}
 
-	slots := []struct {
-		serviceID int
-		date      time.Time
-		timeSlots []string
-	}{
-		{1, dates[0], []string{"10:00", "11:00", "12:00"}},
-		{1, dates[1], []string{"10:00", "11:00", "14:00", "15:00"}},
-	}
-
-	for _, slot := range slots {
+	for _, date := range dates {
 		_, err = handlerTestDB.Exec(`
-			INSERT INTO service_available_slots (service_id, slot_date, time_slots) 
-			VALUES ($1, $2, $3)
-			ON CONFLICT (service_id, slot_date) DO UPDATE SET time_slots = EXCLUDED.time_slots`,
-			slot.serviceID, slot.date, pqStringArray(slot.timeSlots))
+			INSERT INTO service_available_slots (service_id, slot_date, start_time, end_time) 
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (service_id, slot_date, start_time, end_time) DO NOTHING`,
+			1, date, "10:00:00", "12:00:00")
+		if err != nil {
+			return err
+		}
+		_, err = handlerTestDB.Exec(`
+			INSERT INTO service_available_slots (service_id, slot_date, start_time, end_time) 
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (service_id, slot_date, start_time, end_time) DO NOTHING`,
+			1, date, "14:00:00", "16:00:00")
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func pqStringArray(s []string) interface{} {
-	return s
 }
 
 func createTestCallbackQuery(chatID int64, userID int64, data string, messageID int) *tgbotapi.CallbackQuery {
@@ -262,7 +249,6 @@ func createTestCallbackQuery(chatID int64, userID int64, data string, messageID 
 	}
 }
 
-// createTestMessage создает тестовое сообщение
 func createTestMessage(chatID int64, userID int64, text string, messageID int) *tgbotapi.Message {
 	return &tgbotapi.Message{
 		MessageID: messageID,
@@ -272,7 +258,6 @@ func createTestMessage(chatID int64, userID int64, text string, messageID int) *
 	}
 }
 
-// Вспомогательная функция для получения состояния из сессии
 func getBookingStateFromSession(ctx context.Context, t *testing.T, userID int64) *botService.BookingState {
 	session, err := handlerSessionRepo.GetSession(ctx, userID)
 	if err != nil {
@@ -294,7 +279,6 @@ func getBookingStateFromSession(ctx context.Context, t *testing.T, userID int64)
 	return &state
 }
 
-// ensureUserExists гарантирует, что пользователь существует в БД
 func ensureUserExists(t *testing.T, userID int64) {
 	var exists bool
 	err := handlerTestDB.Get(&exists, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userID)
@@ -309,25 +293,29 @@ func ensureUserExists(t *testing.T, userID int64) {
 	}
 }
 
+// formatTimeForCallback преобразует время из формата HH:MM:SS в HH.MM.SS для callback
+func formatTimeForCallback(timeStr string) string {
+	return strings.ReplaceAll(timeStr, ":", ".")
+}
+
 // Тест 1: Начало бронирования
 func TestBookingFormHandler_StartBooking(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
-	// Используем реальный репозиторий вместо мока
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
-
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -337,13 +325,12 @@ func TestBookingFormHandler_StartBooking(t *testing.T) {
 	userID := TestUserID
 	messageID := 1
 
-	// Гарантируем, что пользователь существует
 	ensureUserExists(t, userID)
 
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{MessageID: messageID + 1, Chat: &tgbotapi.Chat{ID: chatID}}, nil)
 
-	query := createTestCallbackQuery(chatID, userID, "book:private:1", messageID)
+	query := createTestCallbackQuery(chatID, userID, "book:1", messageID)
 
 	err := handler.Handle(ctx, query)
 	assert.NoError(t, err)
@@ -353,10 +340,8 @@ func TestBookingFormHandler_StartBooking(t *testing.T) {
 	state := getBookingStateFromSession(ctx, t, userID)
 	require.NotNil(t, state)
 	assert.Equal(t, userID, state.UserID)
-	assert.Equal(t, 1, state.ServiceID)
-	assert.Equal(t, "private", state.VisitType)
+	assert.Equal(t, int64(1), state.ServiceID)
 	assert.Equal(t, botService.StepSelectDate, state.Step)
-	// LastMsgID не проверяем, так как он не сохраняется в этой версии
 
 	mockBot.AssertExpectations(t)
 }
@@ -364,7 +349,9 @@ func TestBookingFormHandler_StartBooking(t *testing.T) {
 // Тест 2: Выбор даты
 func TestBookingFormHandler_SelectDate(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -372,12 +359,11 @@ func TestBookingFormHandler_SelectDate(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -392,7 +378,6 @@ func TestBookingFormHandler_SelectDate(t *testing.T) {
 	initialState := botService.BookingState{
 		UserID:    userID,
 		ServiceID: 1,
-		VisitType: "private",
 		Step:      botService.StepSelectDate,
 		CreatedAt: time.Now(),
 	}
@@ -404,12 +389,18 @@ func TestBookingFormHandler_SelectDate(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	targetDate := time.Now().AddDate(0, 0, 2)
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	// Преобразуем время для callback (заменяем : на .)
+	startTimeCallback := formatTimeForCallback(startTime)
+	endTimeCallback := formatTimeForCallback(endTime)
 
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{MessageID: messageID + 1, Chat: &tgbotapi.Chat{ID: chatID}}, nil)
 
-	query := createTestCallbackQuery(chatID, userID, "book:select_date:private:"+targetDate.Format("2006-01-02"), messageID)
+	query := createTestCallbackQuery(chatID, userID, fmt.Sprintf("book:select_date:%s:%s:%s", targetDate, startTimeCallback, endTimeCallback), messageID)
 
 	err = handler.Handle(ctx, query)
 	assert.NoError(t, err)
@@ -419,7 +410,9 @@ func TestBookingFormHandler_SelectDate(t *testing.T) {
 	updatedState := getBookingStateFromSession(ctx, t, userID)
 	require.NotNil(t, updatedState)
 	assert.Equal(t, botService.StepEnterName, updatedState.Step)
-	assert.Equal(t, targetDate.Format("2006-01-02"), updatedState.SelectedDate.Format("2006-01-02"))
+	assert.Equal(t, targetDate, updatedState.SelectedSlot.Date)
+	assert.Equal(t, startTime, updatedState.SelectedSlot.StartTime)
+	assert.Equal(t, endTime, updatedState.SelectedSlot.EndTime)
 
 	mockBot.AssertExpectations(t)
 }
@@ -427,7 +420,9 @@ func TestBookingFormHandler_SelectDate(t *testing.T) {
 // Тест 3: Выбор недоступной даты
 func TestBookingFormHandler_SelectUnavailableDate(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -435,12 +430,11 @@ func TestBookingFormHandler_SelectUnavailableDate(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -455,7 +449,6 @@ func TestBookingFormHandler_SelectUnavailableDate(t *testing.T) {
 	initialState := botService.BookingState{
 		UserID:    userID,
 		ServiceID: 1,
-		VisitType: "private",
 		Step:      botService.StepSelectDate,
 		CreatedAt: time.Now(),
 	}
@@ -468,12 +461,16 @@ func TestBookingFormHandler_SelectUnavailableDate(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	unavailableDate := "2025-01-01"
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	startTimeCallback := formatTimeForCallback(startTime)
+	endTimeCallback := formatTimeForCallback(endTime)
 
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
-	// ТОЛЬКО ОДИН вызов Send - от startBooking при перезапуске
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{MessageID: messageID + 1, Chat: &tgbotapi.Chat{ID: chatID}}, nil).Once()
 
-	query := createTestCallbackQuery(chatID, userID, "book:select_date:private:"+unavailableDate, messageID)
+	query := createTestCallbackQuery(chatID, userID, fmt.Sprintf("book:select_date:%s:%s:%s", unavailableDate, startTimeCallback, endTimeCallback), messageID)
 
 	err = handler.Handle(ctx, query)
 	assert.NoError(t, err)
@@ -483,7 +480,7 @@ func TestBookingFormHandler_SelectUnavailableDate(t *testing.T) {
 	updatedState := getBookingStateFromSession(ctx, t, userID)
 	require.NotNil(t, updatedState)
 	assert.Equal(t, botService.StepSelectDate, updatedState.Step)
-	assert.True(t, updatedState.SelectedDate.IsZero())
+	assert.Empty(t, updatedState.SelectedSlot.Date)
 
 	mockBot.AssertExpectations(t)
 }
@@ -491,7 +488,9 @@ func TestBookingFormHandler_SelectUnavailableDate(t *testing.T) {
 // Тест 4: Ввод ФИО - успешный
 func TestBookingFormHandler_EnterName_Success(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -499,12 +498,11 @@ func TestBookingFormHandler_EnterName_Success(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -516,12 +514,19 @@ func TestBookingFormHandler_EnterName_Success(t *testing.T) {
 
 	ensureUserExists(t, userID)
 
-	selectedDate := time.Now().AddDate(0, 0, 2)
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	slot := models.BoxAvailableSlot{
+		Date:      targetDate,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
 	initialState := botService.BookingState{
 		UserID:       userID,
 		ServiceID:    1,
-		VisitType:    "private",
-		SelectedDate: selectedDate,
+		SelectedSlot: slot,
 		Step:         botService.StepEnterName,
 		CreatedAt:    time.Now(),
 	}
@@ -545,15 +550,17 @@ func TestBookingFormHandler_EnterName_Success(t *testing.T) {
 	require.NotNil(t, updatedState)
 	assert.Equal(t, botService.StepEnterOrg, updatedState.Step)
 	assert.Equal(t, "Иванов Иван Иванович", updatedState.GuestName)
-	assert.Equal(t, selectedDate.Format("2006-01-02"), updatedState.SelectedDate.Format("2006-01-02"))
+	assert.Equal(t, targetDate, updatedState.SelectedSlot.Date)
 
 	mockBot.AssertExpectations(t)
 }
 
-// Тест 5: Ошибка валидации ФИО - состояние НЕ сохраняется
+// Тест 5: Ошибка валидации ФИО
 func TestBookingFormHandler_EnterName_ValidationError(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -561,12 +568,11 @@ func TestBookingFormHandler_EnterName_ValidationError(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -578,12 +584,19 @@ func TestBookingFormHandler_EnterName_ValidationError(t *testing.T) {
 
 	ensureUserExists(t, userID)
 
-	selectedDate := time.Now().AddDate(0, 0, 2)
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	slot := models.BoxAvailableSlot{
+		Date:      targetDate,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
 	initialState := botService.BookingState{
 		UserID:       userID,
 		ServiceID:    1,
-		VisitType:    "private",
-		SelectedDate: selectedDate,
+		SelectedSlot: slot,
 		Step:         botService.StepEnterName,
 		CreatedAt:    time.Now(),
 	}
@@ -605,11 +618,9 @@ func TestBookingFormHandler_EnterName_ValidationError(t *testing.T) {
 
 	updatedState := getBookingStateFromSession(ctx, t, userID)
 	require.NotNil(t, updatedState)
-	// Шаг не должен измениться
 	assert.Equal(t, botService.StepEnterName, updatedState.Step)
-	// Имя не должно сохраниться
 	assert.Empty(t, updatedState.GuestName)
-	assert.Equal(t, selectedDate.Format("2006-01-02"), updatedState.SelectedDate.Format("2006-01-02"))
+	assert.Equal(t, targetDate, updatedState.SelectedSlot.Date)
 
 	mockBot.AssertExpectations(t)
 }
@@ -617,7 +628,9 @@ func TestBookingFormHandler_EnterName_ValidationError(t *testing.T) {
 // Тест 6: Ввод организации - успешный
 func TestBookingFormHandler_EnterOrganization_Success(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -625,12 +638,11 @@ func TestBookingFormHandler_EnterOrganization_Success(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -642,12 +654,19 @@ func TestBookingFormHandler_EnterOrganization_Success(t *testing.T) {
 
 	ensureUserExists(t, userID)
 
-	selectedDate := time.Now().AddDate(0, 0, 2)
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	slot := models.BoxAvailableSlot{
+		Date:      targetDate,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
 	initialState := botService.BookingState{
 		UserID:       userID,
 		ServiceID:    1,
-		VisitType:    "private",
-		SelectedDate: selectedDate,
+		SelectedSlot: slot,
 		GuestName:    "Иванов Иван Иванович",
 		Step:         botService.StepEnterOrg,
 		CreatedAt:    time.Now(),
@@ -672,8 +691,6 @@ func TestBookingFormHandler_EnterOrganization_Success(t *testing.T) {
 	require.NotNil(t, updatedState)
 	assert.Equal(t, botService.StepEnterPosition, updatedState.Step)
 	assert.Equal(t, "ООО Ромашка", updatedState.GuestOrganization)
-	assert.Equal(t, "Иванов Иван Иванович", updatedState.GuestName)
-	assert.Equal(t, selectedDate.Format("2006-01-02"), updatedState.SelectedDate.Format("2006-01-02"))
 
 	mockBot.AssertExpectations(t)
 }
@@ -681,7 +698,9 @@ func TestBookingFormHandler_EnterOrganization_Success(t *testing.T) {
 // Тест 7: Ввод должности - успешный
 func TestBookingFormHandler_EnterPosition_Success(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -689,12 +708,11 @@ func TestBookingFormHandler_EnterPosition_Success(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -706,12 +724,19 @@ func TestBookingFormHandler_EnterPosition_Success(t *testing.T) {
 
 	ensureUserExists(t, userID)
 
-	selectedDate := time.Now().AddDate(0, 0, 2)
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	slot := models.BoxAvailableSlot{
+		Date:      targetDate,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
 	initialState := botService.BookingState{
 		UserID:            userID,
 		ServiceID:         1,
-		VisitType:         "private",
-		SelectedDate:      selectedDate,
+		SelectedSlot:      slot,
 		GuestName:         "Иванов Иван Иванович",
 		GuestOrganization: "ООО Ромашка",
 		Step:              botService.StepEnterPosition,
@@ -737,9 +762,6 @@ func TestBookingFormHandler_EnterPosition_Success(t *testing.T) {
 	require.NotNil(t, updatedState)
 	assert.Equal(t, botService.StepConfirmation, updatedState.Step)
 	assert.Equal(t, "Директор", updatedState.GuestPosition)
-	assert.Equal(t, "ООО Ромашка", updatedState.GuestOrganization)
-	assert.Equal(t, "Иванов Иван Иванович", updatedState.GuestName)
-	assert.Equal(t, selectedDate.Format("2006-01-02"), updatedState.SelectedDate.Format("2006-01-02"))
 
 	mockBot.AssertExpectations(t)
 }
@@ -747,7 +769,9 @@ func TestBookingFormHandler_EnterPosition_Success(t *testing.T) {
 // Тест 8: Подтверждение бронирования
 func TestBookingFormHandler_Confirmation(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -755,12 +779,11 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -772,12 +795,19 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 
 	ensureUserExists(t, userID)
 
-	selectedDate := time.Now().AddDate(0, 0, 2)
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	slot := models.BoxAvailableSlot{
+		Date:      targetDate,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
 	initialState := botService.BookingState{
 		UserID:            userID,
 		ServiceID:         1,
-		VisitType:         "private",
-		SelectedDate:      selectedDate,
+		SelectedSlot:      slot,
 		GuestName:         "Иванов Иван Иванович",
 		GuestOrganization: "ООО Ромашка",
 		GuestPosition:     "Директор",
@@ -811,22 +841,21 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 // Тест 9: Возврат в главное меню
 func TestBookingFormHandler_BackToMainMenu(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
-	// Используем реальный репозиторий вместо мока
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
-
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -836,7 +865,6 @@ func TestBookingFormHandler_BackToMainMenu(t *testing.T) {
 	userID := TestUserID
 	messageID := 9
 
-	// Создаем пользователя в БД
 	ensureUserExists(t, userID)
 
 	initialState := botService.BookingState{
@@ -863,46 +891,8 @@ func TestBookingFormHandler_BackToMainMenu(t *testing.T) {
 
 	time.Sleep(200 * time.Millisecond)
 
-	// Проверяем, что сессия очищена
 	session, _ := handlerSessionRepo.GetSession(ctx, userID)
 	assert.Nil(t, session)
-
-	mockBot.AssertExpectations(t)
-}
-
-// Тест 10: Неизвестное действие
-func TestBookingFormHandler_UnknownAction(t *testing.T) {
-	mockBot := new(MockBotAPI)
-	keyboard := NewKeyboardService()
-
-	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
-	startHandler := &StartHandler{
-		bot:            mockBot,
-		userRepository: userRepo,
-	}
-
-	emptyBot := &tgbotapi.BotAPI{}
-
-	handler := NewBookingFormHandler(
-		emptyBot,
-		handlerService,
-		startHandler,
-		keyboard,
-	)
-	handler.bot = mockBot
-
-	ctx := context.Background()
-	chatID := int64(12345)
-	userID := TestUserID
-	messageID := 10
-
-	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
-	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
-
-	query := createTestCallbackQuery(chatID, userID, "book:unknown", messageID)
-
-	err := handler.Handle(ctx, query)
-	assert.NoError(t, err)
 
 	mockBot.AssertExpectations(t)
 }

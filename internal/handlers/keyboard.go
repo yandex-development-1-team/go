@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/yandex-development-1-team/go/internal/models"
+	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
 
 // ServiceType определяет тип услуги для выбора правильного набора кнопок
@@ -34,32 +37,15 @@ func NewKeyboardService() *KeyboardService {
 }
 
 // ServiceDetailKeyboard создаёт клавиатуру для детального просмотра услуги
-func (ks *KeyboardService) ServiceDetailKeyboard(serviceType ServiceType, serviceID int64) tgbotapi.InlineKeyboardMarkup {
+func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64) tgbotapi.InlineKeyboardMarkup {
 	var buttons [][]tgbotapi.InlineKeyboardButton
 
-	switch serviceType {
-	case ServiceTypeMuseum:
-		buttons = [][]tgbotapi.InlineKeyboardButton{
-			{
-				tgbotapi.NewInlineKeyboardButtonData("👤 Приватный тур", fmt.Sprintf("%s:%s:%d", bookHandler, privateButtons, serviceID)),
-				tgbotapi.NewInlineKeyboardButtonData("👥 Групповой тур", fmt.Sprintf("%s:%s:%d", bookHandler, publicButtons, serviceID)),
-			},
-		}
-	case ServiceTypeSport:
-		buttons = [][]tgbotapi.InlineKeyboardButton{
-			{
-				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать сейчас", fmt.Sprintf("%s:%s:%d", bookHandler, missingParameter, serviceID)),
-			},
-		}
-	default:
-		buttons = [][]tgbotapi.InlineKeyboardButton{
-			{
-				tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%s:%d", bookHandler, missingParameter, serviceID)),
-			},
-		}
+	buttons = [][]tgbotapi.InlineKeyboardButton{
+		{
+			tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%d", bookHandler, serviceID)),
+		},
 	}
 
-	// Кнопка "Назад" всегда в отдельной строке
 	backButton := tgbotapi.NewInlineKeyboardButtonData(BackButtonsTitle, fmt.Sprintf("info:%s", backButtons))
 	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{backButton})
 
@@ -75,7 +61,6 @@ func (ks *KeyboardService) FormNavigationKeyboard(step int) tgbotapi.InlineKeybo
 	buttons := [][]tgbotapi.InlineKeyboardButton{
 		{
 			getBackButton(fmt.Sprintf("book:back:%d", step)),
-			//tgbotapi.NewInlineKeyboardButtonData("Назад", fmt.Sprintf("back:%d", step)),
 		},
 		{
 			tgbotapi.NewInlineKeyboardButtonData("В главное меню", "book:main_menu"),
@@ -110,26 +95,32 @@ func (ks *KeyboardService) MainMenuKeyboard() *tgbotapi.InlineKeyboardMarkup {
 	return &keyboard
 }
 
-// DatesKeyboard creates an inline keyboard with available dates
-func (ks *KeyboardService) DatesKeyboard(visitType string, dates []time.Time) tgbotapi.InlineKeyboardMarkup {
+// DatesKeyboard creates an inline keyboard with available dates and time slots
+func (ks *KeyboardService) DatesKeyboard(slots []models.BoxAvailableSlot) tgbotapi.InlineKeyboardMarkup {
+	if slots == nil || len(slots) == 0 {
+		return tgbotapi.InlineKeyboardMarkup{}
+	}
+
 	var rows [][]tgbotapi.InlineKeyboardButton
 
-	// Grouping the dates by 2 in a row
-	for i := 0; i < len(dates); i += 2 {
+	// Группируем слоты по 2 в строку
+	for i := 0; i < len(slots); i += 2 {
 		var row []tgbotapi.InlineKeyboardButton
 
-		// The first button in the row
+		// Первая кнопка в строке
+		slot1 := (slots)[i]
 		btn1 := tgbotapi.NewInlineKeyboardButtonData(
-			ks.formatDateButton(dates[i]),
-			fmt.Sprintf("book:select_date:%s:%s", visitType, dates[i].Format("2006-01-02")),
+			ks.formatSlotButton(slot1),
+			ks.buildSlotCallback(slot1),
 		)
 		row = append(row, btn1)
 
-		// The second button, if available
-		if i+1 < len(dates) {
+		// Вторая кнопка, если есть
+		if i+1 < len(slots) {
+			slot2 := (slots)[i+1]
 			btn2 := tgbotapi.NewInlineKeyboardButtonData(
-				ks.formatDateButton(dates[i+1]),
-				fmt.Sprintf("book:select_date:%s:%s", visitType, dates[i+1].Format("2006-01-02")),
+				ks.formatSlotButton(slot2),
+				ks.buildSlotCallback(slot2),
 			)
 			row = append(row, btn2)
 		}
@@ -137,43 +128,52 @@ func (ks *KeyboardService) DatesKeyboard(visitType string, dates []time.Time) tg
 		rows = append(rows, row)
 	}
 
-	// Adding the Back button
-	rows = append(rows, []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("В главное меню", "book:main_menu"),
-	})
+	navKeyboard := ks.FormNavigationKeyboard(botService.StepReturnInBoxList)
+	rows = append(rows, navKeyboard.InlineKeyboard...)
 
 	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }
 
-// formatDateButton formats the date to display on the button
-func (ks *KeyboardService) formatDateButton(date time.Time) string {
-	var russianMonths = []string{
-		"янв", "фев", "мар", "апр", "май", "июн",
-		"июл", "авг", "сен", "окт", "ноя", "дек",
+// buildSlotCallback generates callback data for the slot
+func (ks *KeyboardService) buildSlotCallback(slot models.BoxAvailableSlot) string {
+	startTime := strings.ReplaceAll(slot.StartTime, ":", ".")
+	endTime := strings.ReplaceAll(slot.EndTime, ":", ".")
+	return fmt.Sprintf("book:select_date:%s:%s:%s", slot.Date, startTime, endTime)
+}
+
+// formatSlotButton formats the date to display on the button
+func (ks *KeyboardService) formatSlotButton(slot models.BoxAvailableSlot) string {
+	date, err := time.Parse("2006-01-02", slot.Date)
+	if err != nil {
+		return slot.Date
 	}
 
-	// Русские названия дней недели (короткие)
-	var russianWeekdays = []string{
-		"вс", "пн", "вт", "ср", "чт", "пт", "сб",
-	}
-
+	var dateStr string
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	if date.YearDay() == today.YearDay() && date.Year() == today.Year() {
-		return "Сегодня"
+		dateStr = "Сегодня"
+	} else if date.YearDay() == today.AddDate(0, 0, 1).YearDay() && date.Year() == today.Year() {
+		dateStr = "Завтра"
+	} else {
+		russianMonths := []string{
+			"янв", "фев", "мар", "апр", "май", "июн",
+			"июл", "авг", "сен", "окт", "ноя", "дек",
+		}
+		russianWeekdays := []string{
+			"вс", "пн", "вт", "ср", "чт", "пт", "сб",
+		}
+
+		monthIdx := date.Month() - 1
+		weekdayIdx := date.Weekday()
+		dateStr = fmt.Sprintf("%02d %s (%s)",
+			date.Day(),
+			russianMonths[monthIdx],
+			russianWeekdays[weekdayIdx])
 	}
 
-	tomorrow := today.AddDate(0, 0, 1)
-	if date.YearDay() == tomorrow.YearDay() && date.Year() == tomorrow.Year() {
-		return "Завтра"
-	}
+	timeStr := fmt.Sprintf("%s-%s", slot.StartTime, slot.EndTime)
 
-	monthIdx := date.Month() - 1
-	weekdayIdx := date.Weekday() // Воскресенье = 0 в Go
-
-	return fmt.Sprintf("%02d %s (%s)",
-		date.Day(),
-		russianMonths[monthIdx],
-		russianWeekdays[weekdayIdx])
+	return fmt.Sprintf("%s\n%s", dateStr, timeStr)
 }

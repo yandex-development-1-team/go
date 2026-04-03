@@ -95,6 +95,7 @@ func run() error {
 	bookService := botService.NewBookingService(sessionRepo, bookRepo, boxSolutionRepo)
 	keyboard := botHandlers.NewKeyboardService()
 	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
+	detailService := botService.NewDetailService(boxSolutionRepo)
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
@@ -156,9 +157,9 @@ func run() error {
 	}
 
 	startHandler := botHandlers.NewStartHandler(tgBot, telegramUserRepo)
-	bcHandler := botHandlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, keyboard)
-	bsHandler := botHandlers.NewBoxSolutions(tgBot, bsService)
-	infoHandler := botHandlers.NewServiceHandler(boxSolutionRepo, tgBot.Api, startHandler)
+	bsHandler := botHandlers.NewBoxSolutions(tgBot.Api, bsService)
+	bcHandler := botHandlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, bsHandler, keyboard)
+	infoHandler := botHandlers.NewDetailHandler(detailService, tgBot.Api, startHandler, bsHandler, keyboard)
 
 	callbackRouter := botHandlers.NewCallbackRouter(tgBot.Api)
 	msgRouter := botHandlers.NewMessageRouter(tgBot.Api, startHandler, sessionRepo, bcHandler, msgRL)

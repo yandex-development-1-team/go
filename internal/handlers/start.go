@@ -104,7 +104,7 @@ func (sh *StartHandler) Handle(ctx context.Context, query *tgbotapi.CallbackQuer
 	reply.ReplyMarkup = mainMenuKeyboard()
 
 	if _, err := sh.bot.Send(reply); err != nil {
-		logger.Error("failed to send start menu for button BoxSolutionsButtonBackToMainMenu", zap.Int64("chat_id", query.Message.Chat.ID), zap.Error(err))
+		logger.Error("failed to send start menu", zap.Int64("chat_id", query.Message.Chat.ID), zap.Error(err))
 		return err
 	}
 

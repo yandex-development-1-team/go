@@ -7,7 +7,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 
-	"github.com/yandex-development-1-team/go/internal/bot"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/service"
@@ -15,15 +14,15 @@ import (
 
 const (
 	textForBoxSolutions              = "📦 Коробочные решения\n\nВыберите интересующее вас предложение:\n"
-	BoxSolutionsButtonBackToMainMenu = "box_solutions:main_menu"
+	BoxSolutionsButtonBackToMainMenu = "main_menu"
 )
 
 type BoxSolutionsHandler struct {
-	bot     *bot.TelegramBot
+	bot     *tgbotapi.BotAPI
 	service *service.BoxSolutionsService
 }
 
-func NewBoxSolutions(bot *bot.TelegramBot, bsService *service.BoxSolutionsService) *BoxSolutionsHandler {
+func NewBoxSolutions(bot *tgbotapi.BotAPI, bsService *service.BoxSolutionsService) *BoxSolutionsHandler {
 	return &BoxSolutionsHandler{
 		bot:     bot,
 		service: bsService,
