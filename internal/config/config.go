@@ -27,6 +27,24 @@ type Config struct {
 	APIOnly           bool           `mapstructure:"api_only"`
 	CORS              CORSConfig     `mapstructure:"cors"`
 	MigrationsDir     string         `mapstructure:"migrations_dir"`
+	Storage           StorageConfig  `mapstructure:"storage"`
+	FileGC            FileGCConfig   `mapstructure:"file_gc"`
+}
+
+type StorageConfig struct {
+	Endpoint      string `mapstructure:"endpoint"`
+	AccessKey     string `mapstructure:"access_key"`
+	SecretKey     string `mapstructure:"secret_key"`
+	Bucket        string `mapstructure:"bucket"`
+	UseSSL        bool   `mapstructure:"use_ssl"`
+	PublicBaseURL string `mapstructure:"public_base_url"`
+}
+
+type FileGCConfig struct {
+	Enabled         bool          `mapstructure:"enabled"`
+	Interval        time.Duration `mapstructure:"interval"`
+	OrphanGrace     time.Duration `mapstructure:"orphan_grace_period"`
+	DeleteBatchSize int           `mapstructure:"delete_batch_size"`
 }
 
 type Telegram struct {
@@ -189,6 +207,18 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("redis.max_retry_backoff", "512ms")
 
 	v.SetDefault("session.ttl", "24h")
+
+	v.SetDefault("storage.endpoint", "localhost:9000")
+	v.SetDefault("storage.access_key", "minio")
+	v.SetDefault("storage.secret_key", "minio123")
+	v.SetDefault("storage.bucket", "uploads")
+	v.SetDefault("storage.use_ssl", false)
+	v.SetDefault("storage.public_base_url", "http://localhost:9000/uploads")
+
+	v.SetDefault("file_gc.enabled", true)
+	v.SetDefault("file_gc.interval", "1h")
+	v.SetDefault("file_gc.orphan_grace_period", "24h")
+	v.SetDefault("file_gc.delete_batch_size", 100)
 }
 
 func bindEnvs(v *viper.Viper) {
@@ -217,6 +247,18 @@ func bindEnvs(v *viper.Viper) {
 
 	_ = v.BindEnv("auth_config.jwt_secret", "JWT_SECRET")
 	_ = v.BindEnv("migrations_dir", "MIGRATIONS_DIR")
+
+	_ = v.BindEnv("storage.endpoint", "MINIO_ENDPOINT")
+	_ = v.BindEnv("storage.access_key", "MINIO_ACCESS_KEY")
+	_ = v.BindEnv("storage.secret_key", "MINIO_SECRET_KEY")
+	_ = v.BindEnv("storage.bucket", "MINIO_BUCKET")
+	_ = v.BindEnv("storage.use_ssl", "MINIO_USE_SSL")
+	_ = v.BindEnv("storage.public_base_url", "MINIO_PUBLIC_BASE_URL")
+
+	_ = v.BindEnv("file_gc.enabled", "FILE_GC_ENABLED")
+	_ = v.BindEnv("file_gc.interval", "FILE_GC_INTERVAL")
+	_ = v.BindEnv("file_gc.orphan_grace_period", "FILE_GC_ORPHAN_GRACE_PERIOD")
+	_ = v.BindEnv("file_gc.delete_batch_size", "FILE_GC_DELETE_BATCH_SIZE")
 }
 
 func validateConfig(config *Config) error {
@@ -226,6 +268,13 @@ func validateConfig(config *Config) error {
 
 	if config.DB.PostgresURL == "" {
 		return fmt.Errorf("postgres_url is empty")
+	}
+
+	if config.Storage.Endpoint == "" {
+		return fmt.Errorf("storage.endpoint is empty")
+	}
+	if config.Storage.Bucket == "" {
+		return fmt.Errorf("storage.bucket is empty")
 	}
 
 	return nil

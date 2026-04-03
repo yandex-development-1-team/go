@@ -64,3 +64,17 @@ cors:
   expose_headers: "Content-Length, Content-Type, Date, X-Total-Count"
   allow_credentials: "true"
   max_age: "86400"
+
+storage:
+  endpoint: "localhost:9000"
+  access_key: "minio"
+  secret_key: "minio123"
+  bucket: "uploads"
+  use_ssl: false
+  public_base_url: "http://localhost:9000/uploads"
+
+file_gc:
+  enabled: true
+  interval: "1h"
+  orphan_grace_period: "24h"
+  delete_batch_size: 100
