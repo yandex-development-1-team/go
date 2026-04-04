@@ -16,9 +16,13 @@ import (
 )
 
 type mockAnalyticsQuerier struct {
-	boxes []dto.AnalyticsBoxRow
-	users []dto.AnalyticsUserRow
-	err   error
+	boxes     []dto.AnalyticsBoxRow
+	userRows  []dto.AnalyticsUserRow
+	overview  dto.AnalyticsOverview
+	boxItem   []dto.AnalyticsBoxItem
+	users     dto.AnalyticsUsers
+	dashboard dto.AnalyticsDashboard
+	err       error
 }
 
 func (m *mockAnalyticsQuerier) GetBoxesAnalytics(_ context.Context, _, _ *time.Time) ([]dto.AnalyticsBoxRow, error) {
@@ -26,7 +30,23 @@ func (m *mockAnalyticsQuerier) GetBoxesAnalytics(_ context.Context, _, _ *time.T
 }
 
 func (m *mockAnalyticsQuerier) GetUsersAnalytics(_ context.Context, _, _ *time.Time) ([]dto.AnalyticsUserRow, error) {
+	return m.userRows, m.err
+}
+
+func (m *mockAnalyticsQuerier) GetOverviewAnalytics(_ context.Context, _, _ *time.Time) (dto.AnalyticsOverview, error) {
+	return m.overview, m.err
+}
+
+func (m *mockAnalyticsQuerier) GetBoxesAnalyticsExtended(_ context.Context, _, _ *time.Time, _ string) ([]dto.AnalyticsBoxItem, error) {
+	return m.boxItem, m.err
+}
+
+func (m *mockAnalyticsQuerier) GetUsersAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsUsers, error) {
 	return m.users, m.err
+}
+
+func (m *mockAnalyticsQuerier) GetDashboardAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsDashboard, error) {
+	return m.dashboard, m.err
 }
 
 var (
@@ -83,7 +103,7 @@ func TestAnalyticsService_Export_BoxesCSV(t *testing.T) {
 }
 
 func TestAnalyticsService_Export_UsersXLSX(t *testing.T) {
-	svc := NewAnalyticsService(&mockAnalyticsQuerier{users: sampleUsers})
+	svc := NewAnalyticsService(&mockAnalyticsQuerier{userRows: sampleUsers})
 
 	result, err := svc.Export(context.Background(), dto.AnalyticsExportRequest{
 		Type:   dto.ExportTypeUsers,
@@ -97,7 +117,7 @@ func TestAnalyticsService_Export_UsersXLSX(t *testing.T) {
 }
 
 func TestAnalyticsService_Export_UsersCSV(t *testing.T) {
-	svc := NewAnalyticsService(&mockAnalyticsQuerier{users: sampleUsers})
+	svc := NewAnalyticsService(&mockAnalyticsQuerier{userRows: sampleUsers})
 
 	result, err := svc.Export(context.Background(), dto.AnalyticsExportRequest{
 		Type:   dto.ExportTypeUsers,

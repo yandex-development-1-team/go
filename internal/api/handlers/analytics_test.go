@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -16,17 +17,34 @@ import (
 )
 
 type mockExporter struct {
-	result apiService.ExportResult
-	err    error
+	result   apiService.ExportResult
+	overview dto.AnalyticsOverview
+	err      error
 }
 
 func (m *mockExporter) Export(_ context.Context, _ dto.AnalyticsExportRequest) (apiService.ExportResult, error) {
 	return m.result, m.err
 }
 
+func (m *mockExporter) GetOverviewAnalytics(ctx context.Context, dateFrom *time.Time, dateTo *time.Time) (dto.AnalyticsOverview, error)
+
+func (m *mockExporter) GetBoxesAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time, sortBy string) ([]dto.AnalyticsBoxItem, error)
+
+func (m *mockExporter) GetUsersAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsUsers, error)
+
+func (m *mockExporter) GetDashboardAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsDashboard, error)
+
 type capturingExporter struct {
 	capture *dto.AnalyticsExportRequest
 }
+
+func (c *capturingExporter) GetOverviewAnalytics(ctx context.Context, dateFrom *time.Time, dateTo *time.Time) (dto.AnalyticsOverview, error)
+
+func (c *capturingExporter) GetBoxesAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time, sortBy string) ([]dto.AnalyticsBoxItem, error)
+
+func (c *capturingExporter) GetUsersAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsUsers, error)
+
+func (c *capturingExporter) GetDashboardAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsDashboard, error)
 
 func (c *capturingExporter) Export(_ context.Context, req dto.AnalyticsExportRequest) (apiService.ExportResult, error) {
 	*c.capture = req

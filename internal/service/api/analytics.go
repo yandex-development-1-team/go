@@ -16,6 +16,10 @@ import (
 type AnalyticsQuerier interface {
 	GetBoxesAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) ([]dto.AnalyticsBoxRow, error)
 	GetUsersAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) ([]dto.AnalyticsUserRow, error)
+	GetOverviewAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsOverview, error)
+	GetBoxesAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time, sortBy string) ([]dto.AnalyticsBoxItem, error)
+	GetUsersAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsUsers, error)
+	GetDashboardAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsDashboard, error)
 }
 
 // ExportResult carries the generated file and its HTTP response metadata.
@@ -175,4 +179,20 @@ func writeExcelHeaders(f *excelize.File, sheet string, headers []string) {
 func excelCell(col, row int) string {
 	colName, _ := excelize.ColumnNumberToName(col)
 	return fmt.Sprintf("%s%d", colName, row)
+}
+
+func (s *AnalyticsService) GetOverviewAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsOverview, error) {
+	return s.repo.GetOverviewAnalytics(ctx, dateFrom, dateTo)
+}
+
+func (s *AnalyticsService) GetBoxesAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time, sortBy string) ([]dto.AnalyticsBoxItem, error) {
+	return s.repo.GetBoxesAnalyticsExtended(ctx, dateFrom, dateTo, sortBy)
+}
+
+func (s *AnalyticsService) GetUsersAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsUsers, error) {
+	return s.repo.GetUsersAnalyticsExtended(ctx, dateFrom, dateTo)
+}
+
+func (s *AnalyticsService) GetDashboardAnalytics(ctx context.Context, dateFrom, dateTo *time.Time) (dto.AnalyticsDashboard, error) {
+	return s.repo.GetDashboardAnalytics(ctx, dateFrom, dateTo)
 }
