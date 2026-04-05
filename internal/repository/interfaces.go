@@ -64,7 +64,8 @@ type RefreshTokenRepository interface {
 	Create(ctx context.Context, rt *models.RefreshToken) error
 	CreateRefreshToken(ctx context.Context, userID int64, token string, expiresAt time.Time) error
 	GetForUpdate(ctx context.Context, tx *sqlx.Tx, token string) (*models.RefreshToken, error)
-	Revoke(ctx context.Context, token string) error
+	DeleteByToken(ctx context.Context, token string) error
+	DeleteByStaffID(ctx context.Context, id int64) error
 }
 
 type SpecialProjectRepository interface {

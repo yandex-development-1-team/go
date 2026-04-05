@@ -1,7 +1,10 @@
 telegram_bot_token:  # будет переопределено BOT_TOKEN
 telegram_bot_api_url: "https://api.telegram.org"
 
-jwt_secret: #передаем секрет для генерации и проверки токена пользователя
+auth_config:
+  jwt_secret: secret-key
+  access_token_ttl_minutes: 15
+  refresh_token_ttl_days: 7
 port: 8080
 environment: "dev"
 prometheus_port: 9090

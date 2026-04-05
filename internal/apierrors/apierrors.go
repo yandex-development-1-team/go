@@ -24,7 +24,7 @@ var errMappings = []errMapping{
 	{models.ErrUnauthorized, http.StatusUnauthorized, "Требуется авторизация"},
 	{models.ErrForbidden, http.StatusForbidden, "Недостаточно прав"},
 	{models.ErrUserBlocked, http.StatusForbidden, "Учётная запись заблокирована"},
-	{models.ErrInvalidCredentials, http.StatusUnauthorized, "Неверный логин или пароль"},
+	{models.ErrInvalidCredentials, http.StatusBadRequest, "Неверный логин или пароль"},
 	{models.ErrUserNotFound, http.StatusNotFound, "Пользователь не найден"},
 	{models.ErrBookingNotFound, http.StatusNotFound, "Заявка не найдена"},
 	{models.ErrSpecialProjectNotFound, http.StatusNotFound, "Спецпроект не найден"},

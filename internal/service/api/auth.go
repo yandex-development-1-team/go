@@ -63,32 +63,39 @@ func NewAuthService(db *sqlx.DB, rtRepo repository.RefreshTokenRepository, staff
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (*models.AuthResult, error) {
-	if len(email) == 0 || len(password) < 8 {
-		return nil, models.ErrInvalidInput
-	}
 	authInfo, err := s.staffRepo.GetUserByEmail(ctx, email)
+	if errors.Is(err, models.ErrUserNotFound) {
+		return nil, models.ErrInvalidCredentials
+	}
 	if err != nil {
 		return nil, err
 	}
 	user := authInfo.User
+	if user.Status == "blocked" {
+		return nil, models.ErrUserBlocked
+	}
 	if err := bcrypt.CompareHashAndPassword([]byte(authInfo.PassHash), []byte(password)); err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return nil, models.ErrInvalidCredentials
 		}
 		return nil, fmt.Errorf("check password: %w", err)
 	}
-	if user.Status == "blocked" {
-		return nil, models.ErrUserBlocked
-	}
 	token, err := s.generateAccessToken(user.ID, user.Role)
 	if err != nil {
 		return nil, err
 	}
+
+	err = s.rtRepo.DeleteByStaffID(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	refreshToken := generateRandomToken()
 	expiresAt := time.Now().Add(s.refreshTTL)
 	if err := s.rtRepo.CreateRefreshToken(ctx, user.ID, refreshToken, expiresAt); err != nil {
 		return nil, err
 	}
+
 	return &models.AuthResult{
 		User:         user,
 		Token:        token,
@@ -96,23 +103,21 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 	}, nil
 }
 
-func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (string, error) {
+func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*models.RefreshResponse, error) {
 	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	rt, err := s.rtRepo.GetForUpdate(ctx, tx, refreshToken)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	role := RoleManager1
-
-	accessToken, err := s.generateAccessToken(rt.UserID, role)
+	accessToken, err := s.generateAccessToken(rt.UserID, rt.Role)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	newRT := &models.RefreshToken{
@@ -121,21 +126,23 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (string,
 		ExpiresAt: time.Now().Add(s.refreshTTL),
 	}
 	if err := s.rtRepo.Create(ctx, newRT); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if _, err := tx.ExecContext(ctx, `
-		UPDATE refresh_tokens
-		SET revoked_at = NOW()
-		WHERE token = $1 AND revoked_at IS NULL
+		DELETE FROM refresh_tokens
+		WHERE token = $1
 	`, refreshToken); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return "", err
+		return nil, err
 	}
-	return accessToken, nil
+	return &models.RefreshResponse{
+		Token:        accessToken,
+		RefreshToken: newRT.Token,
+	}, nil
 }
 
 func (s *AuthService) Register(ctx context.Context, user *models.UserAPI, password string) (*models.AuthResult, error) {
@@ -180,7 +187,7 @@ func (s *AuthService) Register(ctx context.Context, user *models.UserAPI, passwo
 }
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
-	return s.rtRepo.Revoke(ctx, refreshToken)
+	return s.rtRepo.DeleteByToken(ctx, refreshToken)
 }
 
 func (s *AuthService) generateAccessToken(userID int64, role string) (string, error) {
