@@ -59,14 +59,9 @@ func (s *Server) RegisterRoutes() {
 	analyticsHandler := handlers.NewAnalyticsHandler(s.services.AnalyticsSvc)
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
 	userHandler := handlers.NewUserHandler(s.services.UserSvc)
-
-	var fileHandler *handlers.FileHandler
-	if s.services.FileService != nil {
-		fileHandler = handlers.NewFileHandler(s.services.FileService)
-	}
+	fileHandler := handlers.NewFileHandler(s.services.FileService)
 
 	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler)
-
 }
 
 func (s *Server) Run(cfg *config.Config) error {
