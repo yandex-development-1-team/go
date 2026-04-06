@@ -25,11 +25,6 @@ const (
 	WHERE rt.token = $1
 	FOR UPDATE OF rt`
 
-	// revokeRefreshTokenQuery = `
-	// 	UPDATE refresh_tokens
-	// 	SET revoked_at = NOW()
-	// 	WHERE token = $1 AND  IS NULL`
-
 	deleteRefreshTokenByToken = `
 	DELETE FROM refresh_tokens
 	WHERE token = $1`
@@ -84,9 +79,6 @@ func (r *RefreshTokenRepo) GetForUpdate(ctx context.Context, tx *sqlx.Tx, token 
 		return nil, err
 	}
 	now := time.Now().UTC()
-	// if rt.RevokedAt != nil {
-	// 	return nil, ErrRefreshTokenRevoked
-	// }
 	if !rt.ExpiresAt.After(now) {
 		return nil, ErrRefreshTokenExpired
 	}
