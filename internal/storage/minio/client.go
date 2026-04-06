@@ -10,12 +10,14 @@ import (
 	"github.com/yandex-development-1-team/go/internal/config"
 )
 
+// Client implements object storage operations using MinIO.
 type Client struct {
 	client        *minioSDK.Client
 	bucket        string
 	publicBaseURL string
 }
 
+// New creates a new MinIO client.
 func New(cfg config.StorageConfig) (*Client, error) {
 	client, err := minioSDK.New(cfg.Endpoint, &minioSDK.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
@@ -32,6 +34,7 @@ func New(cfg config.StorageConfig) (*Client, error) {
 	}, nil
 }
 
+// EnsureBucket creates the bucket if it does not exist.
 func (c *Client) EnsureBucket(ctx context.Context) error {
 	exists, err := c.client.BucketExists(ctx, c.bucket)
 	if err != nil {
@@ -49,6 +52,7 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 	return nil
 }
 
+// UploadFile uploads a file to MinIO and returns its public URL.
 func (c *Client) UploadFile(
 	ctx context.Context,
 	reader io.Reader,
@@ -66,6 +70,7 @@ func (c *Client) UploadFile(
 	return url, nil
 }
 
+// RemoveFile deletes an object from MinIO by object name.
 func (c *Client) RemoveFile(ctx context.Context, objectName string) error {
 	err := c.client.RemoveObject(ctx, c.bucket, objectName, minioSDK.RemoveObjectOptions{})
 	if err != nil {

@@ -8,10 +8,12 @@ import (
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
+// FileHandler handles HTTP requests related to file upload.
 type FileHandler struct {
 	fileService *apiService.FileService
 }
 
+// NewFileHandler creates a new FileHandler instance.
 func NewFileHandler(fileService *apiService.FileService) *FileHandler {
 	return &FileHandler{
 		fileService: fileService,

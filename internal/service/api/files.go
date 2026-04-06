@@ -14,15 +14,18 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
+// FileService provides file upload, deactivation, and cleanup operations.
 type FileService struct {
 	repo    FileRepository
 	storage ObjectStorage
 }
 
+// NewFileService creates a new FileService.
 func NewFileService(repo FileRepository, storage ObjectStorage) *FileService {
 	return &FileService{repo: repo, storage: storage}
 }
 
+// Upload uploads a file to object storage and saves its metadata in the files table.
 func (s *FileService) Upload(
 	ctx context.Context,
 	reader io.Reader,
@@ -90,6 +93,7 @@ func (s *FileService) Upload(
 	}, nil
 }
 
+// DeactivateByURL marks a file as inactive by its public URL.
 func (s *FileService) DeactivateByURL(ctx context.Context, fileURL string) error {
 	fileURL = strings.TrimSpace(fileURL)
 	if fileURL == "" {
@@ -102,6 +106,7 @@ func (s *FileService) DeactivateByURL(ctx context.Context, fileURL string) error
 	return nil
 }
 
+// CleanupInactiveFiles removes inactive orphaned files from storage and database.
 func (s *FileService) CleanupInactiveFiles(ctx context.Context, olderThan time.Time, limit int) (int, int64, error) {
 	if limit <= 0 {
 		limit = 100

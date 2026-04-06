@@ -11,10 +11,12 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
+// FileRepository provides PostgreSQL access for file metadata.
 type FileRepository struct {
 	db *sqlx.DB
 }
 
+// NewFileRepository creates a new FileRepository.
 func NewFileRepository(db *sqlx.DB) *FileRepository {
 	return &FileRepository{db: db}
 }

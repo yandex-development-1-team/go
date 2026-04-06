@@ -10,6 +10,7 @@ import (
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
+// FileCleanupWorker periodically removes inactive orphaned files.
 type FileCleanupWorker struct {
 	fileService     *apiService.FileService
 	interval        time.Duration
@@ -17,6 +18,7 @@ type FileCleanupWorker struct {
 	deleteBatchSize int
 }
 
+// NewFileCleanupWorker creates a new FileCleanupWorker.
 func NewFileCleanupWorker(
 	fileService *apiService.FileService,
 	interval time.Duration,
@@ -31,6 +33,7 @@ func NewFileCleanupWorker(
 	}
 }
 
+// Start runs the cleanup loop until the context is cancelled.
 func (w *FileCleanupWorker) Start(ctx context.Context) {
 	if w.fileService == nil {
 		logger.Warn("file cleanup worker disabled: file service is nil")
