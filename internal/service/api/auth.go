@@ -67,6 +67,9 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 		return nil, models.ErrInvalidInput
 	}
 	authInfo, err := s.staffRepo.GetUserByEmail(ctx, email)
+	if errors.Is(err, models.ErrUserNotFound) {
+		return nil, models.ErrInvalidCredentials
+	}
 	if err != nil {
 		return nil, err
 	}

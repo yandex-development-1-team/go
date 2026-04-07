@@ -23,7 +23,7 @@ const (
 	StepEnterPosition
 	StepConfirmation
 	StepMainMenu
-	StepReturnBack
+	StepReturnInBoxList
 )
 
 // Constants
@@ -35,9 +35,8 @@ const (
 // BookingState represents the booking status
 type BookingState struct {
 	UserID            int64
-	ServiceID         int
-	VisitType         string
-	SelectedDate      time.Time
+	ServiceID         int64
+	SelectedSlot      models.BoxAvailableSlot
 	GuestName         string
 	GuestOrganization string
 	GuestPosition     string
@@ -115,13 +114,13 @@ func (s *BookingService) SaveSession(ctx context.Context, userID int64, stateDat
 }
 
 // CreateSession creates a session
-func (s *BookingService) CreateSession(ctx context.Context, userID int64, serviceID int, visitType string) (*BookingState, error) {
+func (s *BookingService) CreateSession(ctx context.Context, userID int64, serviceID int64) (*BookingState, error) {
 	state := &BookingState{
-		UserID:    userID,
-		ServiceID: serviceID,
-		VisitType: visitType,
-		Step:      StepSelectDate,
-		CreatedAt: time.Now(),
+		UserID:       userID,
+		ServiceID:    serviceID,
+		SelectedSlot: models.BoxAvailableSlot{},
+		Step:         StepSelectDate,
+		CreatedAt:    time.Now(),
 	}
 
 	err := s.SaveSession(ctx, userID, *state)
@@ -133,15 +132,19 @@ func (s *BookingService) CreateSession(ctx context.Context, userID int64, servic
 
 // CreateBooking creates a new booking from state
 func (s *BookingService) CreateBooking(ctx context.Context, state *BookingState) (int64, error) {
+	date, err := time.Parse("2006-01-02", state.SelectedSlot.Date)
+	if err != nil {
+		return 0, err
+	}
+
 	booking := &models.Booking{
 		UserID:            state.UserID,
 		ServiceID:         int16(state.ServiceID),
-		BookingDate:       state.SelectedDate,
+		BookingDate:       date,
 		BookingTime:       nil,
 		GuestName:         state.GuestName,
 		GuestOrganization: state.GuestOrganization,
 		GuestPosition:     state.GuestPosition,
-		VisitType:         state.VisitType,
 		Status:            "confirmation",
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
@@ -201,21 +204,31 @@ func (s *BookingService) ValidateAndSetPosition(ctx context.Context, state *Book
 }
 
 // ProcessDateSelection processes date selection and returns next step
-func (s *BookingService) ProcessDateSelection(ctx context.Context, state *BookingState, dateStr string) (bool, error) {
-	selectedDate, err := time.Parse("2006-01-02", dateStr)
+func (s *BookingService) ProcessDateSelection(ctx context.Context, state *BookingState, slot models.BoxAvailableSlot) (bool, error) {
+	_, err := time.Parse("2006-01-02", slot.Date)
 	if err != nil {
 		return false, err
 	}
 
-	timeSlots, err := s.boxRepo.GetAvailableTimeSlotsByDate(ctx, state.ServiceID, dateStr)
+	_, err = time.Parse("15:04", slot.StartTime)
 	if err != nil {
 		return false, err
 	}
 
-	if len(timeSlots) == 0 {
+	_, err = time.Parse("15:04", slot.EndTime)
+	if err != nil {
+		return false, err
+	}
+
+	available, err := s.boxRepo.CheckSlotAvailability(ctx, state.ServiceID, slot)
+	if err != nil {
+		return false, err
+	}
+
+	if !available {
 		state.Step = StepStartBooking
 	} else {
-		state.SelectedDate = selectedDate
+		state.SelectedSlot = slot
 		state.Step = StepEnterName
 	}
 
@@ -225,22 +238,17 @@ func (s *BookingService) ProcessDateSelection(ctx context.Context, state *Bookin
 		return false, err
 	}
 
-	return len(timeSlots) > 0, nil
+	return available, nil
 }
 
 // GetAvailableDates gets the available dates for the service
-func (s *BookingService) GetAvailableDates(ctx context.Context, serviceID int, visitType string) ([]string, error) {
+func (s *BookingService) GetAvailableSlots(ctx context.Context, serviceID int64) ([]models.BoxAvailableSlot, error) {
 	slots, err := s.boxRepo.GetAvailableSlotsByServiceID(ctx, serviceID)
 	if err != nil {
 		return nil, err
 	}
 
-	dates := make([]string, 0, len(slots))
-	for _, slot := range slots {
-		dates = append(dates, slot.Date)
-	}
-
-	return dates, nil
+	return slots, nil
 }
 
 // IsBookingComplete checks if all required fields are filled
@@ -248,5 +256,5 @@ func (s *BookingService) IsBookingComplete(state *BookingState) bool {
 	return state.GuestName != "" &&
 		state.GuestOrganization != "" &&
 		state.GuestPosition != "" &&
-		!state.SelectedDate.IsZero()
+		state.SelectedSlot.Date != ""
 }

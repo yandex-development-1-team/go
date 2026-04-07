@@ -28,6 +28,7 @@ var (
 	repo        *BookingRepo
 	repoUser    *TelegramUserRepo
 	repoSession *pgSessionRepo
+	boxRepo     *BoxSolutionRepo
 )
 
 func mustParseTime(layout, value string) *time.Time {
@@ -62,6 +63,7 @@ func TestMain(m *testing.M) {
 	repo = NewBookingRepository(db)
 	repoUser = NewTelegramUserRepository(db)
 	repoSession = NewSessionRepository(db)
+	boxRepo = NewBoxSolutionRepo(db)
 
 	code := m.Run()
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/yandex-development-1-team/go/internal/models"
 
@@ -11,183 +12,201 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/logger"
+	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
 
-const VessagesErrData = "❌ К сожалению, не удалось загрузить информацию об услуге. Пожалуйста, попробуйте позже."
+// CallbackInfoPrefix prefix for this handler
+const CallbackInfoPrefix = "info"
 
-// internal/handlers/service_detail.go
-func (h *ServiceHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) error {
-	// ШАГ 1: Получаем ID пользователя и номер чата
+// DetailHandler handles the display of detailed information about the service
+type DetailHandler struct {
+	service  *botService.DetailService
+	bot      *tgbotapi.BotAPI
+	keyboard *KeyboardService
+	sh       *StartHandler
+	bs       *BoxSolutionsHandler
+}
+
+// NewDetailHandler creates a new instance of the 'DetailHandler'
+func NewDetailHandler(service *botService.DetailService, bot *tgbotapi.BotAPI, sh *StartHandler, bs *BoxSolutionsHandler, keyboard *KeyboardService) *DetailHandler {
+	return &DetailHandler{
+		service:  service,
+		bot:      bot,
+		keyboard: keyboard,
+		sh:       sh,
+		bs:       bs,
+	}
+}
+
+// Handle processes the service selection
+func (h *DetailHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) error {
 	userID := tg.From.ID
 	chatID := tg.Message.Chat.ID
 	callbackData := tg.Data
 
-	info := strings.Split(callbackData, ":")
-	if len(info) == 2 {
-		if info[1] == "back" {
-			if err := h.sh.HandleStart(ctx, tg.Message); err != nil {
-				logger.Error("failed to handle main_menu", zap.Error(err))
-				return err
-			}
-			return nil
-		}
-	}
-
-	serviceID, err := parseServiceID(callbackData)
-
+	parts := strings.Split(callbackData, ":")
+	back, err := h.checkBack(ctx, parts, tg)
 	if err != nil {
-		logger.Error("failed_to_parse_service_id",
-			zap.String("callback_data", callbackData),
-			zap.Int64("user_id", userID),
-			zap.Int64("chat_id", chatID),
-			zap.Error(err),
-		)
-		// Отправляем сообщение об ошибке В ЧАТ
-		errorMsg := tgbotapi.NewMessage(chatID, VessagesErrData)
-		errorMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-		if _, sendErr := h.bot.Send(errorMsg); sendErr != nil {
-			logger.Error("failed_to_send_error_message", zap.Error(sendErr))
-		}
+		h.sendError(chatID, "Ошибка перехода в Главное меню")
 		return err
 	}
-	// ШАГ 2: Логирование запроса
-	logger.Info("service_detail_requested",
-		zap.Int("service_id", serviceID),
-		zap.Int64("user_id", userID),
-	)
+	if back {
+		return nil
+	}
 
-	// ШАГ 3: Получение данных из репозитория
-	serviceDBModel, err := h.repo.GetServiceByID(ctx, serviceID)
+	serviceID, err := h.service.ParseServiceID(callbackData)
 	if err != nil {
-		return h.handleError(userID, serviceID, err)
+		h.sendError(chatID, "Неверный формат данных")
+		return err
 	}
 
-	service := convertDBServiceModelToHandlerModel(serviceDBModel)
-	serviceName := service.Name
-	if serviceName == "" {
-		serviceName = "Прочее"
+	logger.Info("service_detail_requested", zap.Int64("service_id", serviceID), zap.Int64("user_id", userID))
+
+	service, err := h.service.GetByID(ctx, serviceID)
+	if err != nil {
+		return h.handleError(chatID, userID, serviceID, err)
 	}
 
-	// ШАГ 4: Формирование сообщения (чистая функция)
-	messageText := buildServiceMessage(&service, serviceName)
-
-	// ШАГ 5: Генерация клавиатуры (сервис)
-	keyboard := h.keyboardService.ServiceDetailKeyboard(
-		service.Type,
-		service.ID,
-	)
-
-	// ШАГ 6: Отправка сообщения
+	serviceName := h.service.GetDisplayName(service)
+	messageText := h.buildServiceMessage(service, serviceName)
+	keyboard := h.keyboard.ServiceDetailKeyboard(service.ID)
 	if err := h.sendMessage(chatID, messageText, keyboard); err != nil {
 		logger.Error("failed_to_send_service_detail",
-			zap.Int("service_id", serviceID),
+			zap.Int64("service_id", serviceID),
 			zap.Int64("user_id", userID),
 			zap.Error(err),
 		)
 		return fmt.Errorf("failed to send service detail: %w", err)
 	}
 
-	// ШАГ 7: Логирование успешного показа
-	logger.Info("service_detail_shown",
-		zap.Int("service_id", serviceID),
-		// zap.String("service_name", service.Name),
-		zap.Int64("user_id", userID),
-		// zap.String("service_type", string(service.Type)),
-	)
-
+	logger.Info("service_detail_shown", zap.Int64("service_id", serviceID), zap.Int64("user_id", userID))
 	return nil
 }
 
-func convertDBServiceModelToHandlerModel(dbServiceModel models.Service) Service {
-	slots := make([]AvailableSlot, 0, len(dbServiceModel.AvailableSlots))
-	for _, s := range dbServiceModel.AvailableSlots {
-		slots = append(slots, AvailableSlot{
-			Date:      s.Date,
-			TimeSlots: s.TimeSlots,
-		})
+// checkBack checks for pressing the Back button
+func (h *DetailHandler) checkBack(ctx context.Context, parts []string, query *tgbotapi.CallbackQuery) (bool, error) {
+	if len(parts) == 2 {
+		if parts[1] == "back" {
+			return true, h.bs.Handle(ctx, query)
+		}
 	}
 
-	return Service{
-		ID:             dbServiceModel.ID,
-		Name:           dbServiceModel.Name,
-		Description:    dbServiceModel.Description,
-		Rules:          dbServiceModel.Rules,
-		Schedule:       dbServiceModel.Schedule,
-		AvailableSlots: slots,
-		Type:           ServiceType(dbServiceModel.Type),
-	}
+	return false, nil
 }
 
-// Вспомогательные методы для оркестратора
-func (h *ServiceHandler) handleError(userID int64, serviceID int, err error) error {
-	// Отправка сообщения об ошибке + логирование
+// sendError sends an error message
+func (h *DetailHandler) sendError(chatID int64, errorMsg string) error {
+	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Ошибка: %s", errorMsg))
+	_, err := h.bot.Send(msg)
+	return err
+}
+
+// sendMessage sends a message with an inline keyboard to the user
+func (h *DetailHandler) sendMessage(userID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) error {
+	msg := tgbotapi.NewMessage(userID, text)
+	msg.ReplyMarkup = keyboard
+	_, err := h.bot.Send(msg)
+	return err
+}
+
+// handleError logs service retrieval failures and sends a message
+func (h *DetailHandler) handleError(chatID int64, userID int64, serviceID int64, err error) error {
 	if err != nil {
 		logger.Error("failed_to_get_service",
-			zap.Int("service_id", serviceID),
+			zap.Int64("service_id", serviceID),
 			zap.Int64("user_id", userID),
 			zap.Error(err),
 		)
-
-		// Отправляем сообщение об ошибке пользователю
-		msg := tgbotapi.NewMessage(userID, "❌ К сожалению, не удалось загрузить информацию об услуге. Пожалуйста, попробуйте позже.")
-		_, sendErr := h.bot.Send(msg)
-		if sendErr != nil {
-			logger.Error("failed_to_send_error_message",
-				zap.Int64("user_id", userID),
-				zap.Error(sendErr),
-			)
-		}
+		h.sendError(chatID, "Не удалось загрузить информацию об услуге")
 	}
 	return err
 }
 
-func buildServiceMessage(service *Service, serviceName string) string {
-	var builder strings.Builder
-
-	// Эмодзи в зависимости от типа услуги
-	emoji := "✨"
-	switch service.Type {
-	case ServiceTypeMuseum:
-		emoji = "🎨"
-	case ServiceTypeSport:
-		emoji = "⚽"
+func formatSchedule(slots []models.BoxAvailableSlot) string {
+	if len(slots) == 0 {
+		return ""
 	}
 
-	builder.WriteString(emoji)
-	builder.WriteString(" ")
+	var sb strings.Builder
+
+	slotsByDate := make(map[string][]models.BoxAvailableSlot)
+	for _, slot := range slots {
+		slotsByDate[slot.Date] = append(slotsByDate[slot.Date], slot)
+	}
+
+	for date, dateSlots := range slotsByDate {
+		formattedDate := formatDateForDisplay(date)
+		sb.WriteString(fmt.Sprintf("\n  %s:", formattedDate))
+
+		for _, slot := range dateSlots {
+			sb.WriteString(fmt.Sprintf("\n    • %s–%s", slot.StartTime, slot.EndTime))
+		}
+	}
+
+	return sb.String()
+}
+
+// formatDateForDisplay formats the date
+func formatDateForDisplay(dateStr string) string {
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return dateStr
+	}
+
+	russianMonths := []string{
+		"янв", "фев", "мар", "апр", "май", "июн",
+		"июл", "авг", "сен", "окт", "ноя", "дек",
+	}
+	russianWeekdays := []string{
+		"вс", "пн", "вт", "ср", "чт", "пт", "сб",
+	}
+
+	monthIdx := date.Month() - 1
+	weekdayIdx := date.Weekday()
+
+	return fmt.Sprintf("%d %s (%s)",
+		date.Day(),
+		russianMonths[monthIdx],
+		russianWeekdays[weekdayIdx])
+}
+
+// buildServiceMessage creates a formatted string containing all service information
+func (h *DetailHandler) buildServiceMessage(service *models.Service, serviceName string) string {
+	var builder strings.Builder
 	builder.WriteString(serviceName)
 	builder.WriteString("\n\n")
 
 	sections := []struct {
-		label string
-		value string
+		label     string
+		value     string
+		skipEmpty bool
 	}{
-		{"Описание", service.Description},
-		{"Правила", service.Rules},
-		{"Расписание", service.Schedule},
+		{"Описание", service.Description, true},
+		{"Правила", service.Rules, true},
+		{"Расписание", formatSchedule(service.BoxAvailableSlots), false},
 	}
 
 	for i, section := range sections {
-		if section.value != "" {
-			builder.WriteString(section.label)
-			builder.WriteString(": ")
-			builder.WriteString(section.value)
-			builder.WriteString("\n")
+		if section.skipEmpty && section.value == "" {
+			continue
 		}
+
+		builder.WriteString(section.label)
+		builder.WriteString(":")
+
+		if section.label == "Расписание" {
+			builder.WriteString(section.value)
+		} else {
+			builder.WriteString(" ")
+			builder.WriteString(section.value)
+		}
+		builder.WriteString("\n")
+
 		if i == len(sections)-1 {
 			builder.WriteString("\n")
 		}
 	}
 
-	// Призыв к действию
-	switch service.Type {
-	case ServiceTypeMuseum:
-		builder.WriteString("Выберите тип посещения:")
-	case ServiceTypeSport:
-		builder.WriteString("Выберите действие:")
-	default:
-		builder.WriteString("Доступные действия:")
-	}
-
+	builder.WriteString("Доступные действия:")
 	return builder.String()
 }

@@ -40,6 +40,8 @@ var (
 	ErrEmailAlreadyExist      = errors.New("user already exist")
 	ErrSessionNotFound        = errors.New("session not found")
 	ErrApplicationNotFound    = errors.New("application not found")
+	ErrBoxSolutionNotFound    = errors.New("box solution not found")
+	ErrSlotsNotFound          = errors.New("slots not found")
 )
 
 type RefreshToken struct {

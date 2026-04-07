@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/logger"
+	"github.com/yandex-development-1-team/go/internal/models"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
 
@@ -24,6 +24,7 @@ type BotAPI interface {
 type BookingFormHandler struct {
 	bot      BotAPI
 	sh       *StartHandler
+	bs       *BoxSolutionsHandler
 	service  *botService.BookingService
 	keyboard *KeyboardService
 }
@@ -33,6 +34,7 @@ func NewBookingFormHandler(
 	bot *tgbotapi.BotAPI,
 	service *botService.BookingService,
 	sh *StartHandler,
+	bs *BoxSolutionsHandler,
 	keyboard *KeyboardService,
 ) *BookingFormHandler {
 
@@ -40,6 +42,7 @@ func NewBookingFormHandler(
 		bot:      bot,
 		service:  service,
 		sh:       sh,
+		bs:       bs,
 		keyboard: keyboard,
 	}
 }
@@ -83,7 +86,7 @@ func (h *BookingFormHandler) Handle(ctx context.Context, query *tgbotapi.Callbac
 		return h.stepConfirmation(ctx, query, state)
 
 	case botService.StepMainMenu:
-		return h.stepMainMenu(ctx, userID, query.Message)
+		return h.stepMainMenu(ctx, userID, query)
 
 	default:
 		logger.Warn("unknown action", zap.Int("Action", action))
@@ -125,12 +128,7 @@ func (h *BookingFormHandler) HandleTextMessage(ctx context.Context, msg *tgbotap
 }
 
 // GetAction returns the status of the booking process
-func (h *BookingFormHandler) GetAction(
-	//ctx context.Context,
-	state *botService.BookingState,
-	//query *tgbotapi.CallbackQuery,
-	parts []string,
-) int {
+func (h *BookingFormHandler) GetAction(state *botService.BookingState, parts []string) int {
 	if len(parts) < 2 {
 		logger.Error("invalid parameters")
 		return botService.StepMainMenu
@@ -167,9 +165,16 @@ func (h *BookingFormHandler) handleBack(
 	}
 
 	switch targetStep {
+	case botService.StepReturnInBoxList:
+		if err := h.service.ClearSession(ctx, userID); err != nil {
+			return fmt.Errorf("clear session: %w", err)
+		}
+
+		return h.bs.Handle(ctx, query)
+
 	case botService.StepStartBooking:
 		state.Step = botService.StepSelectDate
-		state.SelectedDate = time.Time{}
+		state.SelectedSlot = models.BoxAvailableSlot{}
 		if err := h.service.SaveSession(ctx, userID, *state); err != nil {
 			return err
 		}
@@ -210,6 +215,8 @@ func (h *BookingFormHandler) handleBack(
 // sendError sends an error message
 func (h *BookingFormHandler) sendError(chatID int64, errorMsg string) error {
 	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Ошибка: %s", errorMsg))
-	_, err := h.bot.Send(msg)
-	return err
+	if _, err := h.bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
 }

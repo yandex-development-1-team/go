@@ -36,17 +36,6 @@ CREATE TABLE IF NOT EXISTS staff (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
  );
 
--- обновление updated_at для всех таблиц
--- +goose StatementBegin
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $function$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$function$ LANGUAGE plpgsql;
--- +goose StatementEnd
-
 -- триггер обновления updated_at для таблицы staff
 -- +goose StatementBegin
 CREATE TRIGGER staff_updated_at

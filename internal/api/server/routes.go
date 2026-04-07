@@ -57,7 +57,6 @@ func setupBoxRoutes(rg *gin.RouterGroup, boxHandler *handlers.BoxHandler) {
 	{
 		boxes.GET("/", boxHandler.List)
 		boxes.POST("/")
-		boxes.GET("/export", boxHandler.Export)
 		boxes.GET("/:id", boxHandler.GetByID)
 		boxes.PUT("/:id", boxHandler.Update)
 		boxes.DELETE("/:id", boxHandler.Delete)

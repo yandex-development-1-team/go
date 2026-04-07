@@ -34,11 +34,23 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- обновление updated_at для всех таблиц
+-- +goose StatementBegin
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $function$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$function$ LANGUAGE plpgsql;
+-- +goose StatementEnd
+
 CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email != '';
 
 -- +goose Down
 DROP INDEX IF EXISTS idx_users_telegram_id;
+DROP INDEX IF EXISTS idx_users_email_unique;
 DROP TABLE IF EXISTS users;
 DROP TYPE IF EXISTS user_status_type;
 DROP TYPE IF EXISTS user_role_type;

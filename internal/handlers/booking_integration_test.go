@@ -13,33 +13,37 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
+	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository/postgres"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
 
+// // formatTimeForCallback преобразует время из формата HH:MM:SS в HH.MM.SS для callback
+// func formatTimeForCallback(timeStr string) string {
+// 	return strings.ReplaceAll(timeStr, ":", ".")
+// }
+
 // Тест: Полный цикл бронирования от начала до конца
 func TestBookingFormHandler_FullFlow(t *testing.T) {
-	// Очищаем таблицу bookings перед тестом
 	_, err := handlerTestDB.Exec("DELETE FROM bookings WHERE user_id = $1", TestUserID)
 	require.NoError(t, err)
 
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
-	// Используем реальный репозиторий вместо мока
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
-
 	startHandler := &StartHandler{
 		bot:            mockBot,
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -49,18 +53,22 @@ func TestBookingFormHandler_FullFlow(t *testing.T) {
 	userID := TestUserID
 	currentMsgID := 1
 
-	// Гарантируем, что пользователь существует
 	ensureUserExists(t, userID)
 
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
-	// ИСПРАВЛЕНО: уменьшаем количество ожидаемых Send с 8 до 7
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil).Times(7)
 
-	targetDate := time.Now().AddDate(0, 0, 2)
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	// Преобразуем время для callback
+	startTimeCallback := formatTimeForCallback(startTime)
+	endTimeCallback := formatTimeForCallback(endTime)
 
 	// ШАГ 1: Начало бронирования
 	t.Log("ШАГ 1: Начало бронирования")
-	query1 := createTestCallbackQuery(chatID, userID, "book:private:1", currentMsgID)
+	query1 := createTestCallbackQuery(chatID, userID, "book:1", currentMsgID)
 
 	err = handler.Handle(ctx, query1)
 	assert.NoError(t, err)
@@ -70,14 +78,13 @@ func TestBookingFormHandler_FullFlow(t *testing.T) {
 	require.NotNil(t, state1)
 	assert.Equal(t, botService.StepSelectDate, state1.Step)
 	assert.Equal(t, userID, state1.UserID)
-	assert.Equal(t, 1, state1.ServiceID)
-	assert.Equal(t, "private", state1.VisitType)
+	assert.Equal(t, int64(1), state1.ServiceID)
 	currentMsgID++
 	t.Log("  → ШАГ 1 завершен")
 
 	// ШАГ 2: Выбор даты
-	t.Logf("ШАГ 2: Выбор даты %s", targetDate.Format("2006-01-02"))
-	query2 := createTestCallbackQuery(chatID, userID, "book:select_date:private:"+targetDate.Format("2006-01-02"), currentMsgID)
+	t.Logf("ШАГ 2: Выбор даты %s %s-%s", targetDate, startTime, endTime)
+	query2 := createTestCallbackQuery(chatID, userID, fmt.Sprintf("book:select_date:%s:%s:%s", targetDate, startTimeCallback, endTimeCallback), currentMsgID)
 
 	err = handler.Handle(ctx, query2)
 	assert.NoError(t, err)
@@ -86,7 +93,9 @@ func TestBookingFormHandler_FullFlow(t *testing.T) {
 	state2 := getBookingStateFromSession(ctx, t, userID)
 	require.NotNil(t, state2)
 	assert.Equal(t, botService.StepEnterName, state2.Step)
-	assert.Equal(t, targetDate.Format("2006-01-02"), state2.SelectedDate.Format("2006-01-02"))
+	assert.Equal(t, targetDate, state2.SelectedSlot.Date)
+	assert.Equal(t, startTime, state2.SelectedSlot.StartTime)
+	assert.Equal(t, endTime, state2.SelectedSlot.EndTime)
 	currentMsgID++
 	t.Log("  → ШАГ 2 завершен")
 
@@ -133,12 +142,13 @@ func TestBookingFormHandler_FullFlow(t *testing.T) {
 	t.Log("  → ШАГ 5 завершен")
 
 	// Проверка всех накопленных данных
-	assert.Equal(t, targetDate.Format("2006-01-02"), state5.SelectedDate.Format("2006-01-02"))
+	assert.Equal(t, targetDate, state5.SelectedSlot.Date)
+	assert.Equal(t, startTime, state5.SelectedSlot.StartTime)
+	assert.Equal(t, endTime, state5.SelectedSlot.EndTime)
 	assert.Equal(t, "Иванов Иван Иванович", state5.GuestName)
 	assert.Equal(t, "ООО Ромашка", state5.GuestOrganization)
 	assert.Equal(t, "Директор", state5.GuestPosition)
-	assert.Equal(t, "private", state5.VisitType)
-	assert.Equal(t, 1, state5.ServiceID)
+	assert.Equal(t, int64(1), state5.ServiceID)
 
 	// ШАГ 6: Подтверждение бронирования
 	t.Log("ШАГ 6: Подтверждение бронирования")
@@ -165,11 +175,12 @@ func TestBookingFormHandler_FullFlow(t *testing.T) {
 
 // Тест: Проверка навигации "Назад"
 func TestBookingFormHandler_BackNavigation(t *testing.T) {
-	// Очищаем сессию перед тестом
 	_ = handlerSessionRepo.ClearSession(context.Background(), TestUserID)
 
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -177,12 +188,11 @@ func TestBookingFormHandler_BackNavigation(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -197,8 +207,7 @@ func TestBookingFormHandler_BackNavigation(t *testing.T) {
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 
-	// ШАГ 1: Начало бронирования
-	query1 := createTestCallbackQuery(chatID, userID, "book:private:1", messageID)
+	query1 := createTestCallbackQuery(chatID, userID, "book:1", messageID)
 	err := handler.Handle(ctx, query1)
 	assert.NoError(t, err)
 	time.Sleep(100 * time.Millisecond)
@@ -207,13 +216,11 @@ func TestBookingFormHandler_BackNavigation(t *testing.T) {
 	require.NotNil(t, state)
 	assert.Equal(t, botService.StepSelectDate, state.Step)
 
-	// ШАГ 2: Возврат в меню с шага выбора даты
 	queryBack := createTestCallbackQuery(chatID, userID, "book:main_menu", messageID+1)
 	err = handler.Handle(ctx, queryBack)
 	assert.NoError(t, err)
 	time.Sleep(200 * time.Millisecond)
 
-	// Проверяем, что сессия очищена
 	session, _ := handlerSessionRepo.GetSession(ctx, userID)
 	assert.Nil(t, session)
 
@@ -223,7 +230,9 @@ func TestBookingFormHandler_BackNavigation(t *testing.T) {
 // Тест: Обработка ошибок валидации
 func TestBookingFormHandler_ValidationErrors(t *testing.T) {
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -231,12 +240,11 @@ func TestBookingFormHandler_ValidationErrors(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -249,7 +257,15 @@ func TestBookingFormHandler_ValidationErrors(t *testing.T) {
 
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 
-	selectedDate := time.Now().AddDate(0, 0, 2)
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	slot := models.BoxAvailableSlot{
+		Date:      targetDate,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
 
 	// Тест 1: Ошибка валидации организации
 	t.Run("Organization validation error", func(t *testing.T) {
@@ -258,8 +274,7 @@ func TestBookingFormHandler_ValidationErrors(t *testing.T) {
 		state := botService.BookingState{
 			UserID:       userID,
 			ServiceID:    1,
-			VisitType:    "private",
-			SelectedDate: selectedDate,
+			SelectedSlot: slot,
 			GuestName:    "Иванов Иван Иванович",
 			Step:         botService.StepEnterOrg,
 			CreatedAt:    time.Now(),
@@ -288,8 +303,7 @@ func TestBookingFormHandler_ValidationErrors(t *testing.T) {
 		state := botService.BookingState{
 			UserID:            userID,
 			ServiceID:         1,
-			VisitType:         "private",
-			SelectedDate:      selectedDate,
+			SelectedSlot:      slot,
 			GuestName:         "Иванов Иван Иванович",
 			GuestOrganization: "ООО Ромашка",
 			Step:              botService.StepEnterPosition,
@@ -322,7 +336,9 @@ func TestBookingFormHandler_RaceCondition(t *testing.T) {
 	}
 
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -330,12 +346,11 @@ func TestBookingFormHandler_RaceCondition(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -347,7 +362,12 @@ func TestBookingFormHandler_RaceCondition(t *testing.T) {
 	chatID := int64(12345)
 	baseUserID := int64(100000)
 	messageID := 1
-	targetDate := time.Now().AddDate(0, 0, 2)
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	startTime := "10:00:00"
+	endTime := "12:00:00"
+
+	startTimeCallback := formatTimeForCallback(startTime)
+	endTimeCallback := formatTimeForCallback(endTime)
 
 	_, err := handlerTestDB.Exec("DELETE FROM bookings WHERE booking_date = $1", targetDate)
 	require.NoError(t, err)
@@ -379,7 +399,7 @@ func TestBookingFormHandler_RaceCondition(t *testing.T) {
 			userID := baseUserID + int64(idx)
 			currentMsgID := messageID
 
-			query1 := createTestCallbackQuery(chatID, userID, "book:private:1", currentMsgID)
+			query1 := createTestCallbackQuery(chatID, userID, "book:1", currentMsgID)
 			err := handler.Handle(ctx, query1)
 			if err != nil {
 				errChan <- err
@@ -390,7 +410,7 @@ func TestBookingFormHandler_RaceCondition(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 
 			query2 := createTestCallbackQuery(chatID, userID,
-				"book:select_date:private:"+targetDate.Format("2006-01-02"),
+				fmt.Sprintf("book:select_date:%s:%s:%s", targetDate, startTimeCallback, endTimeCallback),
 				currentMsgID)
 			err = handler.Handle(ctx, query2)
 			if err != nil {
@@ -465,7 +485,9 @@ func TestBookingFormHandler_ConcurrentSessions(t *testing.T) {
 	}
 
 	mockBot := new(MockBotAPI)
+	emptyBot := &tgbotapi.BotAPI{}
 	keyboard := NewKeyboardService()
+	bsHandler := NewBoxSolutions(emptyBot, bsService)
 
 	userRepo := postgres.NewTelegramUserRepository(handlerTestDB)
 	startHandler := &StartHandler{
@@ -473,12 +495,11 @@ func TestBookingFormHandler_ConcurrentSessions(t *testing.T) {
 		userRepository: userRepo,
 	}
 
-	emptyBot := &tgbotapi.BotAPI{}
-
 	handler := NewBookingFormHandler(
 		emptyBot,
 		handlerService,
 		startHandler,
+		bsHandler,
 		keyboard,
 	)
 	handler.bot = mockBot
@@ -514,7 +535,7 @@ func TestBookingFormHandler_ConcurrentSessions(t *testing.T) {
 			userID := baseUserID + int64(userOffset)
 			messageID := userOffset + 1
 
-			query := createTestCallbackQuery(chatID, userID, "book:private:1", messageID)
+			query := createTestCallbackQuery(chatID, userID, "book:1", messageID)
 			err := handler.Handle(ctx, query)
 			assert.NoError(t, err)
 

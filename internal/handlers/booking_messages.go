@@ -23,8 +23,10 @@ func (h *BookingFormHandler) renderNameInput(chatID int64, msgID int) error {
 	msg.ParseMode = "Markdown"
 	msg.ReplyMarkup = &keyboard
 
-	_, err := h.bot.Send(msg)
-	return err
+	if _, err := h.bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // stepNameInput processes the input of the full name
@@ -41,8 +43,10 @@ func (h *BookingFormHandler) stepNameInput(
 		))
 		msg.ParseMode = "Markdown"
 		msg.ReplyMarkup = h.keyboard.FormNavigationKeyboard(botService.StepSelectDate)
-		_, sendErr := h.bot.Send(msg)
-		return sendErr
+		if _, err := h.bot.Send(msg); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	logger.Info("Full name entered",
@@ -63,8 +67,10 @@ func (h *BookingFormHandler) renderOrganizationInput(chatID int64) error {
 	msg.ParseMode = "Markdown"
 	msg.ReplyMarkup = h.keyboard.FormNavigationKeyboard(botService.StepEnterName)
 
-	_, err := h.bot.Send(msg)
-	return err
+	if _, err := h.bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // stepOrganizationInput processes the organization's input
@@ -81,8 +87,10 @@ func (h *BookingFormHandler) stepOrganizationInput(
 		))
 		msg.ParseMode = "Markdown"
 		msg.ReplyMarkup = h.keyboard.FormNavigationKeyboard(botService.StepEnterName)
-		_, sendErr := h.bot.Send(msg)
-		return sendErr
+		if _, err := h.bot.Send(msg); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	logger.Info("The organization has been introduced",
@@ -102,8 +110,10 @@ func (h *BookingFormHandler) renderPositionInput(chatID int64) error {
 	msg.ParseMode = "Markdown"
 	msg.ReplyMarkup = h.keyboard.FormNavigationKeyboard(botService.StepEnterOrg)
 
-	_, err := h.bot.Send(msg)
-	return err
+	if _, err := h.bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // stepPositionInput processes the entry of a position
@@ -120,8 +130,10 @@ func (h *BookingFormHandler) stepPositionInput(
 		))
 		msg.ParseMode = "Markdown"
 		msg.ReplyMarkup = h.keyboard.FormNavigationKeyboard(botService.StepEnterOrg)
-		_, sendErr := h.bot.Send(msg)
-		return sendErr
+		if _, err := h.bot.Send(msg); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	logger.Info("The position has been introduced",
@@ -135,7 +147,10 @@ func (h *BookingFormHandler) stepPositionInput(
 func (h *BookingFormHandler) renderConfirmation(chatID int64, state *botService.BookingState) error {
 	var messageText strings.Builder
 	messageText.WriteString("Подтверждение бронирования\n\n")
-	if _, err := fmt.Fprintf(&messageText, "Дата: %s\n", state.SelectedDate.Format("02.01.2006")); err != nil {
+	if _, err := fmt.Fprintf(&messageText, "Дата: %s\n", state.SelectedSlot.Date); err != nil {
+		return fmt.Errorf("format confirmation date: %w", err)
+	}
+	if _, err := fmt.Fprintf(&messageText, "Время: %s - %s\n", state.SelectedSlot.StartTime, state.SelectedSlot.EndTime); err != nil {
 		return fmt.Errorf("format confirmation date: %w", err)
 	}
 	if _, err := fmt.Fprintf(&messageText, "ФИО: %s\n", state.GuestName); err != nil {
@@ -155,6 +170,8 @@ func (h *BookingFormHandler) renderConfirmation(chatID int64, state *botService.
 	msg.ParseMode = "Markdown"
 	msg.ReplyMarkup = keyboard
 
-	_, err := h.bot.Send(msg)
-	return err
+	if _, err := h.bot.Send(msg); err != nil {
+		return err
+	}
+	return nil
 }

@@ -35,6 +35,8 @@ var errMappings = []errMapping{
 	{models.ErrDatabase, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
 	{models.ErrCache, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
 	{models.ErrEmailAlreadyExist, http.StatusConflict, "Указанный почтовый адрес уже занят"},
+	{models.ErrSlotsNotFound, http.StatusBadRequest, "Слоты коробочного решения не найдены"},
+	{models.ErrBoxSolutionNotFound, http.StatusNotFound, "Коробочное решение не найдено"},
 }
 
 const defaultMessage = "Произошла ошибка. Попробуйте позже."
