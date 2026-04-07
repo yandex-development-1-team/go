@@ -99,7 +99,8 @@
                 "type": "object",
                 "properties": {
                   "login": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "email"
                   },
                   "password": {
                     "type": "string",
@@ -193,10 +194,14 @@
                   "properties": {
                     "token": {
                       "type": "string"
+                    },
+                    "refresh_token": {
+                      "type": "string"
                     }
                   },
                   "required": [
-                    "token"
+                    "token",
+                    "refresh_token"
                   ]
                 }
               }
