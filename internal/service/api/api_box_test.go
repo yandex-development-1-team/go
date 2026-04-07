@@ -46,7 +46,7 @@ func TestUpdate(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockLister := mocks.NewMockBoxSolutionRepository(ctrl)
-	svc := NewAPIBoxService(mockLister)
+	svc := NewAPIBoxService(mockLister, nil)
 
 	serviceID := int64(1)
 	newName := "Updated Box"
@@ -291,7 +291,7 @@ func TestExport_PDF(t *testing.T) {
 		GetServicesByStatus(gomock.Any(), &activeStatus).
 		Return(fakeServices, nil)
 
-	svc := NewAPIBoxService(mockLister)
+	svc := NewAPIBoxService(mockLister, nil)
 
 	data, contentType, err := svc.Export(context.Background(), "active", "pdf")
 
@@ -320,7 +320,7 @@ func TestExport_CSV(t *testing.T) {
 		GetServicesByStatus(gomock.Any(), nil).
 		Return(fakeServices, nil)
 
-	svc := NewAPIBoxService(mockLister)
+	svc := NewAPIBoxService(mockLister, nil)
 
 	data, contentType, err := svc.Export(context.Background(), "", "csv")
 
@@ -367,7 +367,7 @@ func TestExport_DefaultFormat(t *testing.T) {
 		GetServicesByStatus(gomock.Any(), nil).
 		Return(fakeServices, nil)
 
-	svc := NewAPIBoxService(mockLister)
+	svc := NewAPIBoxService(mockLister, nil)
 
 	// Передаём невалидный формат — должен вернуть pdf
 	_, contentType, err := svc.Export(context.Background(), "", "xml")
@@ -390,7 +390,7 @@ func TestExport_ListerError(t *testing.T) {
 		GetServicesByStatus(gomock.Any(), gomock.Any()).
 		Return(nil, errors.New("db error"))
 
-	svc := NewAPIBoxService(mockLister)
+	svc := NewAPIBoxService(mockLister, nil)
 
 	_, _, err := svc.Export(context.Background(), "active", "pdf")
 	if err == nil {
@@ -408,7 +408,7 @@ func TestExport_EmptyServices(t *testing.T) {
 		GetServicesByStatus(gomock.Any(), gomock.Any()).
 		Return([]models.Service{}, nil)
 
-	svc := NewAPIBoxService(mockLister)
+	svc := NewAPIBoxService(mockLister, nil)
 
 	data, contentType, err := svc.Export(context.Background(), "", "pdf")
 
