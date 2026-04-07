@@ -41,11 +41,20 @@ type ApplicationRepository interface {
 	DeleteApplication(ctx context.Context, id int64) error
 }
 
+//go:generate mockgen -source=../../repository/postgres/interfaces.go -destination=mocks/mock_boxlister.go -package=mocks
 type BoxSolutionRepository interface {
 	GetServices(ctx context.Context, telegramID int64) ([]models.Service, error)
-	GetServiceByID(ctx context.Context, serviceID int) (models.Service, error)
-	GetAvailableSlotsByServiceID(ctx context.Context, serviceID int) ([]models.AvailableSlot, error)
-	GetAvailableTimeSlotsByDate(ctx context.Context, serviceID int, date string) ([]string, error)
+	GetServiceByID(ctx context.Context, serviceID int64) (*models.Service, error)
+	CreateBox(ctx context.Context, box *models.BoxCreate) (*models.Service, error)
+	GetAvailableSlotsByServiceID(ctx context.Context, serviceID int64) ([]models.BoxAvailableSlot, error)
+	CheckSlotAvailability(ctx context.Context, serviceID int64, slot models.BoxAvailableSlot) (bool, error)
+	UpdateService(ctx context.Context, id int64, service *models.BoxUpdate) error
+	SoftDeleteService(ctx context.Context, serviceID int64) error
+	UpdateServiceStatus(ctx context.Context, serviceID int64, status models.ServiceStatus) (*models.BoxUpdateStatusResult, error)
+	UpdateServiceSlots(ctx context.Context, id int64, slots *models.BoxNewSlots) error
+	DeleteServiceSlots(ctx context.Context, id int64) error
+	GetServicesByStatus(ctx context.Context, status *models.ServiceStatus) ([]models.Service, error)
+	List(ctx context.Context, query models.BoxList) (*models.BoxListResult, error)
 }
 
 type SessionRepository interface {

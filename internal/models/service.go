@@ -1,43 +1,98 @@
 package models
 
 import (
-	"database/sql"
 	"time"
 )
 
 type ServiceStatus string
 
 const (
-	StatusActive    ServiceStatus = "active"
-	StatusHidden    ServiceStatus = "hidden"
-	StatusDraft     ServiceStatus = "draft"
-	StatusProcessed ServiceStatus = "processed"
+	StatusActive   ServiceStatus = "active"
+	StatusInactive ServiceStatus = "inactive"
 )
 
 // Service — услуга (БД и сервисный слой).
 type Service struct {
-	ID             int64           `db:"id"`
-	Name           string          `db:"name"`
-	Description    string          `db:"description"`
-	Rules          string          `db:"rules"`
-	Schedule       string          `db:"schedule"`
-	Type           string          `db:"type"`
-	BoxSolution    bool            `db:"box_solution"`
-	Status         ServiceStatus   `db:"status"`     // статус для API
-	CreatedAt      time.Time       `db:"created_at"` // время создания
-	UpdatedAt      time.Time       `db:"updated_at"` // время обновления
-	DeletedAt      sql.NullTime    `db:"deleted_at"` // логическое удаление
-	AvailableSlots []AvailableSlot `db:"-"`
+	ID                int64
+	Name              string
+	Slug              string
+	Description       string
+	Rules             string
+	Location          string
+	Price             int
+	Image             *string
+	Status            string
+	Organizer         string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	BoxAvailableSlots []BoxAvailableSlot
+}
+
+type BoxCreate struct {
+	Name        *string
+	Slug        *string
+	Description *string
+	Rules       *string
+	Location    *string
+	Price       *int
+	Image       *string
+	Status      *string
+	Organizer   *string
+	Slots       []BoxAvailableSlot
+}
+
+type BoxUpdate struct {
+	ID          int64
+	Name        *string
+	Description *string
+	Rules       *string
+	Slots       []BoxAvailableSlot
+	Location    *string
+	Price       *int
+	Image       *string
+	Status      *string
+	Organizer   *string
 }
 
 // AvailableSlot — слоты по дате (дата + список времени).
-type AvailableSlot struct {
-	Date      string   `db:"slot_date"`
-	TimeSlots []string `db:"time_slots"`
+type BoxAvailableSlot struct {
+	Date      string
+	StartTime string
+	EndTime   string
 }
 
 // BoxSolutionsButton — кнопка меню «Коробочные решения».
 type BoxSolutionsButton struct {
 	Name  string
 	Alias string
+}
+
+// BoxNewSlots - структура для INSERT всех слотов в 1 запрос
+type BoxNewSlots struct {
+	Date      []time.Time
+	StartTime []time.Time
+	EndTime   []time.Time
+}
+
+type BoxUpdateStatusResult struct {
+	ID        int64
+	Status    string
+	UpdatedAt time.Time
+}
+
+type BoxList struct {
+	Status *string
+	Search *string
+	Limit  int
+	Offset int
+	Sort   string
+	Order  string
+}
+
+// BoxListResult результат списка коробок (из репозитория)
+type BoxListResult struct {
+	Items  []Service
+	Total  int
+	Limit  int
+	Offset int
 }

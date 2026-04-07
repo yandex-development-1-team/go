@@ -50,47 +50,47 @@ func TestName_Invalid(t *testing.T) {
 		{
 			name:        "Empty name",
 			input:       "",
-			expectedErr: "Full name cannot be empty",
+			expectedErr: "Полное имя не может быть пустым",
 		},
 		{
 			name:        "Only spaces",
 			input:       "   ",
-			expectedErr: "Full name cannot be empty",
+			expectedErr: "Полное имя не может быть пустым",
 		},
 		{
 			name:        "Too short",
 			input:       "A",
-			expectedErr: "The full name must contain at least a 3 character",
+			expectedErr: "Полное имя должно содержать как минимум 3 символа",
 		},
 		{
 			name:        "Too long",
 			input:       "This is a very long name that exceeds the maximum allowed length of one hundred characters which should be more than enough for any normal person",
-			expectedErr: "The full name must contain a maximum of 100 characters",
+			expectedErr: "Полное имя должно содержать не более 100 символов",
 		},
 		{
 			name:        "Contains numbers",
 			input:       "Ivan123 Petrov",
-			expectedErr: "The full name can contain only letters, spaces, and hyphens",
+			expectedErr: "Полное имя может содержать только буквы, пробелы и дефисы",
 		},
 		{
 			name:        "Contains special chars",
 			input:       "Ivan@ Petrov",
-			expectedErr: "The full name can contain only letters, spaces, and hyphens",
+			expectedErr: "Полное имя может содержать только буквы, пробелы и дефисы",
 		},
 		{
 			name:        "Double spaces",
 			input:       "Ivan  Petrov",
-			expectedErr: "Full name should not contain double spaces",
+			expectedErr: "Полное имя не должно содержать двойных пробелов",
 		},
 		{
 			name:        "Multiple double spaces",
 			input:       "Ivan  Petrov  Ivanovich",
-			expectedErr: "Full name should not contain double spaces",
+			expectedErr: "Полное имя не должно содержать двойных пробелов",
 		},
 		{
 			name:        "Single word",
 			input:       "Ivan",
-			expectedErr: "Enter your last name and first name",
+			expectedErr: "Введите вашу фамилию и имя",
 		},
 	}
 
@@ -151,27 +151,27 @@ func TestOrganization_Invalid(t *testing.T) {
 		{
 			name:        "Empty organization",
 			input:       "",
-			expectedErr: "The name of the organization cannot be empty",
+			expectedErr: "Название организации не может быть пустым",
 		},
 		{
 			name:        "Only spaces",
 			input:       "   ",
-			expectedErr: "The name of the organization cannot be empty",
+			expectedErr: "Название организации не может быть пустым",
 		},
 		{
 			name:        "Too short",
 			input:       "A",
-			expectedErr: "The name of the organization must contain at least 2 characters",
+			expectedErr: "Название организации должно содержать не менее 2 символов",
 		},
 		{
 			name:        "Too long",
 			input:       "This is a very long organization name that exceeds the maximum allowed length of two hundred fifty five characters which should be more than enough for any normal company name in the world even with all the legal suffixes and prefixes that might be required by law in some jurisdictions",
-			expectedErr: "The name of the organization must contain a maximum of 255 characters",
+			expectedErr: "Название организации не должно содержать более 255 символов",
 		},
 		{
 			name:        "Contains invalid chars",
 			input:       "Company@#$%",
-			expectedErr: "The organization's name contains invalid characters",
+			expectedErr: "Название организации содержит недопустимые символы",
 		},
 	}
 
@@ -232,27 +232,27 @@ func TestPosition_Invalid(t *testing.T) {
 		{
 			name:        "Empty position",
 			input:       "",
-			expectedErr: "The position cannot be empty",
+			expectedErr: "Должность не может быть пустой",
 		},
 		{
 			name:        "Only spaces",
 			input:       "   ",
-			expectedErr: "The position cannot be empty",
+			expectedErr: "Должность не может быть пустой",
 		},
 		{
 			name:        "Too short",
 			input:       "A",
-			expectedErr: "The post must contain at least a 2 character",
+			expectedErr: "Сообщение должно содержать как минимум 2 символа",
 		},
 		{
 			name:        "Too long",
 			input:       "This is a very long position title that exceeds the maximum allowed length of one hundred characters which is really too long for any job title in the world",
-			expectedErr: "The post must contain a maximum of 100 characters",
+			expectedErr: "Сообщение должно содержать максимум 100 символов",
 		},
 		{
 			name:        "Contains invalid chars",
 			input:       "Engineer@#$%",
-			expectedErr: "The post contains invalid characters",
+			expectedErr: "В сообщении содержатся недопустимые символы",
 		},
 	}
 
