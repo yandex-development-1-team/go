@@ -153,7 +153,7 @@ func (h *BoxHandler) UploadImage(c *gin.Context) {
 		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Не удалось открыть загруженный файл"})
 		return
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	contentType := formFile.Header.Get("Content-Type")
 	if contentType == "" {

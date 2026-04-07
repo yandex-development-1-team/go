@@ -36,7 +36,7 @@ func (h *FileHandler) Upload(c *gin.Context) {
 		})
 		return
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	contentType := formFile.Header.Get("Content-Type")
 	if contentType == "" {
