@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"time"
 
 	"github.com/yandex-development-1-team/go/internal/logger"
@@ -27,12 +29,16 @@ import (
 
 // APIBoxService implements HTTP API logic for boxed solutions.
 type APIBoxService struct {
-	lister repository.BoxSolutionRepository
+	lister      repository.BoxSolutionRepository
+	fileService *FileService
 }
 
 // NewAPIBoxService creates a new instance of the box service.
-func NewAPIBoxService(lister repository.BoxSolutionRepository) *APIBoxService {
-	return &APIBoxService{lister: lister}
+func NewAPIBoxService(lister repository.BoxSolutionRepository, fileService *FileService) *APIBoxService {
+	return &APIBoxService{
+		lister:      lister,
+		fileService: fileService,
+	}
 }
 
 // List returns all box solutions for API
@@ -180,4 +186,47 @@ func (s *APIBoxService) Export(ctx context.Context, status string, format string
 		data, err := s.generatePDF(activeServices)
 		return data, "application/pdf", err
 	}
+}
+
+func (s *APIBoxService) UploadImage(
+	ctx context.Context,
+	id int64,
+	reader io.Reader,
+	originalName string,
+	contentType string,
+	size int64,
+) (string, error) {
+	if s.fileService == nil {
+		return "", fmt.Errorf("file service is nil")
+	}
+
+	currentBox, err := s.lister.GetServiceByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+
+	var oldImage string
+	if currentBox != nil && currentBox.Image != nil {
+		oldImage = *currentBox.Image
+	}
+	uploadResp, err := s.fileService.Upload(ctx, reader, originalName, contentType, size)
+	if err != nil {
+		return "", err
+	}
+
+	updateReq := &models.BoxUpdate{
+		Image: &uploadResp.URL,
+	}
+
+	_, err = s.Update(ctx, id, updateReq)
+	if err != nil {
+		return "", err
+	}
+
+	if oldImage != "" && oldImage != uploadResp.URL {
+		if err := s.fileService.DeactivateByURL(ctx, oldImage); err != nil {
+			return "", err
+		}
+	}
+	return uploadResp.URL, nil
 }
