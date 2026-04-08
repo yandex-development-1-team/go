@@ -24,6 +24,11 @@
            reverse_proxy dozzle:8080
     }
 
+    # S3 storage
+    handle /uploads/* {
+           reverse_proxy minio:9000
+    }
+
     # Serve Frontend static files
     handle {
           root * /var/www/frontend
