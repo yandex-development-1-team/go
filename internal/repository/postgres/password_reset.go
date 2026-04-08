@@ -43,4 +43,3 @@ func (r *PasswordResetRepository) GetToken(ctx context.Context, token string) (*
 	}
 	return &prt, nil
 }
-
