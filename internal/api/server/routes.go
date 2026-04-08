@@ -7,7 +7,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 )
 
-func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler) {
+func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler) {
 	apiV1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(apiV1, authHandler)
@@ -21,6 +21,7 @@ func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.Aut
 			setupAnalyticsRoutes(protected, analyticsHandler)
 			setupUserRoutes(protected, userHandler)
 			setupResourcesRoutes(protected, recPageHandler)
+			setupFileRoutes(protected, fileHandler)
 		}
 		public := apiV1.Group("/public")
 		public.GET("/resources/:slug", recPageHandler.GetPublicResourcePage)
@@ -89,5 +90,12 @@ func setupResourcesRoutes(rg *gin.RouterGroup, h *handlers.ResourcePageHandler) 
 		resources.GET("/:slug", h.GetResourcePage)
 		resources.PUT("/:slug", h.UpdateResourcePage)
 		resources.DELETE("/:slug", h.DeleteLink)
+	}
+}
+
+func setupFileRoutes(rg *gin.RouterGroup, h *handlers.FileHandler) {
+	files := rg.Group("/files")
+	{
+		files.POST("/upload", h.Upload)
 	}
 }
