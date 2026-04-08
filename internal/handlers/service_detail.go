@@ -47,7 +47,9 @@ func (h *DetailHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) 
 	parts := strings.Split(callbackData, ":")
 	back, err := h.checkBack(ctx, parts, tg)
 	if err != nil {
-		h.sendError(chatID, "Ошибка перехода в Главное меню")
+		if sendErr := h.sendError(chatID, "Ошибка перехода в Главное меню"); sendErr != nil {
+			logger.Error("failed_to_send_error_message", zap.Error(sendErr))
+		}
 		return err
 	}
 	if back {
@@ -56,7 +58,9 @@ func (h *DetailHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) 
 
 	serviceID, err := h.service.ParseServiceID(callbackData)
 	if err != nil {
-		h.sendError(chatID, "Неверный формат данных")
+		if sendErr := h.sendError(chatID, "Неверный формат данных"); sendErr != nil {
+			logger.Error("failed_to_send_error_message", zap.Error(sendErr))
+		}
 		return err
 	}
 
@@ -117,7 +121,9 @@ func (h *DetailHandler) handleError(chatID int64, userID int64, serviceID int64,
 			zap.Int64("user_id", userID),
 			zap.Error(err),
 		)
-		h.sendError(chatID, "Не удалось загрузить информацию об услуге")
+		if sendErr := h.sendError(chatID, "Не удалось загрузить информацию об услуге"); sendErr != nil {
+			logger.Error("failed_to_send_error_message", zap.Error(sendErr))
+		}
 	}
 	return err
 }
@@ -136,10 +142,10 @@ func formatSchedule(slots []models.BoxAvailableSlot) string {
 
 	for date, dateSlots := range slotsByDate {
 		formattedDate := formatDateForDisplay(date)
-		sb.WriteString(fmt.Sprintf("\n  %s:", formattedDate))
+		fmt.Fprintf(&sb, "\n  %s:", formattedDate)
 
 		for _, slot := range dateSlots {
-			sb.WriteString(fmt.Sprintf("\n    • %s–%s", slot.StartTime, slot.EndTime))
+			fmt.Fprintf(&sb, "\n    • %s–%s", slot.StartTime, slot.EndTime)
 		}
 	}
 

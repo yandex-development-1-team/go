@@ -137,8 +137,43 @@ func (h *BoxHandler) Delete(c *gin.Context) {
 }
 
 func (h *BoxHandler) UploadImage(c *gin.Context) {
-	id := c.Param("id")
-	c.JSON(200, gin.H{"message": "BoxHandler.UploadImage - not implemented yet", "id": id})
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный идентификатор"})
+		return
+	}
+	formFile, err := c.FormFile("image")
+	if err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Файл image обязателен"})
+		return
+	}
+	src, err := formFile.Open()
+	if err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Не удалось открыть загруженный файл"})
+		return
+	}
+	defer func() { _ = src.Close() }()
+
+	contentType := formFile.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	imageURL, err := h.boxService.UploadImage(
+		c.Request.Context(),
+		id,
+		src,
+		formFile.Filename,
+		contentType,
+		formFile.Size,
+	)
+	if err != nil {
+		apierrors.WriteErrorGin(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"image_url": imageURL})
 }
 
 func (h *BoxHandler) UpdateStatus(c *gin.Context) {
