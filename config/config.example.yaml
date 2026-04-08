@@ -1,7 +1,10 @@
-telegram_bot_token:  # будет переопределено BOT_TOKEN
+telegram_bot_token: # будет переопределено BOT_TOKEN
 telegram_bot_api_url: "https://api.telegram.org"
 
-jwt_secret: #передаем секрет для генерации и проверки токена пользователя
+auth_config:
+  jwt_secret: secret-key
+  access_token_ttl_minutes: 15
+  refresh_token_ttl_days: 7
 port: 8080
 environment: "dev"
 prometheus_port: 9090
@@ -34,16 +37,16 @@ redis:
   db: 0
 
   # Пул соединений
-  pool_size: 10          # макс. соединений (обычно = кол-во CPU * 2-4)
-  min_idle_conns: 2      # держать живыми даже в простое (избегаем cold start)
-  max_idle_conns: 5      # макс. idle (остальные закрываются)
-  conn_max_idle_time: "5m"   # закрыть idle-соединение после N минут простоя
-  conn_max_lifetime: "1h"    # принудительно пересоздать соединение через час
+  pool_size: 10 # макс. соединений (обычно = кол-во CPU * 2-4)
+  min_idle_conns: 2 # держать живыми даже в простое (избегаем cold start)
+  max_idle_conns: 5 # макс. idle (остальные закрываются)
+  conn_max_idle_time: "5m" # закрыть idle-соединение после N минут простоя
+  conn_max_lifetime: "1h" # принудительно пересоздать соединение через час
 
   # Таймауты
-  dial_timeout: "5s"     # подключение к Redis
-  read_timeout: "3s"     # чтение ответа (включая BLPOP — ставьте -1 для блокирующих команд)
-  write_timeout: "3s"    # отправка команды
+  dial_timeout: "5s" # подключение к Redis
+  read_timeout: "3s" # чтение ответа (включая BLPOP — ставьте -1 для блокирующих команд)
+  write_timeout: "3s" # отправка команды
 
   # Retry при сетевых ошибках (не при ошибках Redis типа WRONGTYPE)
   max_retries: 3

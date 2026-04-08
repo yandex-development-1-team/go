@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
@@ -31,7 +30,6 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 
 	authResult, err := h.svc.Login(c.Request.Context(), req.Login, req.Password)
 	if err != nil {
-		log.Printf("login: %v", err)
 		apierrors.WriteErrorGin(c, err)
 		return
 	}
@@ -53,13 +51,16 @@ func (h *AuthHandler) HandleRefresh(c *gin.Context) {
 		return
 	}
 
-	token, err := h.svc.Refresh(ctx, req.RefreshToken)
+	tokenResponse, err := h.svc.Refresh(ctx, req.RefreshToken)
 	if err != nil {
 		apierrors.WriteErrorMessagesGin(c, http.StatusUnauthorized, []string{"Некорректный или просроченный refresh token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.RefreshResponse{Token: token})
+	c.JSON(http.StatusOK, dto.RefreshResponse{
+		Token:        tokenResponse.Token,
+		RefreshToken: tokenResponse.RefreshToken,
+	})
 }
 
 func (h *AuthHandler) RegisterHandler(c *gin.Context) {
@@ -80,7 +81,7 @@ func (h *AuthHandler) RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.LoginResponse{
+	c.JSON(http.StatusCreated, dto.LoginResponse{
 		Token:        authResult.Token,
 		RefreshToken: authResult.RefreshToken,
 		User:         toUserResponse(authResult.User),

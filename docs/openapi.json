@@ -19,7 +19,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": {
+                  "first_name": {
+                    "type": "string"
+                  },
+                  "last_name": {
                     "type": "string"
                   },
                   "email": {
@@ -29,22 +32,15 @@
                     "type": "string",
                     "format": "password"
                   },
-                  "role": {
-                    "type": "string",
-                    "enum": [
-                      "admin",
-                      "manager"
-                    ]
-                  },
                   "invite_token": {
                     "type": "string"
                   }
                 },
                 "required": [
-                  "name",
+                  "first_name",
+                  "last_name",
                   "email",
-                  "password",
-                  "role"
+                  "password"
                 ]
               }
             }
@@ -82,6 +78,9 @@
           },
           "409": {
             "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
           }
         }
       }
@@ -100,7 +99,8 @@
                 "type": "object",
                 "properties": {
                   "login": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "email"
                   },
                   "password": {
                     "type": "string",
@@ -126,20 +126,36 @@
                     "token": {
                       "type": "string"
                     },
+                    "refresh_token": {
+                      "type": "string"
+                    },
                     "user": {
                       "$ref": "#/components/schemas/User"
                     }
                   },
                   "required": [
                     "token",
+                    "refresh_token",
                     "user"
                   ]
                 }
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
           }
         }
       }
@@ -178,6 +194,62 @@
                   "properties": {
                     "token": {
                       "type": "string"
+                    },
+                    "refresh_token": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "refresh_token"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "summary": "Выход из системы",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "refresh_token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успешный выход из системы",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -187,8 +259,8 @@
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
@@ -1353,6 +1425,9 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
           }
@@ -1386,6 +1461,9 @@
           },
           "400": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
@@ -1806,8 +1884,8 @@
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
           },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
           }
         }
       }
@@ -1947,8 +2025,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": { "message": { "type": "string" } },
-                  "required": ["message"]
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -2341,6 +2425,13 @@
           "organizer": {
             "type": "string"
           },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -2390,16 +2481,18 @@
           "organizer": {
             "type": "string"
           },
-          "is_active_in_bot": {
-            "type": "boolean"
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
           }
         },
         "required": [
           "name",
-          "date",
-          "time",
           "price",
-          "is_active_in_bot"
+          "status"
         ]
       },
       "BoxUpdateRequest": {
@@ -2437,8 +2530,12 @@
           "organizer": {
             "type": "string"
           },
-          "is_active_in_bot": {
-            "type": "boolean"
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
           }
         }
       },
@@ -2961,13 +3058,35 @@
           "name": {
             "type": "string"
           },
+          "last_name": {
+            "type": "string"
+          },
+          "second_name": {
+            "type": "string"
+          },
           "email": {
+            "type": "string"
+          },
+          "phone_number": {
             "type": "string"
           },
           "role": {
             "type": "string"
           },
           "status": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invite_token": {
             "type": "string"
           },
           "permissions": {
@@ -3296,6 +3415,9 @@
             "items": {
               "type": "object",
               "properties": {
+                "id": {
+                  "type": "string"
+                },
                 "title": {
                   "type": "string"
                 },

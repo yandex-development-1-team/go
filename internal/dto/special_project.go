@@ -3,7 +3,7 @@ package dto
 import "time"
 
 type SpecialProjectCreateRequest struct {
-	Title         string  `json:"title"`
+	Title         string  `json:"title" binding:"required,min=1"`
 	Description   *string `json:"description,omitempty"`
 	Image         string  `json:"image,omitempty"`
 	IsActiveInBot bool    `json:"is_active_in_bot"`

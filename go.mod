@@ -27,9 +27,12 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.40.0
 	github.com/xuri/excelize/v2 v2.10.1
+	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.48.0
 	golang.org/x/net v0.51.0
 )
+
+require github.com/phpdave11/gofpdi v1.0.14-0.20211212211723-1f10f9844311 // indirect
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
@@ -105,6 +108,7 @@ require (
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.2 // indirect
+	github.com/signintech/gopdf v0.36.0
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect

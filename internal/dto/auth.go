@@ -61,7 +61,8 @@ type RefreshRequest struct {
 }
 
 type RefreshResponse struct {
-	Token string `json:"token"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 type RegisterRequest struct {
@@ -69,7 +70,7 @@ type RegisterRequest struct {
 	LastName    string `json:"last_name"          binding:"required,min=2,max=255"`
 	Email       string `json:"email"              binding:"required,email,max=255"`
 	Password    string `json:"password"           binding:"required,min=8,max=72"`
-	InviteToken string `json:"invite_token"       binding:"required,min=2,max=255"`
+	InviteToken string `json:"invite_token"`
 }
 
 type LogoutRequest struct {

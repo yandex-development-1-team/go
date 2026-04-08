@@ -24,7 +24,7 @@ var errMappings = []errMapping{
 	{models.ErrUnauthorized, http.StatusUnauthorized, "Требуется авторизация"},
 	{models.ErrForbidden, http.StatusForbidden, "Недостаточно прав"},
 	{models.ErrUserBlocked, http.StatusForbidden, "Учётная запись заблокирована"},
-	{models.ErrInvalidCredentials, http.StatusUnauthorized, "Неверный логин или пароль"},
+	{models.ErrInvalidCredentials, http.StatusBadRequest, "Неверный логин или пароль"},
 	{models.ErrUserNotFound, http.StatusNotFound, "Пользователь не найден"},
 	{models.ErrBookingNotFound, http.StatusNotFound, "Заявка не найдена"},
 	{models.ErrSpecialProjectNotFound, http.StatusNotFound, "Спецпроект не найден"},
@@ -35,6 +35,8 @@ var errMappings = []errMapping{
 	{models.ErrDatabase, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
 	{models.ErrCache, http.StatusInternalServerError, "Внутренняя ошибка сервиса"},
 	{models.ErrEmailAlreadyExist, http.StatusConflict, "Указанный почтовый адрес уже занят"},
+	{models.ErrSlotsNotFound, http.StatusBadRequest, "Слоты коробочного решения не найдены"},
+	{models.ErrBoxSolutionNotFound, http.StatusNotFound, "Коробочное решение не найдено"},
 }
 
 const defaultMessage = "Произошла ошибка. Попробуйте позже."

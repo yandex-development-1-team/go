@@ -41,15 +41,17 @@ var (
 	ErrSessionNotFound        = errors.New("session not found")
 	ErrApplicationNotFound    = errors.New("application not found")
 	ErrTokenNotFound          = errors.New("token not found")
+	ErrBoxSolutionNotFound    = errors.New("box solution not found")
+	ErrSlotsNotFound          = errors.New("slots not found")
 )
 
 type RefreshToken struct {
-	ID        int64      `db:"id"`
-	UserID    int64      `db:"user_id"`
-	Token     string     `db:"token"`
-	ExpiresAt time.Time  `db:"expires_at"`
-	RevokedAt *time.Time `db:"revoked_at"`
-	CreatedAt time.Time  `db:"created_at"`
+	ID        int64     `db:"id"`
+	UserID    int64     `db:"user_id"`
+	Role      string    `db:"role"`
+	Token     string    `db:"token"`
+	ExpiresAt time.Time `db:"expires_at"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 type PasswordResetToken struct {
@@ -105,6 +107,7 @@ type AuthResult struct {
 	Token        string   `json:"token"`
 	RefreshToken string   `json:"refresh_token"`
 }
+
 type Booking struct {
 	ID                int64      `db:"id"`
 	UserID            int64      `db:"user_id"`
@@ -227,4 +230,9 @@ type ApplicationUpdateRequest struct {
 
 func (r *ApplicationUpdateRequest) HasUpdates() bool {
 	return r.Status != nil || r.ContactInfo != nil || r.BoxID != nil || r.SpecialProjectID != nil
+}
+
+type RefreshResponse struct {
+	Token        string
+	RefreshToken string
 }

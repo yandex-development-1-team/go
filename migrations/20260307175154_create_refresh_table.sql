@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     user_id BIGINT NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
     token TEXT UNIQUE NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
-    revoked_at TIMESTAMPTZ NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

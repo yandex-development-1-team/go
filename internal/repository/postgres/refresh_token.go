@@ -19,15 +19,19 @@ const (
 		VALUES ($1, $2, $3)`
 
 	getRefreshTokenForUpdateQuery = `
-		SELECT id, user_id, token, expires_at, revoked_at, created_at
-		FROM refresh_tokens
-		WHERE token = $1
-		FOR UPDATE`
+	SELECT rt.id, rt.user_id, rt.expires_at, rt.created_at, s.role
+	FROM refresh_tokens rt
+	JOIN staff s ON s.id = rt.user_id
+	WHERE rt.token = $1
+	FOR UPDATE OF rt`
 
-	revokeRefreshTokenQuery = `
-		UPDATE refresh_tokens
-		SET revoked_at = NOW()
-		WHERE token = $1 AND revoked_at IS NULL`
+	deleteRefreshTokenByToken = `
+	DELETE FROM refresh_tokens
+	WHERE token = $1`
+
+	deleteRefreshTokenByStaffID = `
+	DELETE FROM refresh_tokens
+	WHERE user_id = $1`
 )
 
 var (
@@ -75,20 +79,24 @@ func (r *RefreshTokenRepo) GetForUpdate(ctx context.Context, tx *sqlx.Tx, token 
 		return nil, err
 	}
 	now := time.Now().UTC()
-	if rt.RevokedAt != nil {
-		return nil, ErrRefreshTokenRevoked
-	}
 	if !rt.ExpiresAt.After(now) {
 		return nil, ErrRefreshTokenExpired
 	}
 	return &rt, nil
 }
 
-func (r *RefreshTokenRepo) Revoke(ctx context.Context, token string) error {
-	const op = "revoke_refresh_token"
-	_, err := r.db.ExecContext(ctx, revokeRefreshTokenQuery, token)
+func (r *RefreshTokenRepo) DeleteByToken(ctx context.Context, token string) error {
+	_, err := r.db.ExecContext(ctx, deleteRefreshTokenByToken, token)
 	if err != nil {
-		return r.checkError(op, err)
+		return err
+	}
+	return nil
+}
+
+func (r *RefreshTokenRepo) DeleteByStaffID(ctx context.Context, id int64) error {
+	_, err := r.db.ExecContext(ctx, deleteRefreshTokenByStaffID, id)
+	if err != nil {
+		return err
 	}
 	return nil
 }
