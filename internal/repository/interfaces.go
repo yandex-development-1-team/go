@@ -70,8 +70,6 @@ type RefreshTokenRepository interface {
 type PasswordResetRepository interface {
 	CreateToken(ctx context.Context, userID int64, token string, expiresAt time.Time) error
 	GetToken(ctx context.Context, token string) (*models.PasswordResetToken, error)
-	MarkUsed(ctx context.Context, tokenID int64) error
-	CleanupExpired(ctx context.Context) error
 }
 
 type SpecialProjectRepository interface {

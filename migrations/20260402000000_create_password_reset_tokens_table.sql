@@ -9,11 +9,9 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
-CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at);
 
 -- +goose Down
 DROP INDEX IF EXISTS idx_password_reset_tokens_expires_at;
-DROP INDEX IF NOT EXISTS idx_password_reset_tokens_token;
 DROP INDEX IF EXISTS idx_password_reset_tokens_user_id;
 DROP TABLE IF EXISTS password_reset_tokens;

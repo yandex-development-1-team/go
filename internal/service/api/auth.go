@@ -268,7 +268,10 @@ func (s *AuthService) ResetPassword(ctx context.Context, token, newPassword stri
 	// Проверяем, что токен в БД
 	prt, err := s.prRepo.GetToken(ctx, token)
 	if err != nil {
-		return models.ErrInvalidCredentials
+		if errors.Is(err, models.ErrTokenNotFound) {
+			return models.ErrInvalidCredentials
+		}
+		return err
 	}
 
 	if prt.UsedAt != nil {
@@ -284,18 +287,26 @@ func (s *AuthService) ResetPassword(ctx context.Context, token, newPassword stri
 		return fmt.Errorf("hash password: %w", err)
 	}
 
-	// Update password and mark token as used in transaction
-	err = s.txRepo.RunToTx(ctx, func(ctx context.Context) error {
-		// Update password
-		query := `UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3`
-		_, err := s.db.ExecContext(ctx, query, hash, time.Now(), prt.UserID)
-		if err != nil {
-			return err
-		}
+	// Update password and remove reset token in a transaction
+	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
 
-		// Mark token as used
-		return s.prRepo.MarkUsed(ctx, prt.ID)
-	})
+	query := `UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3`
+	if _, err := tx.ExecContext(ctx, query, hash, time.Now(), prt.UserID); err != nil {
+		return err
+	}
 
-	return err
+	query = `DELETE FROM password_reset_tokens WHERE id = $1`
+	if _, err := tx.ExecContext(ctx, query, prt.ID); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }

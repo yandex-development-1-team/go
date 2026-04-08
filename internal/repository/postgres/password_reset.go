@@ -44,22 +44,3 @@ func (r *PasswordResetRepository) GetToken(ctx context.Context, token string) (*
 	return &prt, nil
 }
 
-func (r *PasswordResetRepository) MarkUsed(ctx context.Context, tokenID int64) error {
-	query := `
-		UPDATE password_reset_tokens
-		SET used_at = $1
-		WHERE id = $2
-	`
-	_, err := r.db.ExecContext(ctx, query, time.Now(), tokenID)
-	return err
-}
-
-func (r *PasswordResetRepository) CleanupExpired(ctx context.Context) error {
-	query := `
-		DELETE FROM password_reset_tokens
-		WHERE expires_at < $1 OR (used_at IS NOT NULL AND created_at < $2)
-	`
-	// Удаляем просроченные и использованные старше 30 дней
-	_, err := r.db.ExecContext(ctx, query, time.Now(), time.Now().AddDate(0, 0, -30))
-	return err
-}
