@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -euo pipefail
+
+compose_files=(-f docker-compose.yml -f docker-compose.infra.prod.yml)
+
+# Pull the already-built images published by the CD workflow for app service.
+docker compose -p prod "${compose_files[@]}" pull
+
+# Recreate the production stack from the pulled images and prune removed services.
+docker compose -p prod "${compose_files[@]}" up -d --remove-orphans
+
+# Restart web server. Because if it's already running it doesn't reload config (may be new config)
+docker compose -p prod "${compose_files[@]}" restart caddy
+
+# Show the resulting container state for quick deployment diagnostics.
+docker compose -p prod "${compose_files[@]}" ps
+
+# Clear dangling images after the successful rollout.
+docker image prune -f

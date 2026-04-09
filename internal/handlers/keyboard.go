@@ -97,7 +97,7 @@ func (ks *KeyboardService) MainMenuKeyboard() *tgbotapi.InlineKeyboardMarkup {
 
 // DatesKeyboard creates an inline keyboard with available dates and time slots
 func (ks *KeyboardService) DatesKeyboard(slots []models.BoxAvailableSlot) tgbotapi.InlineKeyboardMarkup {
-	if slots == nil || len(slots) == 0 {
+	if len(slots) == 0 {
 		return tgbotapi.InlineKeyboardMarkup{}
 	}
 

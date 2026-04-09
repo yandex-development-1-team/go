@@ -30,6 +30,8 @@ import (
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 	"github.com/yandex-development-1-team/go/internal/shutdown"
+	minioStorage "github.com/yandex-development-1-team/go/internal/storage/minio"
+	"github.com/yandex-development-1-team/go/internal/worker"
 )
 
 func main() {
@@ -74,6 +76,15 @@ func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	fileStorage, err := minioStorage.New(cfg.Storage)
+	if err != nil {
+		return fmt.Errorf("init minio storage: %w", err)
+	}
+
+	if err := fileStorage.EnsureBucket(ctx); err != nil {
+		return fmt.Errorf("ensure minio bucket: %w", err)
+	}
+
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("redis ping: %w", err)
 	}
@@ -92,13 +103,15 @@ func run() error {
 	resourcePagepRepo := postgres.NewResourcePageRepo(dbSqlx)
 	passwordResetRepo := postgres.NewPasswordResetRepository(dbSqlx)
 	emailService := apiService.NewEmailService(cfg.Email)
+	fileRepo := postgres.NewFileRepository(dbSqlx)
 
 	settingsService := apiService.NewSettingsService(settingsRepo)
 	bookService := botService.NewBookingService(sessionRepo, bookRepo, boxSolutionRepo)
 	keyboard := botHandlers.NewKeyboardService()
 	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
 	detailService := botService.NewDetailService(boxSolutionRepo)
-	boxService := apiService.NewAPIBoxService(boxSolutionRepo)
+	fileService := apiService.NewFileService(fileRepo, fileStorage)
+	boxService := apiService.NewAPIBoxService(boxSolutionRepo, fileService)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
 	resourcePageService := service.NewResourcePageService(resourcePagepRepo)
@@ -128,7 +141,24 @@ func run() error {
 		AnalyticsSvc:      analyticsService,
 		RecPageSvc:        resourcePageService,
 		UserSvc:           userService,
+		FileService:       fileService,
 	}, apiAuthService)
+
+	if cfg.FileGC.Enabled {
+		fileCleanupWorker := worker.NewFileCleanupWorker(
+			fileService,
+			cfg.FileGC.Interval,
+			cfg.FileGC.OrphanGrace,
+			cfg.FileGC.DeleteBatchSize,
+		)
+
+		go fileCleanupWorker.Start(ctx)
+		logger.Info("file cleanup worker started",
+			zap.Duration("interval", cfg.FileGC.Interval),
+			zap.Duration("orphan_grace_period", cfg.FileGC.OrphanGrace),
+			zap.Int("delete_batch_size", cfg.FileGC.DeleteBatchSize),
+		)
+	}
 
 	apiServer.RegisterRoutes()
 

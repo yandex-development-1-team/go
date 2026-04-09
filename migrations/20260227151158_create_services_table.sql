@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS services (
     rules TEXT,
     location VARCHAR(255),
     price INTEGER NOT NULL,
-    image VARCHAR(64),
+    image TEXT,
     status services_type,
     organizer VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

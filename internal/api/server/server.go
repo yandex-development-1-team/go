@@ -21,6 +21,7 @@ type APIServices struct {
 	AnalyticsSvc      *apiService.AnalyticsService
 	RecPageSvc        *service.ResourcePageService
 	UserSvc           *apiService.UserService
+	FileService       *apiService.FileService
 }
 
 type Server struct {
@@ -58,9 +59,9 @@ func (s *Server) RegisterRoutes() {
 	analyticsHandler := handlers.NewAnalyticsHandler(s.services.AnalyticsSvc)
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
 	userHandler := handlers.NewUserHandler(s.services.UserSvc)
+	fileHandler := handlers.NewFileHandler(s.services.FileService)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler)
-
+	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler)
 }
 
 func (s *Server) Run(cfg *config.Config) error {
