@@ -90,11 +90,11 @@ type TxRepository interface {
 }
 
 type ResourcePageRepository interface {
+	GetAll(ctx context.Context) ([]models.ResourcePage, error)
 	GetBySlug(ctx context.Context, slug string) (*models.ResourcePage, error)
-	GetBySlugTx(ctx context.Context, queryable Queryable, slug string, lockForUpdate bool) (*models.ResourcePage, error)
-	UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []models.ResourcePageLink) error
-	GetAllSummaries(ctx context.Context) ([]*models.ResourcePage, error)
-	BeginTx(ctx context.Context) (*sqlx.Tx, error)
+	Update(ctx context.Context, slug string, page models.ResourcePage) (*models.ResourcePage, error)
+	Clear(ctx context.Context, slug string) (*models.ResourcePage, error)
+	DeleteLink(ctx context.Context, slug string, id string) (*models.ResourcePage, error)
 }
 
 type Queryable interface {

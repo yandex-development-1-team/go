@@ -23,7 +23,7 @@ func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.Aut
 			setupResourcesRoutes(protected, recPageHandler)
 		}
 		public := apiV1.Group("/public")
-		public.GET("/resources/:slug", recPageHandler.GetPublicResourcePage)
+		public.GET("/resources/:slug", recPageHandler.GetPublicBySlug)
 	}
 }
 
@@ -85,9 +85,10 @@ func setupUserRoutes(rg *gin.RouterGroup, h *handlers.UserHandler) {
 func setupResourcesRoutes(rg *gin.RouterGroup, h *handlers.ResourcePageHandler) {
 	resources := rg.Group("/resources")
 	{
-		resources.GET("/", h.ListResourcePages)
-		resources.GET("/:slug", h.GetResourcePage)
-		resources.PUT("/:slug", h.UpdateResourcePage)
-		resources.DELETE("/:slug", h.DeleteLink)
+		resources.GET("/", h.GetAll)
+		resources.GET("/:slug", h.GetBySlug)
+		resources.PUT("/:slug", h.Update)
+		resources.DELETE("/:slug/:id", h.DeleteLink)
+		resources.DELETE("/:slug", h.Delete)
 	}
 }

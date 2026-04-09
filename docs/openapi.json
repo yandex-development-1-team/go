@@ -1464,9 +1464,6 @@
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
           }
         }
       }
@@ -1904,7 +1901,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ResourcePageSummary"
+                    "$ref": "#/components/schemas/ResourcePage"
                   }
                 }
               }
@@ -1942,9 +1939,6 @@
                 }
               }
             }
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
           }
         }
       },
@@ -2024,21 +2018,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
+                  "$ref": "#/components/schemas/ResourcePage"
                 }
               }
             }
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
           }
         }
       }
