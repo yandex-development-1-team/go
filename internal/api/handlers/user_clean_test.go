@@ -24,6 +24,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
 	pgrepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 	service "github.com/yandex-development-1-team/go/internal/service/api"
@@ -66,8 +67,17 @@ func setupServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 
 	userRepo := pgrepo.NewStaffRepo(db)
 	refreshRepo := pgrepo.NewRefreshTokenRepo(db)
+	passwordResetRepo := pgrepo.NewPasswordResetRepository(db)
 	txRepo := pgrepo.NewTxRepo(db)
-	svc := service.NewAuthService(db, refreshRepo, userRepo, txRepo, "test-secret", 15, 30)
+	emailService := service.NewEmailService(config.EmailConfig{
+		SMTPHost:     "localhost",
+		SMTPPort:     1025,
+		SMTPUsername: "",
+		SMTPPassword: "",
+		FromEmail:    "test@example.com",
+		BaseURL:      "http://localhost",
+	})
+	svc := service.NewAuthService(db, refreshRepo, passwordResetRepo, userRepo, emailService, txRepo, "test-secret", 15, 30)
 	handler := NewAuthHandler(svc)
 
 	router := gin.New()
@@ -419,8 +429,17 @@ func setupRegisterServer(t *testing.T, db *sqlx.DB) *httptest.Server {
 
 	userRepo := pgrepo.NewStaffRepo(db)
 	refreshRepo := pgrepo.NewRefreshTokenRepo(db)
+	passwordResetRepo := pgrepo.NewPasswordResetRepository(db)
 	txRepo := pgrepo.NewTxRepo(db)
-	svc := service.NewAuthService(db, refreshRepo, userRepo, txRepo, "test-secret", 15, 30)
+	emailService := service.NewEmailService(config.EmailConfig{
+		SMTPHost:     "localhost",
+		SMTPPort:     1025,
+		SMTPUsername: "",
+		SMTPPassword: "",
+		FromEmail:    "test@example.com",
+		BaseURL:      "http://localhost",
+	})
+	svc := service.NewAuthService(db, refreshRepo, passwordResetRepo, userRepo, emailService, txRepo, "test-secret", 15, 30)
 	handler := NewAuthHandler(svc)
 
 	router := gin.New()

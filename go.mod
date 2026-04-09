@@ -23,6 +23,7 @@ require (
 )
 
 require (
+	github.com/go-mail/mail/v2 v2.3.0
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.40.0
 	github.com/xuri/excelize/v2 v2.10.1
@@ -148,5 +149,7 @@ require (
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
+	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
+	gopkg.in/mail.v2 v2.3.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

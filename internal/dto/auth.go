@@ -80,3 +80,12 @@ type LogoutRequest struct {
 type LogoutResponse struct {
 	Message string `json:"message"`
 }
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email,max=255"`
+}
+
+type ResetPasswordRequest struct {
+	Token    string `json:"token"    binding:"required"`
+	Password string `json:"password" binding:"required,min=8,max=72"`
+}
