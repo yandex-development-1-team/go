@@ -5,13 +5,13 @@ on:
 #    workflows:
 #      - CI
 #    branches:
-#      - dev
+#      - main
 #      - devops/test-deploy-dev
 #    types:
 #      - completed
   push:
     branches:
-      - dev
+      - main
       - devops/test-deploy-dev
 
 permissions:
