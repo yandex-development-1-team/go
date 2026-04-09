@@ -1985,6 +1985,34 @@
             "$ref": "#/components/responses/NotFoundError"
           }
         }
+      },
+      "delete": {
+        "summary": "Очистить ресурсную страницу",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ресурсная страница очищена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcePage"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/resources/{slug}/{id}": {
