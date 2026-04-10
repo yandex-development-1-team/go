@@ -8,13 +8,13 @@ import (
 type ResourcePageLink struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
-	URL   string `json:"url"`
+	URL   string `json:"url" binding:"required,url"`
 }
 
 type ResourcePageUpdateRequest struct {
 	Title   string             `json:"title"`
 	Content string             `json:"content"`
-	Links   []ResourcePageLink `json:"links"`
+	Links   []ResourcePageLink `json:"links" binding:"dive"`
 }
 
 type ResourcePageResponse struct {

@@ -11,10 +11,10 @@ CREATE TABLE IF NOT EXISTS resource_pages (
 CREATE INDEX IF NOT EXISTS idx_resource_pages_updated_at ON resource_pages (updated_at);
 
 INSERT INTO resource_pages (slug, title, content) VALUES 
-('organizationInfo', 'Организационная информация', 'Компания полного цикла в организации мероприятий — от корпоративов и конференций до партнёрских программ и спецпроектов. Работает с крупными клиентами, имеет собственную команду менеджеров и отлаженные процессы под любой масштаб события.'),
-('usefulLinks', 'Полезные ссылки', ''),
+('org-info', 'Организационная информация', 'Компания полного цикла в организации мероприятий — от корпоративов и конференций до партнёрских программ и спецпроектов. Работает с крупными клиентами, имеет собственную команду менеджеров и отлаженные процессы под любой масштаб события.'),
+('useful-links', 'Полезные ссылки', ''),
 ('faq', 'FAQ', 'https://disk.yandex.ru/i/nWbTdaWA9Xcgdg'),
-('eventSchedule', 'Афиша Pertner Relations', 'https://afisha.yandex.ru');
+('event-schedule', 'Афиша Pertner Relations', 'https://afisha.yandex.ru');
 
 
 -- +goose Down
