@@ -159,7 +159,7 @@ bot:
 
 1. Скопируйте пример env-файла и укажите токен:
    ```bash
-   cp .env.example .env
+   cp .env .env
    # отредактируйте .env: BOT_TOKEN=ваш_токен_от_BotFather
    ```
 2. Запуск:

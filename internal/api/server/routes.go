@@ -46,6 +46,8 @@ func setupSpecialProjectRoutes(rg *gin.RouterGroup, h *handlers.SpecialProjectHa
 		sp.GET("/", h.ListSpecialProjects)
 		sp.POST("/", h.CreateSpecialProject)
 		sp.GET("/:id", h.GetSpecialProjectByID)
+		sp.PUT("/:id", h.UpdateSpecialProject)
+		sp.DELETE("/:id", h.DeleteSpecialProject)
 	}
 }
 
