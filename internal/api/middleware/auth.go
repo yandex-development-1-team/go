@@ -43,13 +43,13 @@ func Auth(jwtSecret []byte) gin.HandlerFunc {
 		)
 
 		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": models.ErrValidation})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": models.ErrValidation})
 			return
 		}
 
 		claims, ok := token.Claims.(*service.AccessClaims)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": models.ErrValidation})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": models.ErrValidation})
 			return
 		}
 
