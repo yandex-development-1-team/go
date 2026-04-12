@@ -13,11 +13,16 @@ import (
 	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
+const applicationSelectColumns = `
+	a.id, a.type, a.source, a.status, a.customer_name, a.contact_info,
+	a.project_name, a.box_id, a.special_project_id, a.manager_id,
+	NULLIF(TRIM(CONCAT_WS(' ', s.first_name, s.last_name)), '') AS manager_name,
+	a.created_at, a.updated_at`
+
 const insertApplicationQuery = `
 	INSERT INTO applications (type, source, customer_name, contact_info, project_name, box_id, special_project_id)
 	VALUES ($1, $2, $3, $4, $5, $6, $7)
-	RETURNING id, type, source, status, customer_name, contact_info,
-	          project_name, box_id, special_project_id, manager_id, created_at, updated_at`
+	RETURNING id`
 
 type ApplicationRepo struct {
 	db *sqlx.DB
@@ -34,15 +39,16 @@ func (r *ApplicationRepo) CreateApplication(ctx context.Context, req *models.App
 		return nil, models.ErrInvalidInput
 	}
 
-	var app models.Application
-	err := r.db.QueryRowxContext(ctx, insertApplicationQuery,
+	var id int64
+	err := r.db.QueryRowContext(ctx, insertApplicationQuery,
 		req.Type, req.Source, req.CustomerName, req.ContactInfo,
 		req.ProjectName, req.BoxID, req.SpecialProjectID,
-	).StructScan(&app)
+	).Scan(&id)
 	if err != nil {
 		return nil, repository.CheckDBError(operation, err)
 	}
-	return &app, nil
+
+	return r.GetApplicationByID(ctx, id)
 }
 
 func (r *ApplicationRepo) GetApplications(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error) {
@@ -58,16 +64,17 @@ func (r *ApplicationRepo) GetApplications(ctx context.Context, filter models.App
 	where, args := buildApplicationWhere(filter)
 
 	var total int
-	if err := r.db.QueryRowContext(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM applications %s`, where), args...).Scan(&total); err != nil {
+	if err := r.db.QueryRowContext(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM applications a %s`, where), args...).Scan(&total); err != nil {
 		return nil, 0, repository.CheckDBError(operation, err)
 	}
 
 	listQuery := fmt.Sprintf(`
-		SELECT id, type, source, status, customer_name, contact_info,
-		       project_name, box_id, special_project_id, manager_id, created_at, updated_at
-		FROM applications %s
-		ORDER BY created_at DESC
-		LIMIT $%d OFFSET $%d`, where, len(args)+1, len(args)+2)
+		SELECT %s
+		FROM applications a
+		LEFT JOIN staff s ON s.id = a.manager_id
+		%s
+		ORDER BY a.created_at DESC
+		LIMIT $%d OFFSET $%d`, applicationSelectColumns, where, len(args)+1, len(args)+2)
 
 	var apps []models.Application
 	if err := r.db.SelectContext(ctx, &apps, listQuery, append(args, filter.Limit, filter.Offset)...); err != nil {
@@ -77,10 +84,10 @@ func (r *ApplicationRepo) GetApplications(ctx context.Context, filter models.App
 }
 
 const selectApplicationByIDQuery = `
-	SELECT id, type, source, status, customer_name, contact_info,
-	       project_name, box_id, special_project_id, manager_id, created_at, updated_at
-	FROM applications
-	WHERE id = $1`
+	SELECT ` + applicationSelectColumns + `
+	FROM applications a
+	LEFT JOIN staff s ON s.id = a.manager_id
+	WHERE a.id = $1`
 
 func (r *ApplicationRepo) GetApplicationByID(ctx context.Context, id int64) (*models.Application, error) {
 	const operation = "get_application_by_id"
@@ -129,19 +136,18 @@ func (r *ApplicationRepo) UpdateApplication(ctx context.Context, id int64, req *
 		UPDATE applications
 		SET %s, updated_at = NOW()
 		WHERE id = $%d
-		RETURNING id, type, source, status, customer_name, contact_info,
-		          project_name, box_id, special_project_id, manager_id, created_at, updated_at`,
+		RETURNING id`,
 		strings.Join(setClauses, ", "), len(args))
 
-	var app models.Application
-	err := r.db.QueryRowxContext(ctx, query, args...).StructScan(&app)
+	var updatedID int64
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(&updatedID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrApplicationNotFound
 		}
 		return nil, repository.CheckDBError(operation, err)
 	}
-	return &app, nil
+	return r.GetApplicationByID(ctx, updatedID)
 }
 
 func (r *ApplicationRepo) DeleteApplication(ctx context.Context, id int64) error {
@@ -171,19 +177,22 @@ func buildApplicationWhere(f models.ApplicationFilter) (string, []interface{}) {
 	}
 
 	if f.Status != nil {
-		add("status = $%d", *f.Status)
+		add("a.status = $%d", *f.Status)
 	}
 	if f.Type != nil {
-		add("type = $%d", *f.Type)
+		add("a.type = $%d", *f.Type)
 	}
 	if f.ManagerID != nil {
-		add("manager_id = $%d", *f.ManagerID)
+		add("a.manager_id = $%d", *f.ManagerID)
+	}
+	if f.CustomerName != "" {
+		add("a.customer_name ILIKE $%d", "%"+f.CustomerName+"%")
 	}
 	if f.DateFrom != nil {
-		add("created_at >= $%d", *f.DateFrom)
+		add("a.created_at >= $%d", *f.DateFrom)
 	}
 	if f.DateTo != nil {
-		add("created_at <= $%d", *f.DateTo)
+		add("a.created_at <= $%d", *f.DateTo)
 	}
 
 	if len(conditions) == 0 {
