@@ -65,6 +65,13 @@ cors:
   allow_credentials: "true"
   max_age: "86400"
 
+email:
+  smtp_host: "smtp.yandex.ru"
+  smtp_port: 587
+  smtp_username: "your-email@yandex.ru"
+  smtp_password: "your-app-password"
+  from_email: "your-email@yandex.ru"
+  base_url: "http://localhost:8080"
 storage:
   endpoint: "localhost:9000"
   access_key: "minio"

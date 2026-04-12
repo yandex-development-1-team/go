@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"log"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -101,6 +102,46 @@ func (h *AuthHandler) HandleLogout(c *gin.Context) {
 	_ = h.svc.Logout(ctx, req.RefreshToken)
 
 	c.JSON(http.StatusOK, dto.LogoutResponse{Message: "Logged out successfully"})
+}
+
+func (h *AuthHandler) HandleForgotPassword(c *gin.Context) {
+	var req dto.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректные данные"})
+		return
+	}
+
+	err := h.svc.ForgotPassword(c.Request.Context(), req.Email)
+	if err != nil {
+		log.Printf("forgot password: %v", err)
+		apierrors.WriteErrorGin(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Если email существует, ссылка для восстановления пароля отправлена"})
+}
+
+func (h *AuthHandler) HandleResetPassword(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Токен не указан"})
+		return
+	}
+
+	newPassword := c.Query("password")
+	if newPassword == "" || len(newPassword) < 8 {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Пароль должен содержать минимум 8 символов"})
+		return
+	}
+
+	err := h.svc.ResetPassword(c.Request.Context(), token, newPassword)
+	if err != nil {
+		log.Printf("reset password: %v", err)
+		apierrors.WriteErrorGin(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Пароль успешно изменен"})
 }
 
 func toUserResponse(user *models.UserAPI) dto.UserResponse {

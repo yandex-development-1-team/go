@@ -44,8 +44,13 @@ func (h *BoxHandler) List(c *gin.Context) {
 		return
 	}
 
+	items := make([]*dto.BoxDetailResponse, 0, len(result.Items))
+	for _, item := range result.Items {
+		items = append(items, toBoxResponse(&item))
+	}
+
 	response := &dto.BoxListResponse{
-		Items: result.Items,
+		Items: items,
 		Pagination: dto.Pagination{
 			Limit:  result.Limit,
 			Offset: result.Offset,

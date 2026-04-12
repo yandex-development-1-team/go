@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package service
 
 import (
@@ -16,6 +19,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/yandex-development-1-team/go/internal/config"
 	"github.com/yandex-development-1-team/go/internal/database"
 	pgrepo "github.com/yandex-development-1-team/go/internal/repository/postgres"
 )
@@ -31,6 +35,10 @@ func TestMain(m *testing.M) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	if os.Getenv("XDG_RUNTIME_DIR") == "" {
+		_ = os.Setenv("XDG_RUNTIME_DIR", "/tmp")
+	}
+
 	container, err := startContainer()
 	if err != nil {
 		log.Fatal(err)
@@ -40,12 +48,23 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to init db: %s", err.Error())
 	}
 	rtRepo = pgrepo.NewRefreshTokenRepo(db)
+	passwordResetRepo := pgrepo.NewPasswordResetRepository(db)
 	staffRepo = pgrepo.NewStaffRepo(db)
 	txRepo := pgrepo.NewTxRepo(db)
+	emailService := NewEmailService(config.EmailConfig{
+		SMTPHost:     "localhost",
+		SMTPPort:     1025,
+		SMTPUsername: "",
+		SMTPPassword: "",
+		FromEmail:    "test@example.com",
+		BaseURL:      "http://localhost",
+	})
 	svc = NewAuthService(
 		db,
 		rtRepo,
+		passwordResetRepo,
 		staffRepo,
+		emailService,
 		txRepo,
 		"test-service",
 		15,

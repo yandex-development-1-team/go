@@ -40,6 +40,7 @@ var (
 	ErrEmailAlreadyExist      = errors.New("user already exist")
 	ErrSessionNotFound        = errors.New("session not found")
 	ErrApplicationNotFound    = errors.New("application not found")
+	ErrTokenNotFound          = errors.New("token not found")
 	ErrBoxSolutionNotFound    = errors.New("box solution not found")
 	ErrSlotsNotFound          = errors.New("slots not found")
 )
@@ -51,6 +52,15 @@ type RefreshToken struct {
 	Token     string    `db:"token"`
 	ExpiresAt time.Time `db:"expires_at"`
 	CreatedAt time.Time `db:"created_at"`
+}
+
+type PasswordResetToken struct {
+	ID        int64      `db:"id"`
+	UserID    int64      `db:"user_id"`
+	Token     string     `db:"token"`
+	ExpiresAt time.Time  `db:"expires_at"`
+	UsedAt    *time.Time `db:"used_at"`
+	CreatedAt time.Time  `db:"created_at"`
 }
 
 type User struct {

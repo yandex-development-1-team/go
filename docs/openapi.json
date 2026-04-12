@@ -1893,7 +1893,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ResourcePageSummary"
+                    "$ref": "#/components/schemas/ResourcePage"
                   }
                 }
               }
@@ -1931,9 +1931,6 @@
                 }
               }
             }
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
           }
         }
       },
@@ -1980,6 +1977,34 @@
             "$ref": "#/components/responses/NotFoundError"
           }
         }
+      },
+      "delete": {
+        "summary": "Очистить ресурсную страницу",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ресурсная страница очищена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcePage"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/resources/{slug}/{id}": {
@@ -2013,21 +2038,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
+                  "$ref": "#/components/schemas/ResourcePage"
                 }
               }
             }
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
           }
         }
       }

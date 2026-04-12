@@ -1,28 +1,40 @@
 package dto
 
-import "github.com/yandex-development-1-team/go/internal/models"
+import (
+	"encoding/json"
+	"time"
+)
+
+type ResourcePageLink struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	URL   string `json:"url" binding:"required,url"`
+}
 
 type ResourcePageUpdateRequest struct {
-	Slug    string                     `json:"slug,omitempty"`
-	Title   *string                    `json:"title,omitempty"`
-	Content *string                    `json:"content,omitempty"`
-	Links   *[]models.ResourcePageLink `json:"links,omitempty"`
+	Title   string             `json:"title"`
+	Content string             `json:"content"`
+	Links   []ResourcePageLink `json:"links" binding:"dive"`
 }
 
 type ResourcePageResponse struct {
-	Title   string                     `json:"title,omitempty"`
-	Content *string                    `json:"content,omitempty"`
-	Links   *[]models.ResourcePageLink `json:"links,omitempty"`
+	Slug      string             `json:"slug"`
+	Title     string             `json:"title"`
+	Content   string             `json:"content"`
+	Links     []ResourcePageLink `json:"links"`
+	UpdatedAt string             `json:"updated_at"`
 }
 
-type ResourcePageResponsePublic struct {
-	Title   string                     `json:"title,omitempty"`
-	Content *string                    `json:"content,omitempty"`
-	Links   *[]models.ResourcePageLink `json:"links,omitempty"`
+type ResourcePageDB struct {
+	Slug      string          `db:"slug"`
+	Title     string          `db:"title"`
+	Content   string          `db:"content"`
+	Links     json.RawMessage `db:"links"`
+	UpdatedAt time.Time       `db:"updated_at"`
 }
 
-type ResourcePagePublic struct {
-	Title   string                    `json:"title"`
-	Content string                    `json:"content"`
-	Links   []models.ResourcePageLink `json:"links"`
+type ResourcePagePublicResponse struct {
+	Title   string             `json:"title"`
+	Content string             `json:"content"`
+	Links   []ResourcePageLink `json:"links"`
 }

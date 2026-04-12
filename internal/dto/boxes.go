@@ -3,8 +3,6 @@ package dto
 import (
 	"database/sql"
 	"time"
-
-	"github.com/yandex-development-1-team/go/internal/models"
 )
 
 type BoxListQuery struct {
@@ -17,8 +15,8 @@ type BoxListQuery struct {
 }
 
 type BoxListResponse struct {
-	Items      []models.Service `json:"items"`
-	Pagination Pagination       `json:"pagination"`
+	Items      []*BoxDetailResponse `json:"items"`
+	Pagination Pagination           `json:"pagination"`
 }
 
 type BoxDetailRequest struct {
@@ -68,9 +66,9 @@ type BoxDetailResponse struct {
 }
 
 type BoxAvailableSlot struct {
-	Date      string `json:"slot_date"   binding:"required,datetime=2006-01-02"`
-	StartTime string `json:"start_time"  binding:"required,datetime=15:04"`
-	EndTime   string `json:"end_time"    binding:"required,datetime=15:04"`
+	Date      string `json:"date"       binding:"required,datetime=2006-01-02"`
+	StartTime string `json:"time_from"  binding:"required,datetime=15:04"`
+	EndTime   string `json:"time_to"    binding:"required,datetime=15:04"`
 }
 
 type BoxCreateRequest struct {
