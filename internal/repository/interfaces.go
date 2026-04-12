@@ -17,6 +17,9 @@ type StaffRepository interface {
 	CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error)
 	List(ctx context.Context, role, status, search string, limit, offset int) ([]dto.UserListItem, int, error)
 	GetByID(ctx context.Context, id int64) (*dto.UserWithDetails, error)
+	CreateStaffByAdmin(ctx context.Context, req *models.StaffAdminCreate) (*models.UserAPI, error)
+	UpdateStaff(ctx context.Context, id int64, req *models.StaffAdminUpdate) (*models.UserAPI, error)
+	BlockStaff(ctx context.Context, id int64) (*models.UserAPI, error)
 }
 
 type TelegramUserRepository interface {
@@ -85,7 +88,7 @@ type PasswordResetRepository interface {
 type SpecialProjectRepository interface {
 	Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error)
 	GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error)
-	List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
+	List(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
 	Update(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error)
 	Delete(ctx context.Context, id int64) error
 }
@@ -95,11 +98,11 @@ type TxRepository interface {
 }
 
 type ResourcePageRepository interface {
-	GetAll(ctx context.Context) ([]models.ResourcePage, error)
 	GetBySlug(ctx context.Context, slug string) (*models.ResourcePage, error)
-	Update(ctx context.Context, slug string, page models.ResourcePage) (*models.ResourcePage, error)
-	Clear(ctx context.Context, slug string) (*models.ResourcePage, error)
-	DeleteLink(ctx context.Context, slug string, id string) (*models.ResourcePage, error)
+	GetBySlugTx(ctx context.Context, queryable Queryable, slug string, lockForUpdate bool) (*models.ResourcePage, error)
+	UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []models.ResourcePageLink) error
+	GetAllSummaries(ctx context.Context) ([]*models.ResourcePage, error)
+	BeginTx(ctx context.Context) (*sqlx.Tx, error)
 }
 
 type Queryable interface {

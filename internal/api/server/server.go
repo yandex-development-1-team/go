@@ -24,6 +24,7 @@ type APIServices struct {
 	UserSvc           *apiService.UserService
 	FileService       *apiService.FileService
 	ApplicationRepo   repository.ApplicationRepository
+	UsersAdmin        *apiService.UsersAdminService
 }
 
 type Server struct {
@@ -63,8 +64,9 @@ func (s *Server) RegisterRoutes() {
 	userHandler := handlers.NewUserHandler(s.services.UserSvc)
 	fileHandler := handlers.NewFileHandler(s.services.FileService)
 	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationRepo)
+	usersHandler := handlers.NewUsersHandler(s.services.UsersAdmin)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler)
+	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, usersHandler)
 }
 
 func (s *Server) Run(cfg *config.Config) error {

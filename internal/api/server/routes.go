@@ -7,7 +7,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 )
 
-func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler) {
+func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler, usersHandler *handlers.UsersHandler) {
 	apiV1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(apiV1, authHandler)
@@ -23,6 +23,7 @@ func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.Aut
 			setupResourcesRoutes(protected, recPageHandler)
 			setupFileRoutes(protected, fileHandler)
 			setupApplicationRoutes(protected, applicationHandler)
+			setupUsersAdminRoutes(protected, usersHandler)
 		}
 		public := apiV1.Group("/public")
 		public.GET("/resources/:slug", recPageHandler.GetPublicBySlug)
@@ -112,5 +113,15 @@ func setupApplicationRoutes(rg *gin.RouterGroup, h *handlers.ApplicationHandler)
 		applications.GET("/:id", h.GetByID)
 		applications.PUT("/:id", h.Update)
 		applications.DELETE("/:id", h.Delete)
+	}
+}
+
+func setupUsersAdminRoutes(rg *gin.RouterGroup, h *handlers.UsersHandler) {
+	users := rg.Group("/users")
+	users.Use(middleware.RequireAdmin())
+	{
+		users.POST("", h.Create)
+		users.PUT("/:id", h.Update)
+		users.PUT("/id/block", h.Block)
 	}
 }

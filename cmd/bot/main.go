@@ -117,6 +117,7 @@ func run() error {
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
 	resourcePageService := service.NewResourcePageService(resourcePageRepo)
 	userService := apiService.NewUserService(staffRepo)
+	usersAdminService := apiService.NewUsersAdminService(staffRepo, refreshTokenRepoRepo)
 
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
@@ -144,6 +145,7 @@ func run() error {
 		UserSvc:           userService,
 		FileService:       fileService,
 		ApplicationRepo:   applicationRepo,
+		UsersAdmin:        usersAdminService,
 	}, apiAuthService)
 
 	if cfg.FileGC.Enabled {
