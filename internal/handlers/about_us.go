@@ -82,6 +82,10 @@ func (h *AboutHandler) handleError(chatID int64, userID int64, err error) error 
 		zap.Int64("user_id", userID),
 		zap.Error(err),
 	)
-	h.sendError(chatID, "Не удалось загрузить информацию 'О нас'")
+
+	if sendErr := h.sendError(chatID, "Не удалось загрузить информацию 'О нас'"); sendErr != nil {
+		return sendErr
+	}
+
 	return err
 }

@@ -82,6 +82,10 @@ func (h *ExamplesSpHandler) handleError(chatID int64, userID int64, err error) e
 		zap.Int64("user_id", userID),
 		zap.Error(err),
 	)
-	h.sendError(chatID, "Не удалось загрузить примеры спецпроектов")
+
+	if sendErr := h.sendError(chatID, "Не удалось загрузить примеры спецпроектов"); sendErr != nil {
+		return sendErr
+	}
+
 	return err
 }

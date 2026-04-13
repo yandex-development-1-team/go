@@ -82,6 +82,10 @@ func (h *UsefulLinksHandler) handleError(chatID int64, userID int64, err error) 
 		zap.Int64("user_id", userID),
 		zap.Error(err),
 	)
-	h.sendError(chatID, "Не удалось загрузить полезные ссылки")
+
+	if sendErr := h.sendError(chatID, "Не удалось загрузить полезные ссылки"); sendErr != nil {
+		return sendErr
+	}
+
 	return err
 }

@@ -82,6 +82,10 @@ func (h *GuideHandler) handleError(chatID int64, userID int64, err error) error 
 		zap.Int64("user_id", userID),
 		zap.Error(err),
 	)
-	h.sendError(chatID, "Не удалось загрузить гайд")
+
+	if sendErr := h.sendError(chatID, "Не удалось загрузить гайд"); sendErr != nil {
+		return sendErr
+	}
+
 	return err
 }

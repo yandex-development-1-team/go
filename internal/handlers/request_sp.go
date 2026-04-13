@@ -82,6 +82,10 @@ func (h *RequestSpHandler) handleError(chatID int64, userID int64, err error) er
 		zap.Int64("user_id", userID),
 		zap.Error(err),
 	)
-	h.sendError(chatID, "Не удалось сделать запрос спецпроекта")
+
+	if sendErr := h.sendError(chatID, "Не удалось сделать запрос спецпроекта"); sendErr != nil {
+		return sendErr
+	}
+
 	return err
 }
