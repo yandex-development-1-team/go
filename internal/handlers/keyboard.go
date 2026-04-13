@@ -177,3 +177,13 @@ func (ks *KeyboardService) formatSlotButton(slot models.BoxAvailableSlot) string
 
 	return fmt.Sprintf("%s\n%s", dateStr, timeStr)
 }
+
+// CreateButton creates a button with 'text' and 'data'
+func (ks *KeyboardService) CreateButton(text string, data string) *tgbotapi.InlineKeyboardMarkup {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(text, data),
+		),
+	)
+	return &keyboard
+}
