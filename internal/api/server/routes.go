@@ -26,6 +26,7 @@ func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.Aut
 		}
 		public := apiV1.Group("/public")
 		public.GET("/resources/:slug", recPageHandler.GetPublicBySlug)
+		public.POST("/applications/", applicationHandler.Create)
 	}
 }
 
@@ -107,10 +108,9 @@ func setupFileRoutes(rg *gin.RouterGroup, h *handlers.FileHandler) {
 func setupApplicationRoutes(rg *gin.RouterGroup, h *handlers.ApplicationHandler) {
 	applications := rg.Group("/applications")
 	{
-		applications.GET("/", h.List)
-		applications.POST("/", h.Create)
+		applications.GET("/", h.ApplicationsList)
 		applications.GET("/:id", h.GetByID)
-		applications.PUT("/:id", h.Update)
-		applications.DELETE("/:id", h.Delete)
+		applications.PUT("/:id/status", h.UpdateApplicationStatus)
+		applications.DELETE("/:id", h.DeleteApplication)
 	}
 }

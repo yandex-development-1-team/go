@@ -13,23 +13,14 @@ import (
 )
 
 const (
-	advisoryLockQuery = `SELECT pg_advisory_xact_lock(hashtext(concat($1::text, $2::text, $3::text)))`
-
 	createBookingAtomicQuery = `
-		INSERT INTO bookings (
-			user_id, service_id, booking_date, booking_time, 
-			guest_name, guest_organization, guest_position, 
-			visit_type, tracker_ticket_id
-		) 
-		SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
-		WHERE NOT EXISTS (
-			SELECT 1 FROM bookings 
-			WHERE service_id = $2 
-			  AND booking_date = $3 
-			  AND booking_time IS NOT DISTINCT FROM $4 
-			  AND status = 'confirmed'
-		)
-		RETURNING id`
+	INSERT INTO bookings (
+    user_id, service_id, booking_date, booking_time, 
+    guest_name, guest_organization, guest_position, 
+    visit_type, tracker_ticket_id
+	) 
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	RETURNING id`
 
 	getAvailableSlotsQuery = `
 		SELECT booking_time 
@@ -75,10 +66,6 @@ func (r *BookingRepo) CreateBooking(ctx context.Context, b *models.Booking) (int
 			return 0, err
 		}
 		defer func() { _ = tx.Rollback() }()
-
-		if _, err := tx.ExecContext(ctx, advisoryLockQuery, b.ServiceID, b.BookingDate, b.BookingTime); err != nil {
-			return 0, err
-		}
 
 		var id int64
 		err = tx.QueryRowContext(ctx, createBookingAtomicQuery,

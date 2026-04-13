@@ -1075,20 +1075,9 @@
             "schema": {
               "type": "string",
               "enum": [
-                "queue",
-                "in_progress",
-                "done"
-              ]
-            }
-          },
-          {
-            "name": "type",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "box",
-                "special_project"
+                "pending",
+                "confirmed",
+                "cancelled"
               ]
             }
           },
@@ -1154,39 +1143,11 @@
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          }
-        }
-      },
-      "post": {
-        "summary": "Создать заявку (из бота или вручную)",
-        "tags": [
-          "applications"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApplicationCreateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Заявка создана",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Application"
-                }
-              }
-            }
-          },
           "400": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
           }
         }
       }
@@ -1221,48 +1182,6 @@
           }
         }
       },
-      "put": {
-        "summary": "Обновить заявку",
-        "tags": [
-          "applications"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPathParam"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApplicationUpdateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Заявка обновлена",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Application"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/ValidationError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      },
       "delete": {
         "summary": "Удалить заявку",
         "tags": [
@@ -1274,39 +1193,23 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Заявка удалена",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
+          "204": {
+            "description": "Заявка удалена"
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
           }
         }
       }
     },
-    "/api/v1/applications/{id}/create-box": {
-      "post": {
-        "summary": "Создать коробку из заявки",
+    "/api/v1/applications/{id}/status": {
+      "put": {
+        "summary": "Сменить статус заявки на специальное преложение",
         "tags": [
-          "applications",
-          "boxes"
+          "applications"
         ],
         "parameters": [
           {
@@ -1318,18 +1221,31 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateBoxFromApplicationRequest"
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "confirmed",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Коробка создана и связана с заявкой",
+            "description": "Статус обновлён",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateBoxFromApplicationResponse"
+                  "$ref": "#/components/schemas/Application"
                 }
               }
             }
@@ -2727,56 +2643,32 @@
             "type": "integer",
             "format": "int64"
           },
-          "type": {
+          "status": {
             "type": "string",
             "enum": [
-              "box",
-              "special_project"
+              "pending",
+              "confirmed",
+              "cancelled"
             ]
           },
-          "source": {
-            "type": "string",
-            "enum": [
-              "telegram_bot",
-              "manual"
-            ]
+          "manager_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "manager_name": {
+            "type": "string"
+          },
+          "form_answer_id": {
+            "type": "string"
           },
           "customer_name": {
             "type": "string"
           },
-          "project_name": {
-            "type": "string",
-            "nullable": true
-          },
           "contact_info": {
             "type": "string"
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queue",
-              "in_progress",
-              "done"
-            ]
-          },
-          "box_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "special_project_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "manager_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "manager_name": {
-            "type": "string",
-            "nullable": true
+          "description": {
+            "type": "string"
           },
           "created_at": {
             "type": "string",
@@ -2789,13 +2681,14 @@
         },
         "required": [
           "id",
-          "type",
-          "source",
           "customer_name",
           "contact_info",
           "status",
+          "manager_id",
+          "manager_name",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "form_answer_id"
         ]
       },
       "ApplicationCreateRequest": {
@@ -2851,75 +2744,40 @@
             "type": "integer",
             "format": "int64"
           },
-          "type": {
+          "status": {
             "type": "string",
             "enum": [
-              "box",
-              "special_project"
+              "pending",
+              "confirmed",
+              "cancelled"
             ]
           },
-          "source": {
-            "type": "string",
-            "enum": [
-              "telegram_bot",
-              "manual"
-            ]
+          "manager_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "manager_name": {
+            "type": "string"
           },
           "customer_name": {
             "type": "string"
           },
-          "project_name": {
-            "type": "string",
-            "nullable": true
-          },
           "contact_info": {
             "type": "string"
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queue",
-              "in_progress",
-              "done"
-            ]
-          },
-          "box_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "special_project_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "manager_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "manager_name": {
-            "type": "string",
-            "nullable": true
-          },
           "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
             "type": "string",
             "format": "date-time"
           }
         },
         "required": [
           "id",
-          "type",
-          "source",
           "customer_name",
           "contact_info",
           "status",
           "created_at",
-          "updated_at"
+          "manager_id",
+          "manager_name"
         ]
       },
       "ApplicationUpdateRequest": {

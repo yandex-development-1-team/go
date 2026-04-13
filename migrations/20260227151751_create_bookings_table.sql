@@ -19,9 +19,15 @@ CREATE TABLE IF NOT EXISTS bookings (
     guest_position VARCHAR(255),
     visit_type VARCHAR(50),
     status booking_status DEFAULT 'pending',
+    manager_id BIGINT,
     tracker_ticket_id VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_manager_id_booking
+        FOREIGN KEY (manager_id)
+            REFERENCES staff(id)
+            ON DELETE SET NULL,
 
     CONSTRAINT fk_bookings_user
         FOREIGN KEY (user_id)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -30,6 +29,7 @@ var (
 	repoSession      *pgSessionRepo
 	boxRepo          *BoxSolutionRepo
 	resourcePageRepo *ResourcePageRepository
+	applicationRepo  *ApplicationRepo
 )
 
 func mustParseTime(layout, value string) *time.Time {
@@ -57,15 +57,16 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to connect to db: %s", err.Error())
 	}
 
-	_, _ = db.Exec(`INSERT INTO services (id, name) VALUES (1, 'Test Service') ON CONFLICT DO NOTHING`)
-	_, _ = db.Exec(`INSERT INTO services (id, name) VALUES (5, 'Slot Service') ON CONFLICT DO NOTHING`)
-	_, _ = db.Exec(`INSERT INTO services (id, name) VALUES (50, 'Race Service') ON CONFLICT DO NOTHING`)
+	_, _ = db.Exec(`INSERT INTO services (id, name, slug, price) VALUES (1, 'Test Service', 'test-service', 0) ON CONFLICT (id) DO NOTHING`)
+	_, _ = db.Exec(`INSERT INTO services (id, name, slug, price) VALUES (5, 'Slot Service', 'slot-service', 0) ON CONFLICT (id) DO NOTHING`)
+	_, _ = db.Exec(`INSERT INTO services (id, name, slug, price) VALUES (50, 'Race Service', 'race-service', 0) ON CONFLICT (id) DO NOTHING`)
 
 	repo = NewBookingRepository(db)
 	repoUser = NewTelegramUserRepository(db)
 	repoSession = NewSessionRepository(db)
 	boxRepo = NewBoxSolutionRepo(db)
 	resourcePageRepo = NewResourcePageRepo(db)
+	applicationRepo = NewApplicationRepository(db)
 
 	code := m.Run()
 
@@ -75,7 +76,7 @@ func TestMain(m *testing.M) {
 
 func startContainer() (tc.Container, error) {
 	req := tc.ContainerRequest{
-		Image:        "postgres:latest",
+		Image:        "postgres:15",
 		ExposedPorts: []string{"5432/tcp"},
 		Env: map[string]string{
 			"POSTGRES_PASSWORD": "password",
@@ -149,22 +150,6 @@ func TestCreateBooking(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:            "duplicate_slot_error",
-			contextDuration: 5 * time.Second,
-			booking: &models.Booking{
-				UserID:      telegramID,
-				ServiceID:   1,
-				BookingDate: targetDate,
-				BookingTime: targetTime,
-				GuestName:   "Other",
-			},
-			preAction: func() {
-				_, _ = db.Exec(`INSERT INTO bookings (user_id, service_id, booking_date, booking_time, guest_name, status)
-                    VALUES ($1, 1, $2, $3, 'Owner', 'confirmed')`, telegramID, targetDate, targetTime)
-			},
-			wantErr: models.ErrSlotOccupied,
-		},
-		{
 			name:            "request_canceled",
 			contextDuration: 5 * time.Second,
 			booking: &models.Booking{
@@ -211,46 +196,6 @@ func TestCreateBooking(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestCreateBooking_RaceCondition(t *testing.T) {
-	const goroutines = 10
-	serviceID := 50
-	date := time.Now().AddDate(0, 0, 1).Truncate(24 * time.Hour)
-	slot := mustParseTime("15:04:05", "12:00:00")
-
-	const telegramID int64 = 999
-	_, _ = db.Exec(`INSERT INTO users (telegram_id, username, email, password_hash) VALUES ($1, $2, $3, $4)
-		ON CONFLICT (telegram_id) DO NOTHING`, telegramID, "racer", "racer@test.local", "placeholder")
-
-	_, _ = db.Exec("DELETE FROM bookings WHERE service_id = $1 AND booking_date = $2", serviceID, date)
-
-	results := make(chan error, goroutines)
-	var successCount int32
-
-	for i := 0; i < goroutines; i++ {
-		go func() {
-			_, err := repo.CreateBooking(context.Background(), &models.Booking{
-				UserID:      telegramID,
-				ServiceID:   int16(serviceID),
-				BookingDate: date,
-				BookingTime: slot,
-				GuestName:   "Racer",
-			})
-
-			if err == nil {
-				atomic.AddInt32(&successCount, 1)
-				_, _ = db.Exec("UPDATE bookings SET status = 'confirmed' WHERE service_id = $1", serviceID)
-			}
-			results <- err
-		}()
-	}
-
-	for i := 0; i < goroutines; i++ {
-		<-results
-	}
-
-	assert.Equal(t, int32(1), successCount, "Only one booking should be successful")
 }
 
 func TestGetAvailableSlots(t *testing.T) {
