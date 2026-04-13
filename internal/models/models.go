@@ -176,18 +176,19 @@ func (s ApplicationStatus) Valid() bool {
 }
 
 type Application struct {
-	ID               int64             `db:"id"`
-	Type             ApplicationType   `db:"type"`
-	Source           ApplicationSource `db:"source"`
-	Status           ApplicationStatus `db:"status"`
-	CustomerName     string            `db:"customer_name"`
-	ContactInfo      string            `db:"contact_info"`
-	ProjectName      *string           `db:"project_name"`
-	BoxID            *int64            `db:"box_id"`
-	SpecialProjectID *int64            `db:"special_project_id"`
-	ManagerID        *int64            `db:"manager_id"`
-	CreatedAt        time.Time         `db:"created_at"`
-	UpdatedAt        time.Time         `db:"updated_at"`
+	ID               int64             `db:"id" json:"id"`
+	Type             ApplicationType   `db:"type" json:"type"`
+	Source           ApplicationSource `db:"source" json:"source"`
+	Status           ApplicationStatus `db:"status" json:"status"`
+	CustomerName     string            `db:"customer_name" json:"customer_name"`
+	ContactInfo      string            `db:"contact_info" json:"contact_info"`
+	ProjectName      *string           `db:"project_name" json:"project_name,omitempty"`
+	BoxID            *int64            `db:"box_id" json:"box_id,omitempty"`
+	SpecialProjectID *int64            `db:"special_project_id" json:"special_project_id,omitempty"`
+	ManagerID        *int64            `db:"manager_id" json:"manager_id,omitempty"`
+	ManagerName      *string           `db:"manager_name" json:"manager_name,omitempty"`
+	CreatedAt        time.Time         `db:"created_at" json:"created_at"`
+	UpdatedAt        time.Time         `db:"updated_at" json:"updated_at"`
 }
 
 type ApplicationCreateRequest struct {
@@ -201,13 +202,14 @@ type ApplicationCreateRequest struct {
 }
 
 type ApplicationFilter struct {
-	Type      *ApplicationType
-	Status    *ApplicationStatus
-	ManagerID *int64
-	DateFrom  *time.Time
-	DateTo    *time.Time
-	Limit     int
-	Offset    int
+	Type         *ApplicationType
+	Status       *ApplicationStatus
+	ManagerID    *int64
+	CustomerName string
+	DateFrom     *time.Time
+	DateTo       *time.Time
+	Limit        int
+	Offset       int
 }
 
 type Pagination struct {

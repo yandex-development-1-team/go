@@ -1,16 +1,16 @@
 package handlers
 
 import (
-	"errors"
-	"fmt"
 	"log"
 	"net/http"
-	"net/url"
-	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
+	"github.com/yandex-development-1-team/go/internal/apierrors"
 	"github.com/yandex-development-1-team/go/internal/dto"
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/service"
 )
@@ -23,197 +23,145 @@ func NewResourcePageHandler(service *service.ResourcePageService) *ResourcePageH
 	return &ResourcePageHandler{service: service}
 }
 
-func (h *ResourcePageHandler) ListResourcePages(c *gin.Context) {
+func (h *ResourcePageHandler) GetAll(c *gin.Context) {
 	ctx := c.Request.Context()
-	summaries, err := h.service.GetAllSummaries(ctx)
+
+	pages, err := h.service.GetAllResourcePages(ctx)
 	if err != nil {
-		log.Printf("ERROR: failed to get resource page summaries: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+		logger.Error("GetAll", zap.Error(err))
+		apierrors.WriteErrorMessagesGin(c, http.StatusInternalServerError, []string{"Internal Server Error"})
 		return
 	}
 
-	c.JSON(http.StatusOK, summaries)
+	response := make([]dto.ResourcePageResponse, 0, len(pages))
+	for _, p := range pages {
+		response = append(response, toResourcePageResponse(p))
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
-func (h *ResourcePageHandler) GetResourcePage(c *gin.Context) {
+func (h *ResourcePageHandler) GetBySlug(c *gin.Context) {
 	slug := c.Param("slug")
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing slug"})
-		return
-	}
 
 	ctx := c.Request.Context()
 	page, err := h.service.GetResourcePage(ctx, slug)
 	if err != nil {
-		if errors.Is(err, models.ErrResourcePageNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
-			return
-		}
-		log.Printf("ERROR: failed to get resource page %s: %v", slug, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+		apierrors.WriteErrorGin(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, toAPIResponse(page))
+	c.JSON(http.StatusOK, toResourcePageResponse(*page))
 }
 
-func (h *ResourcePageHandler) UpdateResourcePage(c *gin.Context) {
+func (h *ResourcePageHandler) GetPublicBySlug(c *gin.Context) {
 	slug := c.Param("slug")
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing slug"})
-		return
-	}
-
-	var updateReq dto.ResourcePageUpdateRequest
-	if err := c.ShouldBindJSON(&updateReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
-		return
-	}
-
-	ctx := c.Request.Context()
-	newPageData, err := toDomainFromAPIUpdateRequest(&updateReq)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to parse update request: %v", err)})
-		return
-	}
-
-	updatedPage, err := h.service.UpdateResourcePage(ctx, slug, newPageData)
-	if err != nil {
-		if errors.Is(err, models.ErrResourcePageNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
-			return
-		}
-		if strings.Contains(err.Error(), "validation error:") {
-			c.JSON(http.StatusBadRequest, gin.H{"field_errors": gin.H{"links": err.Error()}})
-			return
-		}
-		log.Printf("ERROR: failed to update resource page %s: %v", slug, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
-		return
-	}
-
-	c.JSON(http.StatusOK, toAPIResponse(updatedPage))
-}
-
-func (h *ResourcePageHandler) GetPublicResourcePage(c *gin.Context) {
-	slug := c.Param("slug")
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing slug"})
-		return
-	}
 
 	ctx := c.Request.Context()
 	page, err := h.service.GetResourcePage(ctx, slug)
 	if err != nil {
-		if errors.Is(err, models.ErrResourcePageNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
-			return
-		}
-		log.Printf("ERROR: failed to get public resource page %s: %v", slug, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
 
-	c.JSON(http.StatusOK, toAPIResponsePublic(page))
+	c.JSON(http.StatusOK, toResourcePagePublicResponse(*page))
+}
+
+func (h *ResourcePageHandler) Update(c *gin.Context) {
+	slug := c.Param("slug")
+
+	var req dto.ResourcePageUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректные данные"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	updatedPage, err := h.service.UpdateResourcePage(ctx, slug, toDomainUpdateRequest(req))
+	if err != nil {
+		logger.Error("Update", zap.Error(err))
+		apierrors.WriteErrorGin(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, toResourcePageResponse(*updatedPage))
 }
 
 func (h *ResourcePageHandler) DeleteLink(c *gin.Context) {
 	slug := c.Param("slug")
 	id := c.Param("id")
 
-	if slug == "" || id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Slug or Link ID cannot be empty"})
-		return
-	}
-
 	ctx := c.Request.Context()
-	err := h.service.DeleteLink(ctx, slug, id)
+	page, err := h.service.DeleteResourcePageLink(ctx, slug, id)
 	if err != nil {
-		if errors.Is(err, models.ErrResourcePageNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Page Not Found"})
-			return
-		}
-		if strings.Contains(err.Error(), "not found in page") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Link Not Found"})
-			return
-		}
-		log.Printf("ERROR: failed to delete link %s from page %s: %v", id, slug, err)
+		log.Printf("ERROR: failed to delete link %s from %s: %v", id, slug, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, toResourcePageResponse(*page))
 }
 
-func toAPIResponse(domainModel *models.ResourcePage) *dto.ResourcePageResponse {
-	if domainModel == nil {
-		return nil
+func (h *ResourcePageHandler) Delete(c *gin.Context) {
+	slug := c.Param("slug")
+
+	ctx := c.Request.Context()
+	updatedPage, err := h.service.ClearResourcePage(ctx, slug)
+	logger.Error("Delete", zap.Error(err))
+	if err != nil {
+		apierrors.WriteErrorGin(c, err)
+		return
 	}
 
-	var contentPtr *string
-	if domainModel.Content != "" {
-		contentPtr = &domainModel.Content
-	}
-
-	var linksPtr *[]models.ResourcePageLink
-	if len(domainModel.Links) > 0 {
-		linksPtr = &domainModel.Links
-	}
-
-	return &dto.ResourcePageResponse{
-		Title:   domainModel.Title,
-		Content: contentPtr,
-		Links:   linksPtr,
-	}
+	c.JSON(http.StatusOK, toResourcePageResponse(*updatedPage))
 }
 
-func toAPIResponsePublic(domainModel *models.ResourcePage) *dto.ResourcePageResponsePublic {
-	if domainModel == nil {
-		return nil
+func toResourcePageResponse(p models.ResourcePage) dto.ResourcePageResponse {
+	links := make([]dto.ResourcePageLink, 0, len(p.Links))
+	for _, l := range p.Links {
+		links = append(links, dto.ResourcePageLink{
+			ID:    l.ID,
+			Title: l.Title,
+			URL:   l.URL,
+		})
 	}
-
-	var contentPtr *string
-	if domainModel.Content != "" {
-		contentPtr = &domainModel.Content
-	}
-
-	var linksPtr *[]models.ResourcePageLink
-	if len(domainModel.Links) > 0 {
-		linksPtr = &domainModel.Links
-	}
-
-	return &dto.ResourcePageResponsePublic{
-		Title:   domainModel.Title,
-		Content: contentPtr,
-		Links:   linksPtr,
+	return dto.ResourcePageResponse{
+		Slug:      p.Slug,
+		Title:     p.Title,
+		Content:   p.Content,
+		Links:     links,
+		UpdatedAt: p.UpdatedAt.Format(time.RFC3339),
 	}
 }
 
-func toDomainFromAPIUpdateRequest(apiReq *dto.ResourcePageUpdateRequest) (*models.ResourcePage, error) {
-	if apiReq == nil {
-		return nil, nil
+func toDomainUpdateRequest(req dto.ResourcePageUpdateRequest) models.ResourcePage {
+	links := make([]models.ResourcePageLink, 0, len(req.Links))
+	for _, l := range req.Links {
+		links = append(links, models.ResourcePageLink{
+			ID:    l.ID,
+			Title: l.Title,
+			URL:   l.URL,
+		})
 	}
-
-	domainUpdate := &models.ResourcePage{}
-
-	if apiReq.Title != nil {
-		domainUpdate.Title = *apiReq.Title
+	return models.ResourcePage{
+		Title:   req.Title,
+		Content: req.Content,
+		Links:   links,
 	}
-	if apiReq.Content != nil {
-		domainUpdate.Content = *apiReq.Content
-	}
-	if apiReq.Links != nil {
-		for _, newLink := range *apiReq.Links {
-			parsedURL, err := url.ParseRequestURI(newLink.URL)
-			if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
-				return nil, fmt.Errorf("validation error: invalid URI '%s' for link ID '%s'", newLink.URL, newLink.ID)
-			}
-		}
+}
 
-		newLinks := make([]models.ResourcePageLink, len(*apiReq.Links))
-		copy(newLinks, *apiReq.Links)
-		domainUpdate.Links = newLinks
+func toResourcePagePublicResponse(p models.ResourcePage) dto.ResourcePagePublicResponse {
+	links := make([]dto.ResourcePageLink, 0, len(p.Links))
+	for _, l := range p.Links {
+		links = append(links, dto.ResourcePageLink{
+			ID:    l.ID,
+			Title: l.Title,
+			URL:   l.URL,
+		})
 	}
-
-	return domainUpdate, nil
+	return dto.ResourcePagePublicResponse{
+		Title:   p.Title,
+		Content: p.Content,
+		Links:   links,
+	}
 }

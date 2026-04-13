@@ -7,7 +7,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 )
 
-func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler) {
+func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler) {
 	apiV1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(apiV1, authHandler)
@@ -22,9 +22,10 @@ func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.Aut
 			setupUserRoutes(protected, userHandler)
 			setupResourcesRoutes(protected, recPageHandler)
 			setupFileRoutes(protected, fileHandler)
+			setupApplicationRoutes(protected, applicationHandler)
 		}
 		public := apiV1.Group("/public")
-		public.GET("/resources/:slug", recPageHandler.GetPublicResourcePage)
+		public.GET("/resources/:slug", recPageHandler.GetPublicBySlug)
 	}
 }
 
@@ -88,10 +89,11 @@ func setupUserRoutes(rg *gin.RouterGroup, h *handlers.UserHandler) {
 func setupResourcesRoutes(rg *gin.RouterGroup, h *handlers.ResourcePageHandler) {
 	resources := rg.Group("/resources")
 	{
-		resources.GET("/", h.ListResourcePages)
-		resources.GET("/:slug", h.GetResourcePage)
-		resources.PUT("/:slug", h.UpdateResourcePage)
-		resources.DELETE("/:slug", h.DeleteLink)
+		resources.GET("/", h.GetAll)
+		resources.GET("/:slug", h.GetBySlug)
+		resources.PUT("/:slug", h.Update)
+		resources.DELETE("/:slug/:id", h.DeleteLink)
+		resources.DELETE("/:slug", h.Delete)
 	}
 }
 
@@ -99,5 +101,16 @@ func setupFileRoutes(rg *gin.RouterGroup, h *handlers.FileHandler) {
 	files := rg.Group("/files")
 	{
 		files.POST("/upload", h.Upload)
+	}
+}
+
+func setupApplicationRoutes(rg *gin.RouterGroup, h *handlers.ApplicationHandler) {
+	applications := rg.Group("/applications")
+	{
+		applications.GET("/", h.List)
+		applications.POST("/", h.Create)
+		applications.GET("/:id", h.GetByID)
+		applications.PUT("/:id", h.Update)
+		applications.DELETE("/:id", h.Delete)
 	}
 }

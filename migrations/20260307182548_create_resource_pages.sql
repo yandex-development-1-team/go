@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS resource_pages (
     slug VARCHAR(255) PRIMARY KEY,
     title TEXT NOT NULL,
-    content TEXT,
+    content TEXT NOT NULL DEFAULT '',
     links JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

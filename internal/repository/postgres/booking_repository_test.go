@@ -24,11 +24,12 @@ import (
 )
 
 var (
-	db          *sqlx.DB
-	repo        *BookingRepo
-	repoUser    *TelegramUserRepo
-	repoSession *pgSessionRepo
-	boxRepo     *BoxSolutionRepo
+	db               *sqlx.DB
+	repo             *BookingRepo
+	repoUser         *TelegramUserRepo
+	repoSession      *pgSessionRepo
+	boxRepo          *BoxSolutionRepo
+	resourcePageRepo *ResourcePageRepository
 )
 
 func mustParseTime(layout, value string) *time.Time {
@@ -43,7 +44,7 @@ func TestMain(m *testing.M) {
 	logger.NewLogger("dev", "debug")
 	metrics.Initialize(config.Config{Environment: "test", HostName: "test"})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 
 	container, err := startContainer()
@@ -64,6 +65,7 @@ func TestMain(m *testing.M) {
 	repoUser = NewTelegramUserRepository(db)
 	repoSession = NewSessionRepository(db)
 	boxRepo = NewBoxSolutionRepo(db)
+	resourcePageRepo = NewResourcePageRepo(db)
 
 	code := m.Run()
 

@@ -10,6 +10,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 	"github.com/yandex-development-1-team/go/internal/config"
+	"github.com/yandex-development-1-team/go/internal/repository"
 	"github.com/yandex-development-1-team/go/internal/service"
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
@@ -22,6 +23,7 @@ type APIServices struct {
 	RecPageSvc        *service.ResourcePageService
 	UserSvc           *apiService.UserService
 	FileService       *apiService.FileService
+	ApplicationRepo   repository.ApplicationRepository
 }
 
 type Server struct {
@@ -60,8 +62,9 @@ func (s *Server) RegisterRoutes() {
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
 	userHandler := handlers.NewUserHandler(s.services.UserSvc)
 	fileHandler := handlers.NewFileHandler(s.services.FileService)
+	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationRepo)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler)
+	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler)
 }
 
 func (s *Server) Run(cfg *config.Config) error {

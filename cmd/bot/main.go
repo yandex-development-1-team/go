@@ -100,10 +100,11 @@ func run() error {
 	txRepo := postgres.NewTxRepo(dbSqlx)
 	staffRepo := postgres.NewStaffRepo(dbSqlx)
 	analyticsRepo := postgres.NewAnalyticsRepo(dbSqlx)
-	resourcePagepRepo := postgres.NewResourcePageRepo(dbSqlx)
+	resourcePageRepo := postgres.NewResourcePageRepo(dbSqlx)
 	passwordResetRepo := postgres.NewPasswordResetRepository(dbSqlx)
 	emailService := apiService.NewEmailService(cfg.Email)
 	fileRepo := postgres.NewFileRepository(dbSqlx)
+	applicationRepo := postgres.NewApplicationRepository(dbSqlx)
 
 	settingsService := apiService.NewSettingsService(settingsRepo)
 	bookService := botService.NewBookingService(sessionRepo, bookRepo, boxSolutionRepo)
@@ -119,7 +120,7 @@ func run() error {
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo, fileService)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
-	resourcePageService := service.NewResourcePageService(resourcePagepRepo)
+	resourcePageService := service.NewResourcePageService(resourcePageRepo)
 	userService := apiService.NewUserService(staffRepo)
 
 	metricsMux := http.NewServeMux()
@@ -147,6 +148,7 @@ func run() error {
 		RecPageSvc:        resourcePageService,
 		UserSvc:           userService,
 		FileService:       fileService,
+		ApplicationRepo:   applicationRepo,
 	}, apiAuthService)
 
 	if cfg.FileGC.Enabled {

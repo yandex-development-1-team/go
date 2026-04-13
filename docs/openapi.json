@@ -1097,23 +1097,15 @@
             "in": "query",
             "schema": {
               "type": "integer",
-              "format": "int64"
+              "format": "int64",
+              "minimum": 1
             }
           },
           {
-            "name": "date_from",
+            "name": "customer_name",
             "in": "query",
             "schema": {
-              "type": "string",
-              "format": "date"
-            }
-          },
-          {
-            "name": "date_to",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date"
+              "type": "string"
             }
           },
           {
@@ -1461,9 +1453,6 @@
           },
           "400": {
             "$ref": "#/components/responses/ValidationError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
@@ -1904,7 +1893,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ResourcePageSummary"
+                    "$ref": "#/components/schemas/ResourcePage"
                   }
                 }
               }
@@ -1942,9 +1931,6 @@
                 }
               }
             }
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
           }
         }
       },
@@ -1991,6 +1977,34 @@
             "$ref": "#/components/responses/NotFoundError"
           }
         }
+      },
+      "delete": {
+        "summary": "Очистить ресурсную страницу",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ресурсная страница очищена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourcePage"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/resources/{slug}/{id}": {
@@ -2024,21 +2038,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
+                  "$ref": "#/components/schemas/ResourcePage"
                 }
               }
             }
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
           }
         }
       }
@@ -2742,7 +2745,8 @@
             "type": "string"
           },
           "project_name": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "contact_info": {
             "type": "string"
@@ -2765,6 +2769,15 @@
             "format": "int64",
             "nullable": true
           },
+          "manager_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "manager_name": {
+            "type": "string",
+            "nullable": true
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -2772,13 +2785,18 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
-          },
-          "created_by": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
           }
-        }
+        },
+        "required": [
+          "id",
+          "type",
+          "source",
+          "customer_name",
+          "contact_info",
+          "status",
+          "created_at",
+          "updated_at"
+        ]
       },
       "ApplicationCreateRequest": {
         "type": "object",
@@ -2826,6 +2844,7 @@
         ]
       },
       "ApplicationListItem": {
+        "description": "Заявка из бота или созданная вручную в админке.",
         "type": "object",
         "properties": {
           "id": {
@@ -2850,7 +2869,8 @@
             "type": "string"
           },
           "project_name": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "contact_info": {
             "type": "string"
@@ -2863,11 +2883,44 @@
               "done"
             ]
           },
+          "box_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "special_project_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "manager_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "manager_name": {
+            "type": "string",
+            "nullable": true
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
-        }
+        },
+        "required": [
+          "id",
+          "type",
+          "source",
+          "customer_name",
+          "contact_info",
+          "status",
+          "created_at",
+          "updated_at"
+        ]
       },
       "ApplicationUpdateRequest": {
         "type": "object",
