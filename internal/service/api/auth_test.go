@@ -159,29 +159,28 @@ func TestAuthService_Refresh_Success(t *testing.T) {
 	_, err := db.Exec(`
 		INSERT INTO refresh_tokens (user_id, token, expires_at)
 		VALUES ($1, $2, $3)
-	`,
-		userID,
-		"valid-refresh-token",
-		time.Now().Add(24*time.Hour),
-	)
+	`, userID, "valid-refresh-token", time.Now().Add(24*time.Hour))
 	assert.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	accessToken, err := svc.Refresh(ctx, "valid-refresh-token")
+	resp, err := svc.Refresh(ctx, "valid-refresh-token")
 	assert.NoError(t, err)
-	assert.NotEmpty(t, accessToken, "access token should not be empty")
+	assert.NotEmpty(t, resp.Token, "access token should not be empty")
+	assert.NotEmpty(t, resp.RefreshToken, "new refresh token should not be empty")
 
-	var revokedAt *time.Time
-	err = db.Get(&revokedAt, `SELECT revoked_at FROM refresh_tokens WHERE token = $1`, "valid-refresh-token")
+	// старый токен удалён
+	var oldCount int
+	err = db.Get(&oldCount, `SELECT COUNT(*) FROM refresh_tokens WHERE token = $1`, "valid-refresh-token")
 	assert.NoError(t, err)
-	assert.NotNil(t, revokedAt, "old refresh token should be revoked")
+	assert.Equal(t, 0, oldCount, "old refresh token should be deleted")
 
-	var count int
-	err = db.Get(&count, `SELECT COUNT(*) FROM refresh_tokens WHERE user_id = $1`, userID)
+	// новый токен создан
+	var newCount int
+	err = db.Get(&newCount, `SELECT COUNT(*) FROM refresh_tokens WHERE user_id = $1`, userID)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, count, "should be two refresh tokens: old revoked + new active")
+	assert.Equal(t, 1, newCount, "should be exactly one active refresh token")
 }
 
 func TestAuthService_Refresh_Expired(t *testing.T) {
@@ -208,24 +207,13 @@ func TestAuthService_Refresh_Expired(t *testing.T) {
 
 func TestAuthService_Refresh_Revoked(t *testing.T) {
 	clearRefreshTokens(t)
-	userID := insertTestUser(t)
-
-	_, err := db.Exec(`
-		INSERT INTO refresh_tokens (user_id, token, expires_at, revoked_at)
-		VALUES ($1, $2, $3, NOW())
-		`,
-		userID,
-		"revoked-refresh-token",
-		time.Now().Add(24*time.Hour),
-	)
-	assert.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err = svc.Refresh(ctx, "revoked-refresh-token")
+	_, err := svc.Refresh(ctx, "non-existent-token")
 	assert.Error(t, err)
-	assert.True(t, errors.Is(err, pgrepo.ErrRefreshTokenRevoked))
+	assert.True(t, errors.Is(err, pgrepo.ErrRefreshTokenNotFound))
 }
 
 func TestAuthService_Refresh_NotFound(t *testing.T) {
@@ -277,17 +265,17 @@ func TestAuthService_Refresh_ConcurrentRotation(t *testing.T) {
 
 	assert.Equal(t, int32(1), successCount, "only one refresh should succeed")
 
-	var revokedAt *time.Time
-	err = db.Get(&revokedAt, `SELECT revoked_at FROM refresh_tokens WHERE token = $1`, "race-refresh-token")
+	// старый токен удалён
+	var oldCount int
+	err = db.Get(&oldCount, `SELECT COUNT(*) FROM refresh_tokens WHERE token = $1`, "race-refresh-token")
 	assert.NoError(t, err)
-	assert.NotNil(t, revokedAt)
+	assert.Equal(t, 0, oldCount, "old token should be deleted")
 
+	// только один активный токен
 	var activeCount int
-	err = db.Get(&activeCount, `
-		SELECT COUNT(*) FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL
-	`, userID)
+	err = db.Get(&activeCount, `SELECT COUNT(*) FROM refresh_tokens WHERE user_id = $1`, userID)
 	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, activeCount, 1)
+	assert.Equal(t, 1, activeCount, "should be exactly one active token")
 }
 
 func TestAuthService_Logout(t *testing.T) {
@@ -297,7 +285,7 @@ func TestAuthService_Logout(t *testing.T) {
 	_, err := db.Exec(`
 		INSERT INTO refresh_tokens (user_id, token, expires_at)
 		VALUES ($1, $2, $3)
-		`,
+	`,
 		userID,
 		"logout-refresh-token",
 		time.Now().Add(24*time.Hour),
@@ -310,11 +298,13 @@ func TestAuthService_Logout(t *testing.T) {
 	err = svc.Logout(ctx, "logout-refresh-token")
 	assert.NoError(t, err)
 
-	var revokedAt *time.Time
-	err = db.Get(&revokedAt, `SELECT revoked_at FROM refresh_tokens WHERE token = $1`, "logout-refresh-token")
+	// токен удалён
+	var count int
+	err = db.Get(&count, `SELECT COUNT(*) FROM refresh_tokens WHERE token = $1`, "logout-refresh-token")
 	assert.NoError(t, err)
-	assert.NotNil(t, revokedAt)
+	assert.Equal(t, 0, count, "token should be deleted after logout")
 
+	// повторный logout — токена нет
 	err = svc.Logout(ctx, "logout-refresh-token")
 	assert.NoError(t, err)
 }

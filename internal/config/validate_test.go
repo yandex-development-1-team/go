@@ -10,6 +10,7 @@ func TestValidateConfig(t *testing.T) {
 		err := validateConfig(&Config{
 			APIOnly: true,
 			DB:      DatabaseConfig{PostgresURL: "postgres://u:p@h/db?sslmode=disable"},
+			Storage: StorageConfig{Endpoint: "http://localhost:9000", Bucket: "test-bucket"},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -34,7 +35,8 @@ func TestValidateConfig(t *testing.T) {
 			Telegram: Telegram{
 				BotToken: "123:abc",
 			},
-			DB: DatabaseConfig{PostgresURL: "postgres://u:p@h/db?sslmode=disable"},
+			DB:      DatabaseConfig{PostgresURL: "postgres://u:p@h/db?sslmode=disable"},
+			Storage: StorageConfig{Endpoint: "http://localhost:9000", Bucket: "test-bucket"},
 		})
 		if err != nil {
 			t.Fatal(err)
