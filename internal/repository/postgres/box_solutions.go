@@ -59,20 +59,6 @@ const updateServiceByIDQuery = `
 		updated_at  = NOW()
 	WHERE id = $1`
 
-const checkSlotAvailabilityQuery = `
-	SELECT 
-		EXISTS(
-			SELECT 1 FROM services 
-			WHERE id = $1 AND deleted_at IS NULL AND status = 'active'
-		) as service_exists,
-		EXISTS(
-			SELECT 1 
-			FROM service_available_slots sas
-			WHERE sas.service_id = $1 
-				AND sas.slot_date = $2
-				AND (sas.start_time = $3::time OR ($3 IS NULL AND sas.start_time IS NULL))
-		) as slot_available`
-
 const createServiceQuery = `
 	INSERT INTO services (
 		name, slug, description, rules, location, price, image, status, organizer

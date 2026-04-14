@@ -56,11 +56,11 @@ func TestBookingFormHandler_FullFlow(t *testing.T) {
 	ensureUserExists(t, userID)
 
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
-	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil).Times(7)
+	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil).Times(6)
 
 	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	// Преобразуем время для callback
 	startTimeCallback := formatTimeForCallback(startTime)
@@ -258,8 +258,8 @@ func TestBookingFormHandler_ValidationErrors(t *testing.T) {
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 
 	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	slot := models.BoxAvailableSlot{
 		Date:      targetDate,
@@ -363,8 +363,8 @@ func TestBookingFormHandler_RaceCondition(t *testing.T) {
 	baseUserID := int64(100000)
 	messageID := 1
 	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	startTimeCallback := formatTimeForCallback(startTime)
 	endTimeCallback := formatTimeForCallback(endTime)

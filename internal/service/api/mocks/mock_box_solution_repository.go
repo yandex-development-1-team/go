@@ -16,9 +16,10 @@ import (
 	time "time"
 
 	sqlx "github.com/jmoiron/sqlx"
+	gomock "go.uber.org/mock/gomock"
+
 	models "github.com/yandex-development-1-team/go/internal/models"
 	repository "github.com/yandex-development-1-team/go/internal/repository"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockStaffRepository is a mock of StaffRepository interface.

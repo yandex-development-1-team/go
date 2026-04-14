@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"context"
-	"net/http"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
