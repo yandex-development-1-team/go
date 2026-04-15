@@ -99,7 +99,7 @@ func seedUser(t *testing.T, db *sqlx.DB, p seedUserParams) {
 }
 
 func TestHandleLogin(t *testing.T) {
-	_, err := db.Exec(`TRUNCATE TABLE staff CASCADE`)
+	_, _ = db.Exec(`TRUNCATE TABLE staff CASCADE`)
 
 	server := setupServer(t, db)
 
@@ -209,7 +209,7 @@ func TestHandleLogin(t *testing.T) {
 }
 
 func TestRegisterHandler(t *testing.T) {
-	_, err := db.Exec(`TRUNCATE TABLE staff CASCADE`)
+	_, _ = db.Exec(`TRUNCATE TABLE staff CASCADE`)
 
 	server := setupRegisterServer(t, db)
 

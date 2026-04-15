@@ -55,8 +55,7 @@ func (s *ApplicationsService) UpdateApplicationStatus(ctx context.Context, id in
 		return nil, err
 	}
 
-	app := &models.Application{}
-	app, err = s.repo.GetApplicationByID(txCtx, id)
+	app, err := s.repo.GetApplicationByID(txCtx, id)
 	if err != nil {
 		return nil, err
 	}
