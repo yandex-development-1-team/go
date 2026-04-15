@@ -52,10 +52,7 @@ func (s *UsersAdminService) Create(ctx context.Context, req dto.UserCreateReques
 	if status == "" {
 		status = "invited"
 	}
-	perms := req.Permissions
-	if perms == nil {
-		perms = []string{}
-	}
+
 	if err := validateStaffEnums(req.Role, status); err != nil {
 		return nil, err
 	}
@@ -64,7 +61,6 @@ func (s *UsersAdminService) Create(ctx context.Context, req dto.UserCreateReques
 		Email:        req.Email,
 		Role:         req.Role,
 		Status:       status,
-		Permissions:  perms,
 		TelegramNick: req.TelegramNick,
 		InviteToken:  generateInviteToken(),
 	}
@@ -77,7 +73,6 @@ func (s *UsersAdminService) Update(ctx context.Context, id int64, req dto.UserUp
 		Email:        req.Email,
 		Role:         req.Role,
 		Status:       req.Status,
-		Permissions:  req.Permissions,
 		TelegramNick: req.TelegramNick,
 	}
 	if u.Role != nil {

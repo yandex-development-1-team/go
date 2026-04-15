@@ -88,9 +88,7 @@ type UserAPI struct {
 	Status       string
 	Department   string
 	Position     string
-	ManagerID    int64
 	InviteToken  string
-	Permissions  []string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -185,7 +183,6 @@ type Application struct {
 	ProjectName      *string           `db:"project_name" json:"project_name,omitempty"`
 	BoxID            *int64            `db:"box_id" json:"box_id,omitempty"`
 	SpecialProjectID *int64            `db:"special_project_id" json:"special_project_id,omitempty"`
-	ManagerID        *int64            `db:"manager_id" json:"manager_id,omitempty"`
 	ManagerName      *string           `db:"manager_name" json:"manager_name,omitempty"`
 	CreatedAt        time.Time         `db:"created_at" json:"created_at"`
 	UpdatedAt        time.Time         `db:"updated_at" json:"updated_at"`
@@ -204,7 +201,6 @@ type ApplicationCreateRequest struct {
 type ApplicationFilter struct {
 	Type         *ApplicationType
 	Status       *ApplicationStatus
-	ManagerID    *int64
 	CustomerName string
 	DateFrom     *time.Time
 	DateTo       *time.Time
@@ -244,7 +240,6 @@ type StaffAdminCreate struct {
 	Email        string
 	Role         string
 	Status       string
-	Permissions  []string
 	TelegramNick *string
 	InviteToken  string
 }
@@ -254,6 +249,5 @@ type StaffAdminUpdate struct {
 	Email        *string
 	Role         *string
 	Status       *string
-	Permissions  *[]string
 	TelegramNick *string
 }
