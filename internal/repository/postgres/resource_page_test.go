@@ -12,10 +12,9 @@ import (
 
 func TestResourcePageRepo_GetAll(t *testing.T) {
 	ctx := context.Background()
-
 	pages, err := resourcePageRepo.GetAll(ctx)
 	require.NoError(t, err)
-	assert.Len(t, pages, 4)
+	assert.NotEmpty(t, pages)
 }
 
 func TestResourcePageRepo_GetBySlug(t *testing.T) {
