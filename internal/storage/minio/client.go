@@ -7,6 +7,7 @@ import (
 
 	minioSDK "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+
 	"github.com/yandex-development-1-team/go/internal/config"
 )
 

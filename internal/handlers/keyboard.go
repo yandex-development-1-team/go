@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	"github.com/yandex-development-1-team/go/internal/models"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
@@ -176,4 +177,14 @@ func (ks *KeyboardService) formatSlotButton(slot models.BoxAvailableSlot) string
 	timeStr := fmt.Sprintf("%s-%s", slot.StartTime, slot.EndTime)
 
 	return fmt.Sprintf("%s\n%s", dateStr, timeStr)
+}
+
+// CreateButton creates a button with 'text' and 'data'
+func (ks *KeyboardService) CreateButton(text string, data string) *tgbotapi.InlineKeyboardMarkup {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(text, data),
+		),
+	)
+	return &keyboard
 }
