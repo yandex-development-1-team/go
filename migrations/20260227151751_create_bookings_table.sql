@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     tracker_ticket_id VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ NULL DEFAULT NULL,
 
     CONSTRAINT fk_manager_id_booking
         FOREIGN KEY (manager_id)
@@ -43,10 +44,13 @@ CREATE TABLE IF NOT EXISTS bookings (
 CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_service_id ON bookings(service_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+CREATE INDEX IF NOT EXISTS idx_bookings_manager_id ON bookings(manager_id);
+
 
 -- +goose Down
 DROP INDEX IF EXISTS idx_bookings_user_id;
 DROP INDEX IF EXISTS idx_bookings_service_id;
 DROP INDEX IF EXISTS idx_bookings_status;
+DROP INDEX IF EXISTS idx_bookings_manager_id;
 DROP TABLE IF EXISTS bookings;
 DROP TYPE IF EXISTS booking_status;

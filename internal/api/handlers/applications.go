@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -19,27 +18,28 @@ import (
 )
 
 type ApplicationHandler struct {
-	svc *svcapi.ApplicationsService
+	svc   *svcapi.ApplicationsService
+	token string
 }
 
-func NewApplicationHandler(svc *svcapi.ApplicationsService) *ApplicationHandler {
-	return &ApplicationHandler{svc: svc}
+func NewApplicationHandler(svc *svcapi.ApplicationsService, token string) *ApplicationHandler {
+	return &ApplicationHandler{
+		svc:   svc,
+		token: token,
+	}
 }
 
 func (h *ApplicationHandler) Create(c *gin.Context) {
 	token := c.GetHeader("X-Webhook-Token")
 	formAnswerID := c.GetHeader("X-Form-Answer-Id")
-	fmt.Println("1------------ token:", token, "-----formAnswerID:", formAnswerID)
 	if formAnswerID == "" {
-		fmt.Println("ошибка formAnswerID:", formAnswerID)
 		logger.Warn("create application: missing form answer id")
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		c.Abort()
 		return
 	}
-	// проверку вынести в middleware
-	if token != "a3f8c2d1e4b7" {
-		fmt.Println("ошибка токена:", token)
+
+	if token != h.token {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		c.Abort()
 		return
@@ -66,10 +66,8 @@ func (h *ApplicationHandler) Create(c *gin.Context) {
 		ContactInfo:  payload.Answer.Data.Telegram.Value,
 		Description:  payload.Answer.Data.Description.Value,
 	}
-	fmt.Println("app-----------------------:", app)
 
 	err = h.svc.Create(c.Request.Context(), app)
-	fmt.Println("err frorm svc =------------------:", err)
 	if err != nil {
 		logger.Warn("create application error",
 			zap.Error(err))
@@ -126,7 +124,6 @@ func (h *ApplicationHandler) ApplicationsList(c *gin.Context) {
 
 	list, err := h.svc.ApplicationsList(c.Request.Context(), toAppFilter(&query))
 	if err != nil {
-		fmt.Println("error  -----------------> ApplicationsList: %w", err)
 		apierrors.WriteErrorGin(c, err)
 		return
 	}

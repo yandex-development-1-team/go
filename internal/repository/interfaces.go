@@ -31,6 +31,9 @@ type BookingRepository interface {
 	GetAvailableSlots(ctx context.Context, serviceID int, date time.Time) ([]time.Time, error)
 	GetBookingsByUserID(ctx context.Context, userID int64) ([]models.Booking, error)
 	UpdateBookingStatus(ctx context.Context, bookingID int64, status string) error
+	GetBookingById(ctx context.Context, id int64) (*models.BookingAPI, error)
+	GetBookingsList(ctx context.Context, filter *models.ApplicationFilter) (*models.BookingList, error)
+	DeleteBooking(ctx context.Context, id int64) error
 }
 
 type ApplicationRepository interface {

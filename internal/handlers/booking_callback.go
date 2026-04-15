@@ -118,7 +118,8 @@ func (h *BookingFormHandler) renderDateSelection(
 
 	keyboard := h.keyboard.DatesKeyboard(slots)
 	messageText := "Выберите дату:\n"
-	msg := tgbotapi.NewEditMessageText(state.UserID, msgID, messageText)
+	//msg := tgbotapi.NewEditMessageText(state.UserID, msgID, messageText)
+	msg := tgbotapi.NewMessage(chatID, messageText)
 	msg.ParseMode = "Markdown"
 	msg.ReplyMarkup = &keyboard
 

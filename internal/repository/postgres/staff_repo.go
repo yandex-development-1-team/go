@@ -17,7 +17,7 @@ import (
 const getUserByEmailQuery = `
     SELECT id, telegram_nick, first_name, last_name, second_name, email,
 		       phone_number, password_hash, role, status, invite_token, department,
-					 position, manager_id, permissions, created_at, updated_at
+					 position,  created_at, updated_at
     FROM staff
     WHERE email = $1`
 
@@ -25,7 +25,7 @@ const createUserQuery = `
 	INSERT INTO staff(first_name, last_name, email, invite_token, password_hash)
 	VALUES ($1, $2, $3, $4, $5)
 	RETURNING id, telegram_nick, first_name, email,
-						role, status, permissions,
+						role, status,
 						created_at, updated_at
 `
 
@@ -87,9 +87,7 @@ func toUser(user *dto.UserRow) *models.UserAPI {
 		Status:       user.Status,
 		Department:   derefString(user.Department),
 		Position:     derefString(user.Position),
-		ManagerID:    derefBigNumbers(user.ManagerID),
 		InviteToken:  derefString(user.InviteToken),
-		Permissions:  user.Permissions,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
 	}
@@ -100,13 +98,6 @@ func derefString(s *string) string {
 		return ""
 	}
 	return *s
-}
-
-func derefBigNumbers(n *int64) int64 {
-	if n == nil {
-		return 0
-	}
-	return *n
 }
 
 func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit, offset int) ([]dto.UserListItem, int, error) {

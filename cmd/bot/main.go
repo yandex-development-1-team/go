@@ -118,6 +118,7 @@ func run() error {
 	resourcePageService := service.NewResourcePageService(resourcePageRepo)
 	userService := apiService.NewUserService(staffRepo)
 	applicationSvc := apiService.NewApplicationsService(applicationRepo, txRepo)
+	bookAPISvc := apiService.NewBookingsService(bookRepo, txRepo)
 
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
@@ -145,6 +146,7 @@ func run() error {
 		UserSvc:           userService,
 		FileService:       fileService,
 		ApplicationSvc:    applicationSvc,
+		BookingSvc:        bookAPISvc,
 	}, apiAuthService)
 
 	if cfg.FileGC.Enabled {
@@ -163,7 +165,7 @@ func run() error {
 		)
 	}
 
-	apiServer.RegisterRoutes()
+	apiServer.RegisterRoutes(cfg.YandexForms.WebhookToken)
 
 	var wg sync.WaitGroup
 	go func() {

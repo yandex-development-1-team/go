@@ -186,7 +186,7 @@ func (r *ApplicationRepo) ApplicationsList(ctx context.Context, filter *models.A
 func (r *ApplicationRepo) DeleteApplication(ctx context.Context, id int64) error {
 	result, err := r.db.ExecContext(ctx, deleteApplication, id)
 	if err != nil {
-		return fmt.Errorf("update application status: %w", err)
+		return fmt.Errorf("delete application: %w", err)
 	}
 
 	rows, err := result.RowsAffected()
@@ -199,6 +199,7 @@ func (r *ApplicationRepo) DeleteApplication(ctx context.Context, id int64) error
 
 	return nil
 }
+
 func toDomainModel(a *dto.ApplicationDB) *models.Application {
 	return &models.Application{
 		ID:           a.ID,

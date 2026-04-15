@@ -29,9 +29,7 @@ CREATE TABLE IF NOT EXISTS staff (
     status user_status_type DEFAULT 'invited',
     department VARCHAR(255),
     position VARCHAR(255),
-    manager_id BIGSERIAL,
     invite_token TEXT,
-    permissions TEXT[] DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
  );

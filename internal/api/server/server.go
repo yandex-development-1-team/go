@@ -23,6 +23,7 @@ type APIServices struct {
 	UserSvc           *apiService.UserService
 	FileService       *apiService.FileService
 	ApplicationSvc    *apiService.ApplicationsService
+	BookingSvc        *apiService.BookingsService
 }
 
 type Server struct {
@@ -52,7 +53,7 @@ func New(cfg *config.Config, services *APIServices, authService *apiService.Auth
 	}
 }
 
-func (s *Server) RegisterRoutes() {
+func (s *Server) RegisterRoutes(yandexFormToken string) {
 	authHandler := handlers.NewAuthHandler(s.authService)
 	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
 	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
@@ -61,9 +62,10 @@ func (s *Server) RegisterRoutes() {
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
 	userHandler := handlers.NewUserHandler(s.services.UserSvc)
 	fileHandler := handlers.NewFileHandler(s.services.FileService)
-	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationSvc)
+	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationSvc, yandexFormToken)
+	bookingHamdler := handlers.NewBookingHandler(s.services.BookingSvc)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler)
+	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, bookingHamdler)
 }
 
 func (s *Server) Run(cfg *config.Config) error {
