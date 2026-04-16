@@ -3409,7 +3409,7 @@
           }
         }
       },
-      "UserWithDetails": {
+      "UserWithDetails":  {
         "allOf": [
           {
             "$ref": "#/components/schemas/User"

@@ -24,7 +24,7 @@ VALUES (
             AND a.status != 'cancelled'
         LEFT JOIN bookings b ON b.manager_id = s.id
             AND b.status != 'cancelled'
-        WHERE s.role IN ('manager_1', 'manager_2', 'manager_3')
+        WHERE s.role IN ('manager_1', 'manager_2', 'manager_3', 'admin')
         GROUP BY s.id
         ORDER BY COUNT(a.id) + COUNT(b.id) ASC
         LIMIT 1
