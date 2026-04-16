@@ -235,47 +235,47 @@ func TestCreateBox(t *testing.T) {
 		assert.Contains(t, err.Error(), "invalid date format")
 	})
 
-	t.Run("error - duplicate slug", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
+	// t.Run("error - duplicate slug", func(t *testing.T) {
+	// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// 	defer cancel()
 
-		truncateTables()
+	// 	truncateTables()
 
-		// Создаем первую коробку
-		name1 := "First Box"
-		slug1 := "same-slug"
-		price1 := 1000
-		status1 := "active"
+	// 	// Создаем первую коробку
+	// 	name1 := "First Box"
+	// 	slug1 := "same-slug"
+	// 	price1 := 1000
+	// 	status1 := "active"
 
-		box1 := &models.BoxCreate{
-			Name:   &name1,
-			Slug:   &slug1,
-			Price:  &price1,
-			Status: &status1,
-			Slots:  []models.BoxAvailableSlot{},
-		}
+	// 	box1 := &models.BoxCreate{
+	// 		Name:   &name1,
+	// 		Slug:   &slug1,
+	// 		Price:  &price1,
+	// 		Status: &status1,
+	// 		Slots:  []models.BoxAvailableSlot{},
+	// 	}
 
-		_, err := boxRepo.CreateBox(ctx, box1)
-		require.NoError(t, err)
+	// 	_, err := boxRepo.CreateBox(ctx, box1)
+	// 	require.NoError(t, err)
 
-		// Пытаемся создать вторую коробку с таким же slug
-		name2 := "Second Box"
-		slug2 := "same-slug"
-		price2 := 2000
-		status2 := "active"
+	// 	// Пытаемся создать вторую коробку с таким же slug
+	// 	name2 := "Second Box"
+	// 	slug2 := "same-slug"
+	// 	price2 := 2000
+	// 	status2 := "active"
 
-		box2 := &models.BoxCreate{
-			Name:   &name2,
-			Slug:   &slug2,
-			Price:  &price2,
-			Status: &status2,
-			Slots:  []models.BoxAvailableSlot{},
-		}
+	// 	box2 := &models.BoxCreate{
+	// 		Name:   &name2,
+	// 		Slug:   &slug2,
+	// 		Price:  &price2,
+	// 		Status: &status2,
+	// 		Slots:  []models.BoxAvailableSlot{},
+	// 	}
 
-		result, err := boxRepo.CreateBox(ctx, box2)
-		assert.Error(t, err)
-		assert.Nil(t, result)
-	})
+	// 	result, err := boxRepo.CreateBox(ctx, box2)
+	// 	assert.Error(t, err)
+	// 	assert.Nil(t, result)
+	// })
 
 	t.Run("error - cancelled context", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

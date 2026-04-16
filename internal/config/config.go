@@ -9,27 +9,28 @@ import (
 )
 
 type Config struct {
-	TelegramBotToken  string         `mapstructure:"telegram_bot_token"`
-	TelegramBotAPIUrl string         `mapstructure:"telegram_bot_api_url"`
-	Telegram          Telegram       `mapstructure:"telegram"`
-	AuthConfig        AuthConfig     `mapstructure:"auth_config"`
-	DB                DatabaseConfig `mapstructure:"db"`
-	Port              int            `mapstructure:"port"`
-	Environment       string         `mapstructure:"environment"`
-	PrometheusPort    int            `mapstructure:"prometheus_port"`
-	LogLevel          string         `mapstructure:"log_level"`
-	HostName          string         `mapstructure:"host_name"`
-	Redis             RedisConfig    `mapstructure:"redis"`
-	Session           SessionConfig  `mapstructure:"session"`
-	MsgRPS            float64        `mapstructure:"msg_rps"`
-	ApiRPS            float64        `mapstructure:"api_rps"`
-	CacheSizeRPS      int            `mapstructure:"cache_size_rps"`
-	APIOnly           bool           `mapstructure:"api_only"`
-	CORS              CORSConfig     `mapstructure:"cors"`
-	MigrationsDir     string         `mapstructure:"migrations_dir"`
-	Email             EmailConfig    `mapstructure:"email"`
-	Storage           StorageConfig  `mapstructure:"storage"`
-	FileGC            FileGCConfig   `mapstructure:"file_gc"`
+	TelegramBotToken  string            `mapstructure:"telegram_bot_token"`
+	TelegramBotAPIUrl string            `mapstructure:"telegram_bot_api_url"`
+	Telegram          Telegram          `mapstructure:"telegram"`
+	AuthConfig        AuthConfig        `mapstructure:"auth_config"`
+	DB                DatabaseConfig    `mapstructure:"db"`
+	Port              int               `mapstructure:"port"`
+	Environment       string            `mapstructure:"environment"`
+	PrometheusPort    int               `mapstructure:"prometheus_port"`
+	LogLevel          string            `mapstructure:"log_level"`
+	HostName          string            `mapstructure:"host_name"`
+	Redis             RedisConfig       `mapstructure:"redis"`
+	Session           SessionConfig     `mapstructure:"session"`
+	MsgRPS            float64           `mapstructure:"msg_rps"`
+	ApiRPS            float64           `mapstructure:"api_rps"`
+	CacheSizeRPS      int               `mapstructure:"cache_size_rps"`
+	APIOnly           bool              `mapstructure:"api_only"`
+	CORS              CORSConfig        `mapstructure:"cors"`
+	MigrationsDir     string            `mapstructure:"migrations_dir"`
+	Email             EmailConfig       `mapstructure:"email"`
+	Storage           StorageConfig     `mapstructure:"storage"`
+	FileGC            FileGCConfig      `mapstructure:"file_gc"`
+	YandexForms       YandexFormsConfig `mapstructure:"yandex_forms"`
 }
 
 type StorageConfig struct {
@@ -118,6 +119,10 @@ type EmailConfig struct {
 	SMTPPassword string `mapstructure:"smtp_password"`
 	FromEmail    string `mapstructure:"from_email"`
 	BaseURL      string `mapstructure:"base_url"`
+}
+
+type YandexFormsConfig struct {
+	WebhookToken string `mapstructure:"webhook_token"`
 }
 
 var (
@@ -269,6 +274,7 @@ func bindEnvs(v *viper.Viper) {
 	_ = v.BindEnv("file_gc.interval", "FILE_GC_INTERVAL")
 	_ = v.BindEnv("file_gc.orphan_grace_period", "FILE_GC_ORPHAN_GRACE_PERIOD")
 	_ = v.BindEnv("file_gc.delete_batch_size", "FILE_GC_DELETE_BATCH_SIZE")
+	_ = v.BindEnv("yandex_forms.webhook_token", "YANDEX_FORMS_WEBHOOK_TOKEN")
 }
 
 func validateConfig(config *Config) error {
@@ -285,6 +291,11 @@ func validateConfig(config *Config) error {
 	}
 	if config.Storage.Bucket == "" {
 		return fmt.Errorf("storage.bucket is empty")
+	}
+
+	fmt.Println("webhook_token ---------------------->: ", config.YandexForms.WebhookToken)
+	if config.YandexForms.WebhookToken == "" {
+		return fmt.Errorf("yandex_forms.webhook_token is empty")
 	}
 
 	return nil

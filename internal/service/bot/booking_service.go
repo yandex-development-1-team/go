@@ -136,12 +136,16 @@ func (s *BookingService) CreateBooking(ctx context.Context, state *BookingState)
 	if err != nil {
 		return 0, err
 	}
+	startTime, err := time.Parse("15:04", state.SelectedSlot.StartTime)
+	if err != nil {
+		return 0, err
+	}
 
 	booking := &models.Booking{
 		UserID:            state.UserID,
 		ServiceID:         int16(state.ServiceID),
 		BookingDate:       date,
-		BookingTime:       nil,
+		BookingTime:       &startTime,
 		GuestName:         state.GuestName,
 		GuestOrganization: state.GuestOrganization,
 		GuestPosition:     state.GuestPosition,

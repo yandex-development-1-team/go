@@ -1,4 +1,4 @@
-//go:build integration
+////go:build integration
 
 package handlers
 
@@ -99,7 +99,7 @@ func seedUser(t *testing.T, db *sqlx.DB, p seedUserParams) {
 }
 
 func TestHandleLogin(t *testing.T) {
-	_, err := db.Exec(`TRUNCATE TABLE staff CASCADE`)
+	_, _ = db.Exec(`TRUNCATE TABLE staff CASCADE`)
 
 	server := setupServer(t, db)
 
@@ -150,13 +150,13 @@ func TestHandleLogin(t *testing.T) {
 		{
 			name:       "неверный пароль",
 			body:       map[string]string{"login": "user@example.com", "password": "wrongpass"},
-			wantStatus: http.StatusUnauthorized,
+			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
 		},
 		{
 			name:       "пользователь не найден",
 			body:       map[string]string{"login": "notfound@example.com", "password": "password123"},
-			wantStatus: http.StatusNotFound,
+			wantStatus: http.StatusBadRequest,
 			checkBody:  checkServiceErrorBody,
 		},
 		{
@@ -209,7 +209,7 @@ func TestHandleLogin(t *testing.T) {
 }
 
 func TestRegisterHandler(t *testing.T) {
-	_, err := db.Exec(`TRUNCATE TABLE staff CASCADE`)
+	_, _ = db.Exec(`TRUNCATE TABLE staff CASCADE`)
 
 	server := setupRegisterServer(t, db)
 
@@ -235,7 +235,7 @@ func TestRegisterHandler(t *testing.T) {
 				"password":     "password123",
 				"invite_token": inviteOK,
 			},
-			wantStatus: http.StatusOK,
+			wantStatus: http.StatusCreated,
 			checkBody: func(t *testing.T, body map[string]any) {
 				assert.NotEmpty(t, body["token"])
 				assert.NotEmpty(t, body["refresh_token"])

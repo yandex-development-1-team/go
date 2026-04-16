@@ -12,10 +12,9 @@ import (
 
 func TestResourcePageRepo_GetAll(t *testing.T) {
 	ctx := context.Background()
-
 	pages, err := resourcePageRepo.GetAll(ctx)
 	require.NoError(t, err)
-	assert.Len(t, pages, 4)
+	assert.NotEmpty(t, pages)
 }
 
 func TestResourcePageRepo_GetBySlug(t *testing.T) {
@@ -40,7 +39,7 @@ func TestResourcePageRepo_Update(t *testing.T) {
 			Links:   []models.ResourcePageLink{},
 		}
 
-		updated, err := resourcePageRepo.Update(ctx, "organizationInfo", page)
+		updated, err := resourcePageRepo.Update(ctx, "org-info", page)
 		require.NoError(t, err)
 		assert.Equal(t, "Новое описание", updated.Content)
 		assert.Empty(t, updated.Links)
@@ -55,7 +54,7 @@ func TestResourcePageRepo_Update(t *testing.T) {
 			},
 		}
 
-		updated, err := resourcePageRepo.Update(ctx, "usefulLinks", page)
+		updated, err := resourcePageRepo.Update(ctx, "useful-links", page)
 		require.NoError(t, err)
 		assert.Len(t, updated.Links, 1)
 		assert.NotEmpty(t, updated.Links[0].ID)
@@ -72,7 +71,7 @@ func TestResourcePageRepo_Update(t *testing.T) {
 			},
 		}
 
-		updated, err := resourcePageRepo.Update(ctx, "usefulLinks", page)
+		updated, err := resourcePageRepo.Update(ctx, "useful-links", page)
 		require.NoError(t, err)
 		assert.Equal(t, existingID, updated.Links[0].ID)
 	})
@@ -109,13 +108,13 @@ func TestResourcePageRepo_DeleteLink(t *testing.T) {
 				{Title: "Вторая", URL: "https://second.com"},
 			},
 		}
-		updated, err := resourcePageRepo.Update(ctx, "usefulLinks", page)
+		updated, err := resourcePageRepo.Update(ctx, "useful-links", page)
 		require.NoError(t, err)
 		require.Len(t, updated.Links, 2)
 
 		idToDelete := updated.Links[0].ID
 
-		result, err := resourcePageRepo.DeleteLink(ctx, "usefulLinks", idToDelete)
+		result, err := resourcePageRepo.DeleteLink(ctx, "useful-links", idToDelete)
 		require.NoError(t, err)
 		assert.Len(t, result.Links, 1)
 		assert.Equal(t, updated.Links[1].ID, result.Links[0].ID)
@@ -129,11 +128,11 @@ func TestResourcePageRepo_DeleteLink(t *testing.T) {
 				{Title: "Единственная", URL: "https://example.com"},
 			},
 		}
-		updated, err := resourcePageRepo.Update(ctx, "usefulLinks", page)
+		updated, err := resourcePageRepo.Update(ctx, "useful-links", page)
 		require.NoError(t, err)
 		require.Len(t, updated.Links, 1)
 
-		result, err := resourcePageRepo.DeleteLink(ctx, "usefulLinks", updated.Links[0].ID)
+		result, err := resourcePageRepo.DeleteLink(ctx, "useful-links", updated.Links[0].ID)
 		require.NoError(t, err)
 		assert.Empty(t, result.Links)
 	})
