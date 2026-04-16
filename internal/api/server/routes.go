@@ -49,6 +49,10 @@ func setupAnalyticsRoutes(rg *gin.RouterGroup, h *handlers.AnalyticsHandler) {
 	analytics := rg.Group("/analytics")
 	{
 		analytics.GET("/export", h.Export)
+		analytics.GET("/overview", h.Overview)
+		analytics.GET("/boxes", h.GetBoxesAnalyticsExtended)
+		analytics.GET("/users", h.GetUsersAnalyticsExtended)
+		analytics.GET("/dashboard", h.GetDashboardAnalytics)
 	}
 }
 

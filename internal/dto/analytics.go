@@ -65,8 +65,13 @@ type AnalyticsBoxItem struct {
 	AverageAttendance float64 `db:"average_attendance" json:"average_attendance"`
 	ConfirmedBookings int64   `db:"confirmed_bookings" json:"confirmed_bookings"`
 	CancelledBookings int64   `db:"cancelled_bookings" json:"cancelled_bookings"`
-	Revenue           int64   `db:"revenue" json:"revenue"`
+	Revenue           Revenue `json:"revenue"`
 	CancellationRate  float64 `db:"cancellation_rate" json:"cancellation_rate"`
+}
+
+type Revenue struct {
+	Total    int64  `json:"total"`
+	Currency string `json:"currency"`
 }
 
 type AnalyticsBoxesResponse struct {

@@ -58,7 +58,7 @@ const (
 	getAnalyticsOverviewQuery = `
     SELECT 
         COUNT(DISTINCT b.service_id) as total_events,
-		COUNT(b.id) * 1000 as revenue,
+		COUNT(*) FILTER (WHERE b.status = 'confirmed') * 1000 as revenue,
         COUNT(b.id) as total_bookings,
         COUNT(DISTINCT b.user_id) as total_users,
         CASE 
@@ -107,17 +107,17 @@ const (
     WHERE s.box_solution = TRUE
     GROUP BY s.id, s.name
     ORDER BY 
-        CASE 
-            WHEN $3 = 'popularity' THEN COUNT(b.id)
-            WHEN $3 = 'revenue' THEN COUNT(b.id) * 1000
-            WHEN $3 = 'attendance' THEN 
-                CASE 
-                    WHEN COUNT(DISTINCT b.service_id) > 0 
-                    THEN COUNT(b.id)::numeric / COUNT(DISTINCT b.service_id)
-                    ELSE 0 
-                END
-            ELSE COUNT(b.id)
-        END DESC
+		CASE 
+			WHEN $3 = 'popularity' THEN COUNT(b.id)
+			WHEN $3 = 'revenue' THEN COUNT(*) FILTER (WHERE b.status = 'confirmed') * 1000
+			WHEN $3 = 'attendance' THEN 
+				CASE 
+					WHEN COUNT(DISTINCT b.service_id) > 0 
+					THEN COUNT(b.id)::numeric / COUNT(DISTINCT b.service_id)
+					ELSE 0 
+				END
+			ELSE COUNT(b.id)
+		END DESC
 `
 
 	getFavoriteBoxesQuery = `
@@ -293,6 +293,7 @@ func (r *AnalyticsRepo) GetOverviewAnalytics(ctx context.Context, dateFrom, date
 
 func (r *AnalyticsRepo) GetBoxesAnalyticsExtended(ctx context.Context, dateFrom, dateTo *time.Time, sortBy string) ([]dto.AnalyticsBoxItem, error) {
 	const operation = "get_boxes_analytics_extended"
+
 	var rows []dto.AnalyticsBoxItem
 
 	var fromParam, toParam *time.Time
@@ -303,9 +304,8 @@ func (r *AnalyticsRepo) GetBoxesAnalyticsExtended(ctx context.Context, dateFrom,
 		toParam = dateTo
 	}
 
-	_, err := repository.WithDBMetricsValue(operation, func() ([]dto.AnalyticsBoxItem, error) {
-		err := r.db.SelectContext(ctx, &rows, getBoxesAnalyticsExtendedQuery, fromParam, toParam, sortBy)
-		return rows, err
+	err := repository.WithDBMetrics(operation, func() error {
+		return r.db.SelectContext(ctx, &rows, getBoxesAnalyticsExtendedQuery, fromParam, toParam, sortBy)
 	})
 
 	return rows, err

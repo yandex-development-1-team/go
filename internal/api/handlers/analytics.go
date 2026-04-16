@@ -58,13 +58,9 @@ func (h *AnalyticsHandler) Export(c *gin.Context) {
 	exportType := dto.ExportType(c.Query("type"))
 	switch exportType {
 	case dto.ExportTypeBoxes, dto.ExportTypeUsers:
-	case "":
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
-			[]string{"Параметр type обязателен (допустимые значения: boxes, users)"})
-		return
 	default:
 		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
-			[]string{"Неверное значение type: допустимые значения — boxes, users"})
+			[]string{"тип должен быть boxes или users"})
 		return
 	}
 
@@ -123,33 +119,25 @@ func parseOptionalDate(s string) (*time.Time, error) {
 }
 
 func getDate(c *gin.Context) (*time.Time, *time.Time, error) {
+	if period := c.Query("period"); period != "" {
+		from, to := resolvePeriod(period)
+		if from == nil || to == nil {
+			return nil, nil, errors.New("invalid period")
+		}
+		return from, to, nil
+	}
+
 	dateFrom, err := parseOptionalDate(c.Query("date_from"))
 	if err != nil {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
-			[]string{"Неверный формат date_from: ожидается YYYY-MM-DD"})
 		return nil, nil, err
 	}
 
 	dateTo, err := parseOptionalDate(c.Query("date_to"))
 	if err != nil {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
-			[]string{"Неверный формат date_to: ожидается YYYY-MM-DD"})
 		return nil, nil, err
 	}
 
-	if period := c.Query("period"); period != "" {
-	pFrom, pTo := resolvePeriod(period)
-	if pFrom == nil || pTo == nil {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
-			[]string{"Неверное значение period: today, week, month, year"})
-		return nil, nil, errors.New("invalid period")
-	}
-	return pFrom, pTo, nil
-}
-
 	if dateFrom != nil && dateTo != nil && dateTo.Before(*dateFrom) {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
-			[]string{"date_to не может быть раньше date_from"})
 		return nil, nil, errors.New("invalid date range")
 	}
 
