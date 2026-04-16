@@ -58,6 +58,7 @@ const (
 	getAnalyticsOverviewQuery = `
     SELECT 
         COUNT(DISTINCT b.service_id) as total_events,
+		COUNT(b.id) * 1000 as revenue,
         COUNT(b.id) as total_bookings,
         COUNT(DISTINCT b.user_id) as total_users,
         CASE 
@@ -80,6 +81,8 @@ const (
         s.id AS box_id,
         s.name AS box_name,
         COUNT(DISTINCT b.service_id) AS total_events,
+		COUNT(CASE WHEN b.status = 'confirmed' THEN 1 END) as confirmed_bookings,
+		COUNT(CASE WHEN b.status = 'cancelled' THEN 1 END) as cancelled_bookings,
         COUNT(b.id) AS total_bookings,
         CASE 
             WHEN COUNT(b.id) > 0 
@@ -91,7 +94,7 @@ const (
             THEN ROUND(COUNT(b.id)::numeric / COUNT(DISTINCT b.service_id), 2)
             ELSE 0 
         END AS average_attendance,
-        COUNT(b.id) * 1000 AS revenue,
+        COUNT(*) FILTER (WHERE b.status = 'confirmed') * 1000 as revenue,
         CASE 
             WHEN COUNT(b.id) > 0 
             THEN ROUND(COUNT(CASE WHEN b.status = 'cancelled' THEN 1 END)::numeric / COUNT(b.id) * 100, 2)
@@ -190,7 +193,7 @@ const (
                 ELSE 0 
             END as attendance_rate
         FROM date_series ds
-        LEFT JOIN bookings b ON b.booking_date = ds.date
+        LEFT JOIN bookings b ON b.booking_date >= ds.date AND b.booking_date < ds.date + INTERVAL '1 day'
         GROUP BY ds.date
         ORDER BY ds.date
     ),
@@ -258,6 +261,7 @@ func (r *AnalyticsRepo) GetOverviewAnalytics(ctx context.Context, dateFrom, date
 		TotalUsers        int64   `db:"total_users"`
 		AttendanceRate    float64 `db:"attendance_rate"`
 		AverageAttendance float64 `db:"average_attendance"`
+		Revenue 		  int64   `db:"revenue"`
 	}
 
 	err := repository.WithDBMetrics(operation, func() error {
@@ -283,6 +287,7 @@ func (r *AnalyticsRepo) GetOverviewAnalytics(ctx context.Context, dateFrom, date
 		TotalUsers:        result.TotalUsers,
 		AttendanceRate:    result.AttendanceRate,
 		AverageAttendance: result.AverageAttendance,
+		Revenue:           result.Revenue,
 	}, nil
 }
 
@@ -367,17 +372,6 @@ func (r *AnalyticsRepo) GetDashboardAnalytics(ctx context.Context, dateFrom, dat
 	}
 	if dateTo != nil {
 		toParam = dateTo
-	}
-
-	if fromParam == nil || toParam == nil {
-		now := time.Now()
-		if fromParam == nil {
-			temp := now.AddDate(0, 0, -6)
-			fromParam = &temp
-		}
-		if toParam == nil {
-			toParam = &now
-		}
 	}
 
 	var result struct {

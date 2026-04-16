@@ -33,6 +33,27 @@ func NewAnalyticsHandler(svc *apiService.AnalyticsService) *AnalyticsHandler {
 	}
 }
 
+func resolvePeriod(period string) (*time.Time, *time.Time) {
+	now := time.Now()
+
+	switch period {
+	case "today":
+		from := now.Truncate(24 * time.Hour)
+		return &from, &now
+	case "week":
+		from := now.AddDate(0, 0, -7)
+		return &from, &now
+	case "month":
+		from := now.AddDate(0, -1, 0)
+		return &from, &now
+	case "year":
+		from := now.AddDate(-1, 0, 0)
+		return &from, &now
+	default:
+		return nil, nil
+	}
+}
+
 func (h *AnalyticsHandler) Export(c *gin.Context) {
 	exportType := dto.ExportType(c.Query("type"))
 	switch exportType {
@@ -102,28 +123,36 @@ func parseOptionalDate(s string) (*time.Time, error) {
 }
 
 func getDate(c *gin.Context) (*time.Time, *time.Time, error) {
-	dateFromString := c.Params.ByName("date_from")
-	dateToString := c.Params.ByName("date_to")
-	if len(dateFromString) == 0 || len(dateToString) == 0 || dateFromString == "" || dateToString == "" {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Не указан период от и до"})
-		return nil, nil, errors.New("Не указан период от и до")
+	dateFrom, err := parseOptionalDate(c.Query("date_from"))
+	if err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
+			[]string{"Неверный формат date_from: ожидается YYYY-MM-DD"})
+		return nil, nil, err
 	}
-	dateFrom, err := parseOptionalDate(dateFromString)
+
+	dateTo, err := parseOptionalDate(c.Query("date_to"))
 	if err != nil {
 		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
 			[]string{"Неверный формат date_to: ожидается YYYY-MM-DD"})
-		return nil, nil, errors.New("Неверный формат date_to: ожидается YYYY-MM-DD")
+		return nil, nil, err
 	}
-	dateTo, err := parseOptionalDate(dateToString)
-	if err != nil {
+
+	if period := c.Query("period"); period != "" {
+	pFrom, pTo := resolvePeriod(period)
+	if pFrom == nil || pTo == nil {
 		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
-			[]string{"Неверный формат date_to: ожидается YYYY-MM-DD"})
-		return nil, nil, errors.New("Неверный формат date_to: ожидается YYYY-MM-DD")
+			[]string{"Неверное значение period: today, week, month, year"})
+		return nil, nil, errors.New("invalid period")
 	}
-	if dateTo.Before(*dateFrom) {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"date_to не может быть раньше date_from"})
-		return nil, nil, errors.New("date_to не может быть раньше date_from")
+	return pFrom, pTo, nil
+}
+
+	if dateFrom != nil && dateTo != nil && dateTo.Before(*dateFrom) {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
+			[]string{"date_to не может быть раньше date_from"})
+		return nil, nil, errors.New("invalid date range")
 	}
+
 	return dateFrom, dateTo, nil
 }
 
@@ -146,19 +175,31 @@ func (h *AnalyticsHandler) GetBoxesAnalyticsExtended(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	sortBy := c.Params.ByName("sort_by")
-	if len(sortBy) == 0 || sortBy == "" {
+
+	sortBy := c.DefaultQuery("sort_by", "popularity")
+
+	allowed := map[string]bool{
+		"popularity": true,
+		"revenue":    true,
+		"attendance": true,
+	}
+
+	if !allowed[sortBy] {
 		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest,
-			[]string{"Указан некорректный формат сортировки"})
+			[]string{"Неверное значение sort_by: допустимые — popularity, revenue, attendance"})
 		return
 	}
+
 	result, err := h.svc.GetBoxesAnalyticsExtended(c.Request.Context(), dateFrom, dateTo, sortBy)
 	if err != nil {
 		apierrors.WriteErrorMessagesGin(c, http.StatusInternalServerError,
 			[]string{err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+
+	c.JSON(http.StatusOK, dto.AnalyticsBoxesResponse{
+		Boxes: result,
+	})
 }
 
 func (h *AnalyticsHandler) GetUsersAnalyticsExtended(c *gin.Context) {
@@ -166,12 +207,14 @@ func (h *AnalyticsHandler) GetUsersAnalyticsExtended(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	result, err := h.svc.GetOverviewAnalytics(c.Request.Context(), dateFrom, dateTo)
+
+	result, err := h.svc.GetUsersAnalyticsExtended(c.Request.Context(), dateFrom, dateTo)
 	if err != nil {
 		apierrors.WriteErrorMessagesGin(c, http.StatusInternalServerError,
 			[]string{err.Error()})
 		return
 	}
+
 	c.JSON(http.StatusOK, result)
 }
 
@@ -180,11 +223,13 @@ func (h *AnalyticsHandler) GetDashboardAnalytics(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	result, err := h.svc.GetOverviewAnalytics(c.Request.Context(), dateFrom, dateTo)
+
+	result, err := h.svc.GetDashboardAnalytics(c.Request.Context(), dateFrom, dateTo)
 	if err != nil {
 		apierrors.WriteErrorMessagesGin(c, http.StatusInternalServerError,
 			[]string{err.Error()})
 		return
 	}
+
 	c.JSON(http.StatusOK, result)
 }

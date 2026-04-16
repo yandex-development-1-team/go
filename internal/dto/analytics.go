@@ -53,17 +53,20 @@ type AnalyticsOverview struct {
 	TotalUsers        int64     `json:"total_users"`
 	AttendanceRate    float64   `json:"attendance_rate"`
 	AverageAttendance float64   `json:"average_attendance"`
+	Revenue           int64     `json:"revenue"`
 }
 
 type AnalyticsBoxItem struct {
-	BoxID             int64   `json:"box_id"`
-	BoxName           string  `json:"box_name"`
-	TotalEvents       int64   `json:"total_events"`
-	TotalBookings     int64   `json:"total_bookings"`
-	AttendanceRate    float64 `json:"attendance_rate"`
-	AverageAttendance float64 `json:"average_attendance"`
-	ConfirmedBookings int64   `json:"confirmed_bookings"`
-	CancelledBookings int64   `json:"cancelled_bookings"`
+	BoxID             int64   `db:"box_id" json:"box_id"`
+	BoxName           string  `db:"box_name" json:"box_name"`
+	TotalEvents       int64   `db:"total_events" json:"total_events"`
+	TotalBookings     int64   `db:"total_bookings" json:"total_bookings"`
+	AttendanceRate    float64 `db:"attendance_rate" json:"attendance_rate"`
+	AverageAttendance float64 `db:"average_attendance" json:"average_attendance"`
+	ConfirmedBookings int64   `db:"confirmed_bookings" json:"confirmed_bookings"`
+	CancelledBookings int64   `db:"cancelled_bookings" json:"cancelled_bookings"`
+	Revenue           int64   `db:"revenue" json:"revenue"`
+	CancellationRate  float64 `db:"cancellation_rate" json:"cancellation_rate"`
 }
 
 type AnalyticsBoxesResponse struct {
