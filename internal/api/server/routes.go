@@ -63,7 +63,7 @@ func setupBoxRoutes(rg *gin.RouterGroup, boxHandler *handlers.BoxHandler) {
 	boxes := rg.Group("/boxes")
 	{
 		boxes.GET("/", boxHandler.List)
-		boxes.POST("/")
+		boxes.POST("/", boxHandler.Create)
 		boxes.GET("/:id", boxHandler.GetByID)
 		boxes.PUT("/:id", boxHandler.Update)
 		boxes.DELETE("/:id", boxHandler.Delete)
