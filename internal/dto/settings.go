@@ -29,3 +29,8 @@ type General struct {
 	ContactEmail *string `json:"contact_email,omitempty"`
 	ContactPhone *string `json:"contact_phone,omitempty"`
 }
+
+type SettingsPermissionsRequest struct {
+	Role        string   `json:"role"`
+	Permissions []string `json:"permissions"`
+}

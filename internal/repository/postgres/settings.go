@@ -14,8 +14,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-const getSettingsQuery = `
-	SELECT key, value, category FROM settings`
+const getSettingsQuery = `SELECT key, value, category FROM settings`
 
 type SettingsRep struct {
 	client *sqlx.DB
@@ -84,4 +83,17 @@ func (r *SettingsRep) PutSettings(ctx context.Context, newSettings []models.Sett
 	}
 
 	return now, nil
+}
+
+func (r *SettingsRep) PostSettings(ctx context.Context, newSettings models.SettingsPermissions) error {
+	query := `
+        INSERT INTO role_permissions (role, permissions) 
+        VALUES ($1, $2)
+        ON CONFLICT (role) 
+        DO UPDATE SET permissions = EXCLUDED.permissions
+    `
+
+	_, err := r.client.ExecContext(ctx, query, newSettings.Role, pq.Array(newSettings.Permissions))
+
+	return err
 }

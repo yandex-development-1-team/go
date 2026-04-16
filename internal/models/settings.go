@@ -13,3 +13,8 @@ type Setting struct {
 	Key      string `db:"key"`
 	Value    string `db:"value"`
 }
+
+type SettingsPermissions struct {
+	Role        string   `db:"role"`
+	Permissions []string `db:"permissions"`
+}

@@ -144,6 +144,7 @@ func run() error {
 		UserSvc:           userService,
 		FileService:       fileService,
 		ApplicationRepo:   applicationRepo,
+		MiddlewareRepo:    dbSqlx,
 	}, apiAuthService)
 
 	if cfg.FileGC.Enabled {

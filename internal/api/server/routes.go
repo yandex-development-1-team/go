@@ -2,27 +2,31 @@ package server
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
+	"github.com/yandex-development-1-team/go/internal/models"
 
 	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 )
 
-func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler) {
+func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler) {
+	middlewareRepo := middleware.NewMiddlewareRepository(client)
+
 	apiV1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(apiV1, authHandler)
 
 		protected := apiV1.Group("/")
-		protected.Use(middleware.Auth(jwtSecret))
+		protected.Use(middlewareRepo.Auth(jwtSecret))
 		{
-			setupBoxRoutes(protected, boxHandler)
-			setupSpecialProjectRoutes(protected, specProjHandler)
+			setupBoxRoutes(protected, boxHandler, middlewareRepo)
+			setupSpecialProjectRoutes(protected, specProjHandler, middlewareRepo)
 			setupSettingsRoutes(protected, settingsHandler)
-			setupAnalyticsRoutes(protected, analyticsHandler)
+			setupAnalyticsRoutes(protected, analyticsHandler, middlewareRepo)
 			setupUserRoutes(protected, userHandler)
 			setupResourcesRoutes(protected, recPageHandler)
 			setupFileRoutes(protected, fileHandler)
-			setupApplicationRoutes(protected, applicationHandler)
+			setupApplicationRoutes(protected, applicationHandler, middlewareRepo)
 		}
 		public := apiV1.Group("/public")
 		public.GET("/resources/:slug", recPageHandler.GetPublicBySlug)
@@ -41,76 +45,77 @@ func setupAuthRoutes(rg *gin.RouterGroup, h *handlers.AuthHandler) {
 	}
 }
 
-func setupSpecialProjectRoutes(rg *gin.RouterGroup, h *handlers.SpecialProjectHandler) {
+func setupSpecialProjectRoutes(rg *gin.RouterGroup, h *handlers.SpecialProjectHandler, middlewareRepo *middleware.Middleware) {
 	sp := rg.Group("/special-projects")
 	{
-		sp.GET("/", h.ListSpecialProjects)
-		sp.POST("/", h.CreateSpecialProject)
-		sp.GET("/:id", h.GetSpecialProjectByID)
+		sp.GET("/", middlewareRepo.RoleVerification(models.PermSpecProjectView), h.ListSpecialProjects)
+		sp.POST("/", middlewareRepo.RoleVerification(models.PermSpecProjectEdit), h.CreateSpecialProject)
+		sp.GET("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectView), h.GetSpecialProjectByID)
 	}
 }
 
-func setupAnalyticsRoutes(rg *gin.RouterGroup, h *handlers.AnalyticsHandler) {
+func setupAnalyticsRoutes(rg *gin.RouterGroup, h *handlers.AnalyticsHandler, middlewareRepo *middleware.Middleware) {
 	analytics := rg.Group("/analytics")
 	{
-		analytics.GET("/export", h.Export)
+		analytics.GET("/export", middlewareRepo.RoleVerification(models.PermAnalyticsView), h.Export)
 	}
 }
 
-func setupBoxRoutes(rg *gin.RouterGroup, boxHandler *handlers.BoxHandler) {
+func setupBoxRoutes(rg *gin.RouterGroup, boxHandler *handlers.BoxHandler, middlewareRepo *middleware.Middleware) {
 	boxes := rg.Group("/boxes")
 	{
-		boxes.GET("/", boxHandler.List)
-		boxes.POST("/")
-		boxes.GET("/:id", boxHandler.GetByID)
-		boxes.PUT("/:id", boxHandler.Update)
-		boxes.DELETE("/:id", boxHandler.Delete)
-		boxes.POST("/:id/image", boxHandler.UploadImage)
-		boxes.PUT("/:id/status", boxHandler.UpdateStatus)
+		boxes.GET("/", middleware.RequireManagersOrAdmin(), boxHandler.List)
+		boxes.POST("/", middlewareRepo.RoleVerification(models.PermBoxesCreate), boxHandler.Create)
+		boxes.GET("/:id", middleware.RequireManagersOrAdmin(), boxHandler.GetByID)
+		boxes.PUT("/:id", middlewareRepo.RoleVerification(models.PermBoxesEdit), boxHandler.Update)
+		boxes.DELETE("/:id", middlewareRepo.RoleVerification(models.PermBoxesDelete), boxHandler.Delete)
+		boxes.POST("/:id/image", middlewareRepo.RoleVerification(models.PermBoxesEdit), boxHandler.UploadImage)
+		boxes.PUT("/:id/status", middlewareRepo.RoleVerification(models.PermBoxesEdit), boxHandler.UpdateStatus)
 	}
 }
 
 func setupSettingsRoutes(rg *gin.RouterGroup, settingsHandler *handlers.SettingsHandler) {
 	settings := rg.Group("/settings")
 	{
-		settings.GET("/", settingsHandler.Get)
+		settings.GET("/", middleware.RequireManagersOrAdmin(), settingsHandler.Get)
 		settings.PUT("/", middleware.RequireAdmin(), settingsHandler.Put)
+		settings.POST("/", middleware.RequireAdmin(), settingsHandler.Post)
 	}
 }
 
 func setupUserRoutes(rg *gin.RouterGroup, h *handlers.UserHandler) {
 	users := rg.Group("/users")
 	{
-		users.GET("/", h.List)
-		users.GET("/:id", h.GetByID)
+		users.GET("/", middleware.RequireAdmin(), h.List)
+		users.GET("/:id", middleware.RequireAdmin(), h.GetByID)
 	}
 }
 
 func setupResourcesRoutes(rg *gin.RouterGroup, h *handlers.ResourcePageHandler) {
 	resources := rg.Group("/resources")
 	{
-		resources.GET("/", h.GetAll)
-		resources.GET("/:slug", h.GetBySlug)
-		resources.PUT("/:slug", h.Update)
-		resources.DELETE("/:slug/:id", h.DeleteLink)
-		resources.DELETE("/:slug", h.Delete)
+		resources.GET("/", middleware.RequireManagersOrAdmin(), h.GetAll)
+		resources.GET("/:slug", middleware.RequireManagersOrAdmin(), h.GetBySlug)
+		resources.PUT("/:slug", middleware.RequireManagersOrAdmin(), h.Update)
+		resources.DELETE("/:slug/:id", middleware.RequireManagersOrAdmin(), h.DeleteLink)
+		resources.DELETE("/:slug", middleware.RequireManagersOrAdmin(), h.Delete)
 	}
 }
 
 func setupFileRoutes(rg *gin.RouterGroup, h *handlers.FileHandler) {
 	files := rg.Group("/files")
 	{
-		files.POST("/upload", h.Upload)
+		files.POST("/upload", middleware.RequireManagersOrAdmin(), h.Upload)
 	}
 }
 
-func setupApplicationRoutes(rg *gin.RouterGroup, h *handlers.ApplicationHandler) {
+func setupApplicationRoutes(rg *gin.RouterGroup, h *handlers.ApplicationHandler, middlewareRepo *middleware.Middleware) {
 	applications := rg.Group("/applications")
 	{
-		applications.GET("/", h.List)
-		applications.POST("/", h.Create)
-		applications.GET("/:id", h.GetByID)
-		applications.PUT("/:id", h.Update)
-		applications.DELETE("/:id", h.Delete)
+		applications.GET("/", middlewareRepo.RoleVerification(models.PermSpecProjectView), h.List)
+		applications.POST("/", middlewareRepo.RoleVerification(models.PermSpecProjectEdit), h.Create)
+		applications.GET("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectView), h.GetByID)
+		applications.PUT("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectEdit), h.Update)
+		applications.DELETE("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectDelete), h.Delete)
 	}
 }

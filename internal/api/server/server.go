@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,6 +25,7 @@ type APIServices struct {
 	UserSvc           *apiService.UserService
 	FileService       *apiService.FileService
 	ApplicationRepo   repository.ApplicationRepository
+	MiddlewareRepo    *sqlx.DB
 }
 
 type Server struct {
@@ -64,7 +66,7 @@ func (s *Server) RegisterRoutes() {
 	fileHandler := handlers.NewFileHandler(s.services.FileService)
 	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationRepo)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler)
+	SetupRoutes(s.services.MiddlewareRepo, s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler)
 }
 
 func (s *Server) Run(cfg *config.Config) error {
