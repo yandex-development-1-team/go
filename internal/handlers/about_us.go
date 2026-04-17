@@ -38,6 +38,7 @@ func (h *AboutHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) e
 	chatID := tg.Message.Chat.ID
 
 	logger.Info("'about us' requested", zap.Int64("user_id", userID))
+	delTgMessage(h.bot, tg.Message)
 
 	res, err := h.service.GetBySlug(ctx)
 	if err != nil {

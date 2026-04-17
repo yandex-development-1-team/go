@@ -14,27 +14,30 @@ import (
 
 // MessageRouter router structure
 type MessageRouter struct {
-	bot         *tgbotapi.BotAPI
-	sh          *StartHandler
-	session     repository.SessionRepository
-	bookHandler *BookingFormHandler
-	msgRL       MsgRateLimiter
+	bot           *tgbotapi.BotAPI
+	sh            *StartHandler
+	statusHandler *StatusHandler
+	session       repository.SessionRepository
+	bookHandler   *BookingFormHandler
+	msgRL         MsgRateLimiter
 }
 
 // NewMessageRouter creates a new MessageRouter
 func NewMessageRouter(
 	bot *tgbotapi.BotAPI,
 	sh *StartHandler,
+	statusHandler *StatusHandler,
 	session repository.SessionRepository,
 	bookHandler *BookingFormHandler,
 	msgRL MsgRateLimiter,
 ) *MessageRouter {
 	return &MessageRouter{
-		bot:         bot,
-		sh:          sh,
-		session:     session,
-		bookHandler: bookHandler,
-		msgRL:       msgRL,
+		bot:           bot,
+		sh:            sh,
+		statusHandler: statusHandler,
+		session:       session,
+		bookHandler:   bookHandler,
+		msgRL:         msgRL,
 	}
 }
 
@@ -50,8 +53,6 @@ func (r *MessageRouter) HandleMessage(ctx context.Context, msg *tgbotapi.Message
 	}
 
 	userID := msg.From.ID
-	// chatID := msg.Chat.ID
-	// text := msg.Text
 
 	ctxSession, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -81,6 +82,11 @@ func (r *MessageRouter) handleCommand(ctx context.Context, msg *tgbotapi.Message
 	case "start":
 		if err := r.msgRL.Exec(ctx, msg.Chat.ID, func() error { return r.sh.HandleStart(ctx, msg) }); err != nil {
 			logger.Error("failed to handle /start", zap.Error(err))
+		}
+
+	case "status":
+		if err := r.msgRL.Exec(ctx, msg.Chat.ID, func() error { return r.statusHandler.Handle(ctx, msg) }); err != nil {
+			logger.Error("failed to handle /status", zap.Error(err))
 		}
 	}
 }

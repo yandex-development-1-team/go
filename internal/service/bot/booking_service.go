@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"go.uber.org/zap"
@@ -36,11 +35,13 @@ const (
 type BookingState struct {
 	UserID            int64
 	ServiceID         int64
+	ServiceName       string
 	SelectedSlot      models.BoxAvailableSlot
 	GuestName         string
 	GuestOrganization string
 	GuestPosition     string
 	Step              int
+	OldMessageID      *int
 	CreatedAt         time.Time
 }
 
@@ -77,7 +78,7 @@ func (s *BookingService) GetBookingState(ctx context.Context, userID int64) *Boo
 
 	stateData, ok := session.StateData[KeyForBookingData]
 	if !ok {
-		logger.Error("state data not found in session")
+		logger.Debug("state data not found in session")
 		return nil
 	}
 
@@ -114,10 +115,11 @@ func (s *BookingService) SaveSession(ctx context.Context, userID int64, stateDat
 }
 
 // CreateSession creates a session
-func (s *BookingService) CreateSession(ctx context.Context, userID int64, serviceID int64) (*BookingState, error) {
+func (s *BookingService) CreateSession(ctx context.Context, userID int64, serviceID int64, serviceName string) (*BookingState, error) {
 	state := &BookingState{
 		UserID:       userID,
 		ServiceID:    serviceID,
+		ServiceName:  serviceName,
 		SelectedSlot: models.BoxAvailableSlot{},
 		Step:         StepSelectDate,
 		CreatedAt:    time.Now(),
@@ -136,12 +138,16 @@ func (s *BookingService) CreateBooking(ctx context.Context, state *BookingState)
 	if err != nil {
 		return 0, err
 	}
+	startTime, err := time.Parse("15:04", state.SelectedSlot.StartTime)
+	if err != nil {
+		return 0, err
+	}
 
 	booking := &models.Booking{
 		UserID:            state.UserID,
 		ServiceID:         int16(state.ServiceID),
 		BookingDate:       date,
-		BookingTime:       nil,
+		BookingTime:       &startTime,
 		GuestName:         state.GuestName,
 		GuestOrganization: state.GuestOrganization,
 		GuestPosition:     state.GuestPosition,
@@ -150,15 +156,24 @@ func (s *BookingService) CreateBooking(ctx context.Context, state *BookingState)
 		UpdatedAt:         time.Now(),
 	}
 
-	if err := s.ClearSession(ctx, state.UserID); err != nil {
-		return 0, fmt.Errorf("clear session: %w", err)
-	}
+	// if err := s.ClearSession(ctx, state.UserID); err != nil {
+	// 	return 0, fmt.Errorf("clear session: %w", err)
+	// }
 	return s.repo.CreateBooking(ctx, booking)
 }
 
 // ClearSession clears the user session
 func (s *BookingService) ClearSession(ctx context.Context, userID int64) error {
-	return s.session.ClearSession(ctx, userID)
+	data := map[string]interface{}{}
+	err := s.session.SaveSession(ctx, userID, CallbackBookingPrefix, data)
+	if err != nil {
+		logger.Error("failed to save user session",
+			zap.Error(err),
+			zap.Int64("user_id", userID),
+		)
+		return err
+	}
+	return nil
 }
 
 // ValidateAndSetName validates and sets guest name
@@ -168,10 +183,6 @@ func (s *BookingService) ValidateAndSetName(ctx context.Context, state *BookingS
 	}
 	state.GuestName = name
 	state.Step = StepEnterOrg
-	err := s.SaveSession(ctx, state.UserID, *state)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -182,10 +193,6 @@ func (s *BookingService) ValidateAndSetOrganization(ctx context.Context, state *
 	}
 	state.GuestOrganization = org
 	state.Step = StepEnterPosition
-	err := s.SaveSession(ctx, state.UserID, *state)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -196,10 +203,6 @@ func (s *BookingService) ValidateAndSetPosition(ctx context.Context, state *Book
 	}
 	state.GuestPosition = position
 	state.Step = StepConfirmation
-	err := s.SaveSession(ctx, state.UserID, *state)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -232,16 +235,10 @@ func (s *BookingService) ProcessDateSelection(ctx context.Context, state *Bookin
 		state.Step = StepEnterName
 	}
 
-	err = s.SaveSession(ctx, state.UserID, *state)
-	if err != nil {
-		logger.Error("status save error", zap.Error(err))
-		return false, err
-	}
-
 	return available, nil
 }
 
-// GetAvailableDates gets the available dates for the service
+// GetAvailableSlots gets the available dates for the service
 func (s *BookingService) GetAvailableSlots(ctx context.Context, serviceID int64) ([]models.BoxAvailableSlot, error) {
 	slots, err := s.boxRepo.GetAvailableSlotsByServiceID(ctx, serviceID)
 	if err != nil {

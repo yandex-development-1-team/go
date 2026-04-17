@@ -23,11 +23,8 @@ const (
 // используется для определения значения serviceType
 const (
 	bookHandler      = "book"
-	privateButtons   = "private"
-	publicButtons    = "public"
 	backButtons      = "back"
 	BackButtonsTitle = "⬅️ Назад"
-	missingParameter = "no"
 )
 
 // KeyboardService генерирует клавиатуры для разных экранов
@@ -38,12 +35,12 @@ func NewKeyboardService() *KeyboardService {
 }
 
 // ServiceDetailKeyboard создаёт клавиатуру для детального просмотра услуги
-func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64) tgbotapi.InlineKeyboardMarkup {
+func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64, serviceName string) tgbotapi.InlineKeyboardMarkup {
 	var buttons [][]tgbotapi.InlineKeyboardButton
 
 	buttons = [][]tgbotapi.InlineKeyboardButton{
 		{
-			tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%d", bookHandler, serviceID)),
+			tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%d:%s", bookHandler, serviceID, serviceName)),
 		},
 	}
 

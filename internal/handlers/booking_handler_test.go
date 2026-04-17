@@ -330,7 +330,7 @@ func TestBookingFormHandler_StartBooking(t *testing.T) {
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{MessageID: messageID + 1, Chat: &tgbotapi.Chat{ID: chatID}}, nil)
 
-	query := createTestCallbackQuery(chatID, userID, "book:1", messageID)
+	query := createTestCallbackQuery(chatID, userID, "book:1:TestName", messageID)
 
 	err := handler.Handle(ctx, query)
 	assert.NoError(t, err)
@@ -807,12 +807,14 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 	initialState := botService.BookingState{
 		UserID:            userID,
 		ServiceID:         1,
+		ServiceName:       "TestName",
 		SelectedSlot:      slot,
 		GuestName:         "Иванов Иван Иванович",
 		GuestOrganization: "ООО Ромашка",
 		GuestPosition:     "Директор",
 		Step:              botService.StepConfirmation,
-		CreatedAt:         time.Now(),
+		//OldMessageID:      0,
+		CreatedAt: time.Now(),
 	}
 
 	err := handlerSessionRepo.SaveSession(ctx, userID, botService.CallbackBookingPrefix, map[string]interface{}{
@@ -832,8 +834,8 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 
 	time.Sleep(200 * time.Millisecond)
 
-	session, _ := handlerSessionRepo.GetSession(ctx, userID)
-	assert.Nil(t, session)
+	updatedState := getBookingStateFromSession(ctx, t, userID)
+	require.NotNil(t, updatedState)
 
 	mockBot.AssertExpectations(t)
 }
@@ -892,7 +894,7 @@ func TestBookingFormHandler_BackToMainMenu(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	session, _ := handlerSessionRepo.GetSession(ctx, userID)
-	assert.Nil(t, session)
+	assert.NotNil(t, session)
 
 	mockBot.AssertExpectations(t)
 }

@@ -30,6 +30,8 @@ func NewBoxSolutions(bot *tgbotapi.BotAPI, bsService *service.BoxSolutionsServic
 }
 
 func (h *BoxSolutionsHandler) Handle(ctx context.Context, query *tgbotapi.CallbackQuery) error {
+	delTgMessage(h.bot, query.Message)
+
 	ctxBoxSolutions, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 

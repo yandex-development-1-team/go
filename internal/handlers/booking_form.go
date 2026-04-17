@@ -65,6 +65,12 @@ func (h *BookingFormHandler) Handle(ctx context.Context, query *tgbotapi.Callbac
 	state := h.service.GetBookingState(ctx, userID)
 	action := h.GetAction(state, parts)
 
+	if state != nil && state.OldMessageID != nil {
+		delTgMessage(h.bot, &tgbotapi.Message{MessageID: *state.OldMessageID, Chat: &tgbotapi.Chat{ID: chatID}})
+	} else if action == botService.StepStartBooking {
+		delTgMessage(h.bot, query.Message)
+	}
+
 	if parts[1] == "back" {
 		return h.handleBack(ctx, state, query, parts)
 	}
@@ -98,12 +104,15 @@ func (h *BookingFormHandler) Handle(ctx context.Context, query *tgbotapi.Callbac
 func (h *BookingFormHandler) HandleTextMessage(ctx context.Context, msg *tgbotapi.Message) error {
 	userID := msg.From.ID
 	chatID := msg.Chat.ID
-
 	text := msg.Text
 
 	state := h.service.GetBookingState(ctx, userID)
 	if state == nil {
 		return h.sendError(chatID, "Ошибка при получении статуса")
+	}
+
+	if state.OldMessageID != nil {
+		delTgMessage(h.bot, &tgbotapi.Message{MessageID: *state.OldMessageID, Chat: &tgbotapi.Chat{ID: chatID}})
 	}
 
 	logger.Debug("Text input processing",
@@ -113,13 +122,13 @@ func (h *BookingFormHandler) HandleTextMessage(ctx context.Context, msg *tgbotap
 
 	switch state.Step {
 	case botService.StepEnterName:
-		return h.stepNameInput(ctx, state, chatID, text)
+		return h.stepNameInput(ctx, state, msg)
 
 	case botService.StepEnterOrg:
-		return h.stepOrganizationInput(ctx, state, chatID, text)
+		return h.stepOrganizationInput(ctx, state, msg)
 
 	case botService.StepEnterPosition:
-		return h.stepPositionInput(ctx, state, chatID, text)
+		return h.stepPositionInput(ctx, state, msg)
 
 	default:
 		logger.Warn("unknown action", zap.Int("Action", state.Step))
@@ -153,15 +162,22 @@ func (h *BookingFormHandler) handleBack(
 ) error {
 	userID := query.From.ID
 	chatID := query.Message.Chat.ID
-	msgID := query.Message.MessageID
 
 	if len(parts) < 3 {
 		return h.sendError(chatID, "Неверный формат кнопки Назад")
 	}
 
+	if state == nil || state.OldMessageID == nil {
+		return h.sendError(chatID, "Сессии пользователя не существует")
+	}
+
 	targetStep, err := strconv.Atoi(parts[2])
 	if err != nil {
 		return h.sendError(chatID, "Неверный шаг")
+	}
+
+	if query.Message.MessageID != *state.OldMessageID {
+		return h.sendError(chatID, "Ошибка в сессии")
 	}
 
 	switch targetStep {
@@ -178,7 +194,7 @@ func (h *BookingFormHandler) handleBack(
 		if err := h.service.SaveSession(ctx, userID, *state); err != nil {
 			return err
 		}
-		return h.renderDateSelection(ctx, state, chatID, msgID)
+		return h.renderDateSelection(ctx, state, chatID)
 
 	case botService.StepEnterName:
 		state.Step = botService.StepEnterName
@@ -187,7 +203,7 @@ func (h *BookingFormHandler) handleBack(
 		if err := h.service.SaveSession(ctx, userID, *state); err != nil {
 			return err
 		}
-		return h.renderNameInput(chatID, msgID)
+		return h.renderNameInput(ctx, query, state)
 
 	case botService.StepEnterOrg:
 		state.Step = botService.StepEnterOrg
@@ -196,7 +212,7 @@ func (h *BookingFormHandler) handleBack(
 		if err := h.service.SaveSession(ctx, userID, *state); err != nil {
 			return err
 		}
-		return h.renderOrganizationInput(chatID)
+		return h.renderOrganizationInput(ctx, chatID, state)
 
 	case botService.StepEnterPosition:
 		state.Step = botService.StepEnterPosition
@@ -205,7 +221,7 @@ func (h *BookingFormHandler) handleBack(
 		if err := h.service.SaveSession(ctx, userID, *state); err != nil {
 			return err
 		}
-		return h.renderPositionInput(chatID)
+		return h.renderPositionInput(ctx, chatID, state)
 
 	default:
 		return h.sendError(chatID, "Нельзя вернуться на этот шаг")
