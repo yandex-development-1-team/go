@@ -57,23 +57,31 @@ func (s *UsersAdminService) Create(ctx context.Context, req dto.UserCreateReques
 		return nil, err
 	}
 	m := &models.StaffAdminCreate{
-		Name:         req.Name,
-		Email:        req.Email,
-		Role:         req.Role,
-		Status:       status,
-		TelegramNick: req.TelegramNick,
-		InviteToken:  generateInviteToken(),
+		FirstName:   req.FirstName,
+		LastName:    req.LastName,
+		SecondName:  derefOrEmpty(req.SecondName),
+		Email:       req.Email,
+		Role:        req.Role,
+		Status:      status,
+		PhoneNumber: req.Phone,
+		Department:  req.Department,
+		Position:    req.Position,
+		InviteToken: generateInviteToken(),
 	}
 	return s.staffRepo.CreateStaffByAdmin(ctx, m)
 }
 
 func (s *UsersAdminService) Update(ctx context.Context, id int64, req dto.UserUpdateRequest) (*models.UserAPI, error) {
 	u := &models.StaffAdminUpdate{
-		Name:         req.Name,
-		Email:        req.Email,
-		Role:         req.Role,
-		Status:       req.Status,
-		TelegramNick: req.TelegramNick,
+		FirstName:   req.FirstName,
+		LastName:    req.LastName,
+		SecondName:  req.SecondName,
+		Email:       req.Email,
+		Role:        req.Role,
+		Status:      req.Status,
+		PhoneNumber: req.Phone,
+		Department:  req.Department,
+		Position:    req.Position,
 	}
 	if u.Role != nil {
 		if err := validateRole(*u.Role); err != nil {
@@ -130,4 +138,11 @@ func generateInviteToken() string {
 		return ""
 	}
 	return hex.EncodeToString(b)
+}
+
+func derefOrEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

@@ -71,12 +71,8 @@ func (s *SpecialProjectService) GetByID(ctx context.Context, id int64) (*models.
 }
 
 func (s *SpecialProjectService) List(ctx context.Context, statusStr string, search string, limit, offset int) ([]*models.SpecialProject, int, error) {
-	var statusFilter *bool
-	if statusStr != "" {
-		val := statusStr == "active"
-		statusFilter = &val
-	}
-	dbList, total, err := s.repo.List(ctx, statusFilter, search, limit, offset)
+
+	dbList, total, err := s.repo.List(ctx, statusStr, search, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}

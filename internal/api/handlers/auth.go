@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"context"
-	"net/http"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -160,9 +160,7 @@ func toUserResponse(user *models.UserAPI) dto.UserResponse {
 		Status:       user.Status,
 		Department:   user.Department,
 		Position:     user.Position,
-		ManagerID:    user.ManagerID,
 		InviteToken:  user.InviteToken,
-		Permissions:  user.Permissions,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
 	}

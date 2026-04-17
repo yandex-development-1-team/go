@@ -15,7 +15,7 @@ import (
 
 const applicationSelectColumns = `
 	a.id, a.type, a.source, a.status, a.customer_name, a.contact_info,
-	a.project_name, a.box_id, a.special_project_id, a.manager_id,
+	a.project_name, a.box_id, a.special_project_id,
 	NULLIF(TRIM(CONCAT_WS(' ', s.first_name, s.last_name)), '') AS manager_name,
 	a.created_at, a.updated_at`
 
@@ -181,9 +181,6 @@ func buildApplicationWhere(f models.ApplicationFilter) (string, []interface{}) {
 	}
 	if f.Type != nil {
 		add("a.type = $%d", *f.Type)
-	}
-	if f.ManagerID != nil {
-		add("a.manager_id = $%d", *f.ManagerID)
 	}
 	if f.CustomerName != "" {
 		add("a.customer_name ILIKE $%d", "%"+f.CustomerName+"%")

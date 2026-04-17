@@ -13,7 +13,7 @@ const (
 	PermBoxesEdit         = "boxes:edit"
 	PermBoxesDelete       = "boxes:delete"
 	PermSpecProjectView   = "specproject:view"
-	PermSpecPrijectEdit   = "specproject:edit"
+	PermSpecProjectEdit   = "specproject:edit"
 	PermSpecProjectDelete = "specproject:delete"
 	PermAnalyticsView     = "analytics:view"
 	PermAnalyticsDownload = "analytics:download"
@@ -236,18 +236,26 @@ type RefreshResponse struct {
 }
 
 type StaffAdminCreate struct {
-	Name         string
-	Email        string
-	Role         string
-	Status       string
-	TelegramNick *string
-	InviteToken  string
+	FirstName   string
+	LastName    string
+	SecondName  string
+	Email       string
+	Role        string
+	Status      string
+	PhoneNumber *string
+	Department  *string
+	Position    *string
+	InviteToken string
 }
 
 type StaffAdminUpdate struct {
-	Name         *string
-	Email        *string
-	Role         *string
-	Status       *string
-	TelegramNick *string
+	FirstName   *string
+	LastName    *string
+	SecondName  *string
+	Email       *string
+	Role        *string
+	Status      *string
+	PhoneNumber *string
+	Department  *string
+	Position    *string
 }

@@ -16,7 +16,7 @@ import (
 type mockSpecialProjectRepo struct {
 	createFn  func(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error)
 	getByIDFn func(ctx context.Context, id int64) (*models.SpecialProjectDB, error)
-	listFn    func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
+	listFn    func(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
 	updateFn  func(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error)
 	deleteFn  func(ctx context.Context, id int64) error
 }
@@ -35,7 +35,7 @@ func (m *mockSpecialProjectRepo) GetByID(ctx context.Context, id int64) (*models
 	return nil, nil
 }
 
-func (m *mockSpecialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+func (m *mockSpecialProjectRepo) List(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 	if m.listFn != nil {
 		return m.listFn(ctx, statusFilter, searchQuery, limit, offset)
 	}
@@ -239,7 +239,7 @@ func TestSpecialProjectService_List(t *testing.T) {
 
 	t.Run("success returns list", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+			listFn: func(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 				return []*models.SpecialProjectDB{
 					{ID: 1, Title: "A", IsActiveInBot: true},
 					{ID: 2, Title: "B", IsActiveInBot: false},
@@ -258,7 +258,7 @@ func TestSpecialProjectService_List(t *testing.T) {
 	t.Run("repo error propagated", func(t *testing.T) {
 		repoErr := errors.New("db error")
 		repo := &mockSpecialProjectRepo{
-			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+			listFn: func(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 				return nil, 0, repoErr
 			},
 		}

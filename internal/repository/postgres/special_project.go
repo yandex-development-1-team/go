@@ -74,7 +74,7 @@ func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*models.Spe
 	return &proj, nil
 }
 
-func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+func (r *specialProjectRepo) List(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 	// Base query selecting only required fields for the list endpoint
 	baseQuery := listSpecProjectsBaseQuery
 	baseCountQuery := listSpecProjectsCountBaseQuery
@@ -83,11 +83,11 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searc
 	countArgs := make(map[string]interface{})
 
 	// Apply status filter if provided
-	if statusFilter != nil {
+	if statusFilter != "" {
 		baseQuery += " AND is_active_in_bot = :status"
 		baseCountQuery += " AND is_active_in_bot = :status"
-		args["status"] = *statusFilter
-		countArgs["status"] = *statusFilter
+		args["status"] = statusFilter == "active"
+		countArgs["status"] = statusFilter == "active"
 	}
 
 	// Apply full-text search if query is provided

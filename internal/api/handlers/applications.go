@@ -65,17 +65,10 @@ func (h *ApplicationHandler) List(c *gin.Context) {
 		return
 	}
 
-	managerID, ok := parseOptionalPositiveInt64(c.Query("manager_id"))
-	if !ok {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверные параметры запроса"})
-		return
-	}
-
 	filter := models.ApplicationFilter{
 		CustomerName: req.CustomerName,
 		Limit:        limit,
 		Offset:       offset,
-		ManagerID:    managerID,
 	}
 
 	if req.Status != nil {

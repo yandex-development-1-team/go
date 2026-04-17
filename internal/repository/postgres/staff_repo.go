@@ -30,29 +30,37 @@ const createUserQuery = `
 
 const insertStaffAdminQuery = `
 	INSERT INTO staff (
-		telegram_nick, first_name, last_name, email,
-		password_hash, role, status, invite_token)
-	VALUES ($1, $2, $3, $4, '', $5: :user_role_type, $6: :user_status_type, $7, $8)
-	RETURNING id, telegram_nick, first_name, last_name, second_name, email, phone_number,
-			role, status, invite_token, department, position, created_at, updated_at`
+    	first_name, last_name, second_name, email,
+    	phone_number, password_hash, role, status,
+    	department, position, invite_token)
+	VALUES ($1, $2, $3, $4, $5, '', $6::user_role_type, $7::user_status_type,
+    	$8, $9, $10)
+	RETURNING id, telegram_nick, first_name, last_name, second_name, email,
+    	phone_number, role, status, invite_token, department, position, created_at, 
+				updated_at`
 
 const updateStaffQuery = `
 	UPDATE staff SET
-		first_name = COALESCE($2, first_name),
-		email = COALESCE($3, email),
-		role = COALESCE($4: :user_role_type, role),
-		status = COALESCE($5: :user_status_type, status),
-		telegram_nick = COALESCE($7, telegram_nick),
-	WHERE id = $1
+    	first_name   = COALESCE($2, first_name),
+    	last_name    = COALESCE($3, last_name),
+    	second_name  = COALESCE($4, second_name),
+    	email        = COALESCE($5, email),
+    	role         = COALESCE($6::user_role_type, role),
+		status       = COALESCE($7::user_status_type, status),
+    	phone_number = COALESCE($8, phone_number),
+    	department   = COALESCE($9, department),
+    	position     = COALESCE($10, position)
+		WHERE id = $1
 	RETURNING id, telegram_nick, first_name, last_name, second_name, email,
-			phone_number, role, status, invite_token, department, position, 
-					created_at, updated_at
+		phone_number, role, status, invite_token, department, position, created_at,
+				updated_at
 `
 const blockStaffQuery = `
 	UPDATE staff SET status = 'blocked': :user_status_type
 	WHERE id = $1
 	RETURNING id, telegram_nick, first_name, last_name, second_name, email,
-			phone_number, role, status, invite_token, department, position, created_at, updated_at
+		phone_number, role, status, invite_token, department, position, created_at, 
+				updated_at
 `
 
 type StaffRepo struct {
@@ -346,18 +354,16 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 func (u *StaffRepo) CreateStaffByAdmin(ctx context.Context, req *models.StaffAdminCreate) (*models.UserAPI, error) {
 	var row dto.UserRow
 
-	var tg sql.NullString
-	if req.TelegramNick != nil && *req.TelegramNick != "" {
-		tg = sql.NullString{String: *req.TelegramNick, Valid: true}
-	}
-
 	err := u.db.GetContext(ctx, &row, insertStaffAdminQuery,
-		tg,
-		req.Name,
-		"",
+		req.FirstName,
+		req.LastName,
+		req.SecondName,
 		req.Email,
+		req.PhoneNumber,
 		req.Role,
 		req.Status,
+		req.Department,
+		req.Position,
 		req.InviteToken,
 	)
 	if err != nil {
@@ -373,22 +379,17 @@ func (u *StaffRepo) CreateStaffByAdmin(ctx context.Context, req *models.StaffAdm
 func (u *StaffRepo) UpdateStaff(ctx context.Context, id int64, req *models.StaffAdminUpdate) (*models.UserAPI, error) {
 	var row dto.UserRow
 
-	var tg interface{}
-	if req.TelegramNick != nil {
-		if *req.TelegramNick == "" {
-			tg = nil
-		} else {
-			tg = *req.TelegramNick
-		}
-	}
-
 	err := u.db.GetContext(ctx, &row, updateStaffQuery,
 		id,
-		req.Name,
+		req.FirstName,
+		req.LastName,
+		req.SecondName,
 		req.Email,
 		req.Role,
 		req.Status,
-		tg,
+		req.PhoneNumber,
+		req.Department,
+		req.Position,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, models.ErrUserNotFound

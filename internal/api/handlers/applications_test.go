@@ -123,7 +123,6 @@ func performRawRequest(
 func sampleApplication() *models.Application {
 	now := time.Date(2026, 4, 8, 12, 0, 0, 0, time.UTC)
 
-	managerID := int64(7)
 	boxID := int64(11)
 	managerName := "Анна Петрова"
 	projectName := "Проект А"
@@ -137,7 +136,6 @@ func sampleApplication() *models.Application {
 		ContactInfo:  "ivan@example.com",
 		ProjectName:  &projectName,
 		BoxID:        &boxID,
-		ManagerID:    &managerID,
 		ManagerName:  &managerName,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -484,34 +482,6 @@ func TestApplicationHandler_List(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.NotNil(t, captured.Status)
 		assert.Equal(t, models.ApplicationStatusQueue, *captured.Status)
-	})
-
-	t.Run("filter by manager_id", func(t *testing.T) {
-		var captured models.ApplicationFilter
-
-		repo := &mockApplicationRepo{
-			listFn: func(_ context.Context, filter models.ApplicationFilter) ([]models.Application, int, error) {
-				captured = filter
-				return []models.Application{}, 0, nil
-			},
-		}
-		router := newApplicationTestRouter(repo)
-
-		w := performJSONRequest(t, router, http.MethodGet, "/applications?manager_id=42", nil)
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.NotNil(t, captured.ManagerID)
-		assert.Equal(t, int64(42), *captured.ManagerID)
-	})
-
-	t.Run("invalid manager_id", func(t *testing.T) {
-		repo := &mockApplicationRepo{}
-		router := newApplicationTestRouter(repo)
-
-		w := performJSONRequest(t, router, http.MethodGet, "/applications?manager_id=abc", nil)
-
-		require.Equal(t, http.StatusBadRequest, w.Code)
-		assertAPIErrorsBodyHasExactMessage(t, w.Body.Bytes(), "Неверные параметры запроса")
 	})
 
 	t.Run("response contains manager_name", func(t *testing.T) {

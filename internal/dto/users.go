@@ -3,19 +3,27 @@ package dto
 import "time"
 
 type UserCreateRequest struct {
-	TelegramNick *string `json:"telegram_nick,omitempty"`
-	Name         string  `json:"name" binding:"required,min=1"`
-	Email        string  `json:"email" binding:"required,email"`
-	Role         string  `json:"role" binding:"required"`
-	Status       string  `json:"status,omitempty"`
+	FirstName  string  `json:"first_name"`
+	LastName   string  `json:"last_name"`
+	Email      string  `json:"email" binding:"required,email"`
+	Role       string  `json:"role" binding:"required"`
+	Status     string  `json:"status,omitempty"`
+	Phone      *string `json:"phone,omitempty"`
+	Department *string `json:"department,omitempty"`
+	Position   *string `json:"position,omitempty"`
+	SecondName *string `json:"second_name,omitempty"`
 }
 
 type UserUpdateRequest struct {
-	Name         *string `json:"name,omitempty"`
-	Email        *string `json:"email,omitempty"`
-	Role         *string `json:"role,omitempty"`
-	Status       *string `json:"status,omitempty"`
-	TelegramNick *string `json:"telegram_nick,omitempty"`
+	FirstName  *string `json:"first_name,omitempty"`
+	LastName   *string `json:"last_name,omitempty"`
+	Email      *string `json:"email,omitempty"`
+	Role       *string `json:"role,omitempty"`
+	Status     *string `json:"status,omitempty"`
+	Phone      *string `json:"phone_number,omitempty"`
+	Department *string `json:"department,omitempty"`
+	Position   *string `json:"position,omitempty"`
+	SecondName *string `json:"second_name,omitempty"`
 }
 
 type BlockResponse struct {
