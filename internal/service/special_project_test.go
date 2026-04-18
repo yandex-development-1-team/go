@@ -16,7 +16,7 @@ import (
 type mockSpecialProjectRepo struct {
 	createFn  func(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error)
 	getByIDFn func(ctx context.Context, id int64) (*models.SpecialProjectDB, error)
-	listFn    func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
+	listFn    func(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
 	updateFn  func(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error)
 	deleteFn  func(ctx context.Context, id int64) error
 }
@@ -35,7 +35,7 @@ func (m *mockSpecialProjectRepo) GetByID(ctx context.Context, id int64) (*models
 	return nil, nil
 }
 
-func (m *mockSpecialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+func (m *mockSpecialProjectRepo) List(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 	if m.listFn != nil {
 		return m.listFn(ctx, statusFilter, searchQuery, limit, offset)
 	}
@@ -92,15 +92,15 @@ func TestSpecialProjectService_Create(t *testing.T) {
 		svc := NewSpecialProjectService(repo)
 		desc := "desc"
 		got, err := svc.Create(ctx, &models.SpecialProject{
-			Title:         "Test",
-			Description:   &desc,
-			Image:         "img",
-			IsActiveInBot: true,
+			Title:       "Test",
+			Description: &desc,
+			Image:       "img",
+			Status:      "active",
 		})
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), got.ID)
 		assert.Equal(t, "Test", got.Title)
-		assert.True(t, got.IsActiveInBot)
+		assert.Equal(t, models.ServiceStatus("active"), got.Status)
 	})
 }
 
@@ -122,7 +122,7 @@ func TestSpecialProjectService_GetByID(t *testing.T) {
 	t.Run("success returns domain", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
 			getByIDFn: func(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
-				return &models.SpecialProjectDB{ID: id, Title: "T", IsActiveInBot: true}, nil
+				return &models.SpecialProjectDB{ID: id, Title: "T", Status: "active"}, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
@@ -130,7 +130,7 @@ func TestSpecialProjectService_GetByID(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), got.ID)
 		assert.Equal(t, "T", got.Title)
-		assert.True(t, got.IsActiveInBot)
+		assert.Equal(t, models.ServiceStatus("active"), got.Status)
 	})
 }
 
@@ -179,19 +179,19 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 			updateFn: func(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error) {
 				return &models.SpecialProjectDB{
 					ID: id, Title: update.Title, Description: update.Description,
-					Image: update.Image, IsActiveInBot: update.IsActiveInBot,
+					Image: update.Image, Status: update.Status,
 				}, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
 		desc := "new desc"
 		got, err := svc.Update(ctx, 1, &models.SpecialProject{
-			Title: "Updated", Description: &desc, Image: "img2", IsActiveInBot: false,
+			Title: "Updated", Description: &desc, Image: "img2", Status: "inactive",
 		})
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), got.ID)
 		assert.Equal(t, "Updated", got.Title)
-		assert.False(t, got.IsActiveInBot)
+		assert.Equal(t, models.ServiceStatus("inactive"), got.Status)
 	})
 }
 
@@ -239,10 +239,10 @@ func TestSpecialProjectService_List(t *testing.T) {
 
 	t.Run("success returns list", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+			listFn: func(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 				return []*models.SpecialProjectDB{
-					{ID: 1, Title: "A", IsActiveInBot: true},
-					{ID: 2, Title: "B", IsActiveInBot: false},
+					{ID: 1, Title: "A", Status: "active"},
+					{ID: 2, Title: "B", Status: "inactive"},
 				}, 10, nil
 			},
 		}
@@ -252,13 +252,13 @@ func TestSpecialProjectService_List(t *testing.T) {
 		require.Len(t, got, 2)
 		assert.Equal(t, int64(1), got[0].ID)
 		assert.Equal(t, "A", got[0].Title)
-		assert.True(t, got[0].IsActiveInBot)
+		assert.Equal(t, models.ServiceStatus("active"), got[0].Status)
 	})
 
 	t.Run("repo error propagated", func(t *testing.T) {
 		repoErr := errors.New("db error")
 		repo := &mockSpecialProjectRepo{
-			listFn: func(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+			listFn: func(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 				return nil, 0, repoErr
 			},
 		}

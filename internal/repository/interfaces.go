@@ -31,13 +31,16 @@ type BookingRepository interface {
 	GetAvailableSlots(ctx context.Context, serviceID int, date time.Time) ([]time.Time, error)
 	GetBookingsByUserID(ctx context.Context, userID int64) ([]models.Booking, error)
 	UpdateBookingStatus(ctx context.Context, bookingID int64, status string) error
+	GetBookingById(ctx context.Context, id int64) (*models.BookingAPI, error)
+	GetBookingsList(ctx context.Context, filter *models.ApplicationFilter) (*models.BookingList, error)
+	DeleteBooking(ctx context.Context, id int64) error
 }
 
 type ApplicationRepository interface {
-	CreateApplication(ctx context.Context, req *models.ApplicationCreateRequest) (*models.Application, error)
-	GetApplications(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error)
+	CreateApplication(ctx context.Context, req *models.Application) error
 	GetApplicationByID(ctx context.Context, id int64) (*models.Application, error)
-	UpdateApplication(ctx context.Context, id int64, req *models.ApplicationUpdateRequest) (*models.Application, error)
+	UpdateApplicationStatus(ctx context.Context, id int64, status string) error
+	ApplicationsList(ctx context.Context, filter *models.ApplicationFilter) (*models.ApplicationList, error)
 	DeleteApplication(ctx context.Context, id int64) error
 }
 
@@ -92,14 +95,15 @@ type SpecialProjectRepository interface {
 
 type TxRepository interface {
 	RunToTx(ctx context.Context, fn func(ctx context.Context) error) error
+	BeginTx(ctx context.Context) (*sqlx.Tx, error)
 }
 
 type ResourcePageRepository interface {
+	GetAll(ctx context.Context) ([]models.ResourcePage, error)
 	GetBySlug(ctx context.Context, slug string) (*models.ResourcePage, error)
-	GetBySlugTx(ctx context.Context, queryable Queryable, slug string, lockForUpdate bool) (*models.ResourcePage, error)
-	UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug string, title string, content string, links []models.ResourcePageLink) error
-	GetAllSummaries(ctx context.Context) ([]*models.ResourcePage, error)
-	BeginTx(ctx context.Context) (*sqlx.Tx, error)
+	Update(ctx context.Context, slug string, page models.ResourcePage) (*models.ResourcePage, error)
+	Clear(ctx context.Context, slug string) (*models.ResourcePage, error)
+	DeleteLink(ctx context.Context, slug string, id string) (*models.ResourcePage, error)
 }
 
 type Queryable interface {

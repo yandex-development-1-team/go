@@ -73,7 +73,7 @@ func (h *SpecialProjectHandler) CreateSpecialProject(c *gin.Context) {
 	proj := toDomainFromCreate(&req)
 	project, err := h.svc.Create(c.Request.Context(), proj)
 	if err != nil {
-		sendSpecialProjectErr(c, &proj.ID, err)
+		sendSpecialProjectErr(c, nil, err)
 		return
 	}
 	c.JSON(http.StatusCreated, toSpecialProjectResponse(project))

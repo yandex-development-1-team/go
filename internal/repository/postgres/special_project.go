@@ -8,6 +8,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
+	"go.uber.org/zap"
+
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
@@ -156,14 +159,31 @@ func (r *specialProjectRepo) Update(ctx context.Context, id int64, specialProjec
 }
 
 func (r specialProjectRepo) Delete(ctx context.Context, id int64) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
+			logger.Error("failed to rollback transaction", zap.Error(rollbackErr))
+		}
+	}()
 
-	res, err := r.db.ExecContext(ctx, deleteSpecProjectQuery, id)
+	if _, err = tx.ExecContext(ctx, deactivateApplicationsQuery, id); err != nil {
+		return fmt.Errorf("failed to deactivate special project in applications: %w", err)
+	}
+
+	res, err := tx.ExecContext(ctx, deleteSpecProjectQuery, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete special project: %w", err)
 	}
 
 	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
 		return models.ErrSpecialProjectNotFound
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
