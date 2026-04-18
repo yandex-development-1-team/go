@@ -1,8 +1,9 @@
 package dto
 
 import (
-	"github.com/yandex-development-1-team/go/internal/models"
 	"time"
+
+	"github.com/yandex-development-1-team/go/internal/models"
 )
 
 type SpecialProjectCreateRequest struct {
