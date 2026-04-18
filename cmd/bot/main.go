@@ -200,7 +200,8 @@ func run() error {
 		return fmt.Errorf("rate limiter: %w", err)
 	}
 
-	startHandler := botHandlers.NewStartHandler(tgBot, telegramUserRepo)
+	startHandler := botHandlers.NewStartHandler(tgBot.Api, telegramUserRepo, sessionRepo)
+	statusHandler := botHandlers.NewStatusHandler(tgBot.Api, bookRepo, sessionRepo)
 	bsHandler := botHandlers.NewBoxSolutions(tgBot.Api, bsService)
 	bcHandler := botHandlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, bsHandler, keyboard)
 	infoHandler := botHandlers.NewDetailHandler(detailService, tgBot.Api, startHandler, bsHandler, keyboard)
@@ -212,7 +213,7 @@ func run() error {
 	reqSpHandler := botHandlers.NewRequestSpHandler(reqSpService, tgBot.Api, startHandler, bsHandler, keyboard)
 
 	callbackRouter := botHandlers.NewCallbackRouter(tgBot.Api)
-	msgRouter := botHandlers.NewMessageRouter(tgBot.Api, startHandler, sessionRepo, bcHandler, msgRL)
+	msgRouter := botHandlers.NewMessageRouter(tgBot.Api, startHandler, statusHandler, sessionRepo, bcHandler, msgRL)
 
 	callbackRouter.Register(botHandlers.CallbackBoxSolutions, bsHandler)
 	callbackRouter.Register(botService.CallbackBookingPrefix, bcHandler)

@@ -2,6 +2,7 @@ package minio
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -50,6 +51,39 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("create bucket: %w", err)
 	}
+
+	err = c.makeBucketPublic(ctx)
+	if err != nil {
+		return fmt.Errorf("make bucket public: %w", err)
+	}
+
+	return nil
+}
+
+// makeBucketPublic sets the policy for public access to the bucket
+func (c *Client) makeBucketPublic(ctx context.Context) error {
+	policy := map[string]interface{}{
+		"Version": "2012-10-17",
+		"Statement": []map[string]interface{}{
+			{
+				"Effect":    "Allow",
+				"Principal": map[string]interface{}{"AWS": []string{"*"}},
+				"Action":    []string{"s3:GetObject"},
+				"Resource":  []string{"arn:aws:s3:::" + c.bucket + "/*"},
+			},
+		},
+	}
+
+	policyBytes, err := json.Marshal(policy)
+	if err != nil {
+		return fmt.Errorf("marshal policy: %w", err)
+	}
+
+	err = c.client.SetBucketPolicy(ctx, c.bucket, string(policyBytes))
+	if err != nil {
+		return fmt.Errorf("set bucket policy: %w", err)
+	}
+
 	return nil
 }
 

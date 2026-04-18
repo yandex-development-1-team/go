@@ -55,6 +55,17 @@ const (
 		WHERE user_id = $1 
 		ORDER BY booking_date DESC, booking_time DESC`
 
+	getBookingsByUserIDExtQuery = `
+		SELECT b.id, b.user_id, b.service_id, s.name as service_name,
+		       b.booking_date, b.booking_time, 
+		       b.guest_name, b.guest_organization, b.guest_position, 
+		       b.visit_type, b.status, b.tracker_ticket_id, 
+		       b.created_at, b.updated_at
+		FROM bookings b
+		LEFT JOIN services s ON b.service_id = s.id
+		WHERE b.user_id = $1 
+		ORDER BY b.booking_date ASC, b.booking_time ASC`
+
 	updateBookingStatusQuery = `
 	UPDATE bookings 
 	SET status = $1, updated_at = NOW()
@@ -166,6 +177,20 @@ func (r *BookingRepo) GetBookingsByUserID(ctx context.Context, userID int64) ([]
 	return repository.WithDBMetricsValue(operation, func() ([]models.Booking, error) {
 
 		err := r.db.SelectContext(ctx, &bookings, getBookingsByUserIDQuery, userID)
+		if err != nil {
+			return nil, err
+		}
+		return bookings, nil
+	})
+}
+
+func (r *BookingRepo) GetExtBookingsByUserID(ctx context.Context, userID int64) ([]models.BookingExt, error) {
+	const operation = "get_booking_by_id"
+	var bookings []models.BookingExt
+
+	return repository.WithDBMetricsValue(operation, func() ([]models.BookingExt, error) {
+
+		err := r.db.SelectContext(ctx, &bookings, getBookingsByUserIDExtQuery, userID)
 		if err != nil {
 			return nil, err
 		}
