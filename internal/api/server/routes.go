@@ -7,7 +7,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 )
 
-func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler) {
+func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler, bookingHandler *handlers.BookingHandler) {
 	apiV1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(apiV1, authHandler)
@@ -23,9 +23,11 @@ func SetupRoutes(router *gin.Engine, jwtSecret []byte, authHandler *handlers.Aut
 			setupResourcesRoutes(protected, recPageHandler)
 			setupFileRoutes(protected, fileHandler)
 			setupApplicationRoutes(protected, applicationHandler)
+			setupBookingRoutes(protected, bookingHandler)
 		}
 		public := apiV1.Group("/public")
 		public.GET("/resources/:slug", recPageHandler.GetPublicBySlug)
+		public.POST("/applications/", applicationHandler.Create)
 	}
 }
 
@@ -61,7 +63,7 @@ func setupBoxRoutes(rg *gin.RouterGroup, boxHandler *handlers.BoxHandler) {
 	boxes := rg.Group("/boxes")
 	{
 		boxes.GET("/", boxHandler.List)
-		boxes.POST("/")
+		boxes.POST("/", boxHandler.Create)
 		boxes.GET("/:id", boxHandler.GetByID)
 		boxes.PUT("/:id", boxHandler.Update)
 		boxes.DELETE("/:id", boxHandler.Delete)
@@ -107,10 +109,19 @@ func setupFileRoutes(rg *gin.RouterGroup, h *handlers.FileHandler) {
 func setupApplicationRoutes(rg *gin.RouterGroup, h *handlers.ApplicationHandler) {
 	applications := rg.Group("/applications")
 	{
-		applications.GET("/", h.List)
-		applications.POST("/", h.Create)
+		applications.GET("/", h.ApplicationsList)
 		applications.GET("/:id", h.GetByID)
-		applications.PUT("/:id", h.Update)
-		applications.DELETE("/:id", h.Delete)
+		applications.PUT("/:id/status", h.UpdateApplicationStatus)
+		applications.DELETE("/:id", h.DeleteApplication)
+	}
+}
+
+func setupBookingRoutes(rg *gin.RouterGroup, h *handlers.BookingHandler) {
+	bookings := rg.Group("/bookings")
+	{
+		bookings.GET("/", h.BookingsList)
+		bookings.GET("/:id", h.BookingsById)
+		bookings.PUT("/:id/status", h.UpdateBookingStatus)
+		bookings.DELETE("/:id", h.DeleteBooking)
 	}
 }

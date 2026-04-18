@@ -68,6 +68,7 @@ jobs:
           CI_CADDY_LETSENCRYPT_EMAIL: ${{ vars.CADDY_LETSENCRYPT_EMAIL }}
           CI_JWT_SECRET: ${{ secrets.JWT_SECRET }}
           CI_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          CI_YANDEX_FORMS_WEBHOOK_TOKEN: ${{ secrets.YANDEX_FORMS_WEBHOOK_TOKEN }}
         run: |
           pip3 install dump-env
           dump-env \

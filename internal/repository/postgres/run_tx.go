@@ -29,3 +29,7 @@ func (u *TxRepo) RunToTx(ctx context.Context, fn func(ctx context.Context) error
 
 	return tx.Commit()
 }
+
+func (u *TxRepo) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
+	return u.db.BeginTxx(ctx, nil)
+}

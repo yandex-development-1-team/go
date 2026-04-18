@@ -18,8 +18,8 @@ import (
 	sqlx "github.com/jmoiron/sqlx"
 	gomock "go.uber.org/mock/gomock"
 
+	dto "github.com/yandex-development-1-team/go/internal/dto"
 	models "github.com/yandex-development-1-team/go/internal/models"
-	repository "github.com/yandex-development-1-team/go/internal/repository"
 )
 
 // MockStaffRepository is a mock of StaffRepository interface.
@@ -61,6 +61,21 @@ func (mr *MockStaffRepositoryMockRecorder) CreateStaff(ctx, userReq, hashPasswor
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateStaff", reflect.TypeOf((*MockStaffRepository)(nil).CreateStaff), ctx, userReq, hashPassword)
 }
 
+// GetByID mocks base method.
+func (m *MockStaffRepository) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", ctx, id)
+	ret0, _ := ret[0].(*dto.UserWithDetails)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockStaffRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockStaffRepository)(nil).GetByID), ctx, id)
+}
+
 // GetUserByEmail mocks base method.
 func (m *MockStaffRepository) GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error) {
 	m.ctrl.T.Helper()
@@ -74,6 +89,22 @@ func (m *MockStaffRepository) GetUserByEmail(ctx context.Context, email string) 
 func (mr *MockStaffRepositoryMockRecorder) GetUserByEmail(ctx, email any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByEmail", reflect.TypeOf((*MockStaffRepository)(nil).GetUserByEmail), ctx, email)
+}
+
+// List mocks base method.
+func (m *MockStaffRepository) List(ctx context.Context, role, status, search string, limit, offset int) ([]dto.UserListItem, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, role, status, search, limit, offset)
+	ret0, _ := ret[0].([]dto.UserListItem)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// List indicates an expected call of List.
+func (mr *MockStaffRepositoryMockRecorder) List(ctx, role, status, search, limit, offset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockStaffRepository)(nil).List), ctx, role, status, search, limit, offset)
 }
 
 // MockTelegramUserRepository is a mock of TelegramUserRepository interface.
@@ -197,6 +228,20 @@ func (mr *MockBookingRepositoryMockRecorder) CreateBooking(ctx, b any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBooking", reflect.TypeOf((*MockBookingRepository)(nil).CreateBooking), ctx, b)
 }
 
+// DeleteBooking mocks base method.
+func (m *MockBookingRepository) DeleteBooking(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteBooking", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteBooking indicates an expected call of DeleteBooking.
+func (mr *MockBookingRepositoryMockRecorder) DeleteBooking(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBooking", reflect.TypeOf((*MockBookingRepository)(nil).DeleteBooking), ctx, id)
+}
+
 // GetAvailableSlots mocks base method.
 func (m *MockBookingRepository) GetAvailableSlots(ctx context.Context, serviceID int, date time.Time) ([]time.Time, error) {
 	m.ctrl.T.Helper()
@@ -212,6 +257,21 @@ func (mr *MockBookingRepositoryMockRecorder) GetAvailableSlots(ctx, serviceID, d
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableSlots", reflect.TypeOf((*MockBookingRepository)(nil).GetAvailableSlots), ctx, serviceID, date)
 }
 
+// GetBookingById mocks base method.
+func (m *MockBookingRepository) GetBookingById(ctx context.Context, id int64) (*models.BookingAPI, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBookingById", ctx, id)
+	ret0, _ := ret[0].(*models.BookingAPI)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBookingById indicates an expected call of GetBookingById.
+func (mr *MockBookingRepositoryMockRecorder) GetBookingById(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBookingById", reflect.TypeOf((*MockBookingRepository)(nil).GetBookingById), ctx, id)
+}
+
 // GetBookingsByUserID mocks base method.
 func (m *MockBookingRepository) GetBookingsByUserID(ctx context.Context, userID int64) ([]models.Booking, error) {
 	m.ctrl.T.Helper()
@@ -225,6 +285,21 @@ func (m *MockBookingRepository) GetBookingsByUserID(ctx context.Context, userID 
 func (mr *MockBookingRepositoryMockRecorder) GetBookingsByUserID(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBookingsByUserID", reflect.TypeOf((*MockBookingRepository)(nil).GetBookingsByUserID), ctx, userID)
+}
+
+// GetBookingsList mocks base method.
+func (m *MockBookingRepository) GetBookingsList(ctx context.Context, filter *models.ApplicationFilter) (*models.BookingList, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBookingsList", ctx, filter)
+	ret0, _ := ret[0].(*models.BookingList)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBookingsList indicates an expected call of GetBookingsList.
+func (mr *MockBookingRepositoryMockRecorder) GetBookingsList(ctx, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBookingsList", reflect.TypeOf((*MockBookingRepository)(nil).GetBookingsList), ctx, filter)
 }
 
 // UpdateBookingStatus mocks base method.
@@ -265,13 +340,27 @@ func (m *MockApplicationRepository) EXPECT() *MockApplicationRepositoryMockRecor
 	return m.recorder
 }
 
-// CreateApplication mocks base method.
-func (m *MockApplicationRepository) CreateApplication(ctx context.Context, req *models.ApplicationCreateRequest) (*models.Application, error) {
+// ApplicationsList mocks base method.
+func (m *MockApplicationRepository) ApplicationsList(ctx context.Context, filter *models.ApplicationFilter) (*models.ApplicationList, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateApplication", ctx, req)
-	ret0, _ := ret[0].(*models.Application)
+	ret := m.ctrl.Call(m, "ApplicationsList", ctx, filter)
+	ret0, _ := ret[0].(*models.ApplicationList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
+}
+
+// ApplicationsList indicates an expected call of ApplicationsList.
+func (mr *MockApplicationRepositoryMockRecorder) ApplicationsList(ctx, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplicationsList", reflect.TypeOf((*MockApplicationRepository)(nil).ApplicationsList), ctx, filter)
+}
+
+// CreateApplication mocks base method.
+func (m *MockApplicationRepository) CreateApplication(ctx context.Context, req *models.Application) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateApplication", ctx, req)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // CreateApplication indicates an expected call of CreateApplication.
@@ -309,35 +398,18 @@ func (mr *MockApplicationRepositoryMockRecorder) GetApplicationByID(ctx, id any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplicationByID", reflect.TypeOf((*MockApplicationRepository)(nil).GetApplicationByID), ctx, id)
 }
 
-// GetApplications mocks base method.
-func (m *MockApplicationRepository) GetApplications(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error) {
+// UpdateApplicationStatus mocks base method.
+func (m *MockApplicationRepository) UpdateApplicationStatus(ctx context.Context, id int64, status string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetApplications", ctx, filter)
-	ret0, _ := ret[0].([]models.Application)
-	ret1, _ := ret[1].(int)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret := m.ctrl.Call(m, "UpdateApplicationStatus", ctx, id, status)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// GetApplications indicates an expected call of GetApplications.
-func (mr *MockApplicationRepositoryMockRecorder) GetApplications(ctx, filter any) *gomock.Call {
+// UpdateApplicationStatus indicates an expected call of UpdateApplicationStatus.
+func (mr *MockApplicationRepositoryMockRecorder) UpdateApplicationStatus(ctx, id, status any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplications", reflect.TypeOf((*MockApplicationRepository)(nil).GetApplications), ctx, filter)
-}
-
-// UpdateApplication mocks base method.
-func (m *MockApplicationRepository) UpdateApplication(ctx context.Context, id int64, req *models.ApplicationUpdateRequest) (*models.Application, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateApplication", ctx, id, req)
-	ret0, _ := ret[0].(*models.Application)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UpdateApplication indicates an expected call of UpdateApplication.
-func (mr *MockApplicationRepositoryMockRecorder) UpdateApplication(ctx, id, req any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateApplication", reflect.TypeOf((*MockApplicationRepository)(nil).UpdateApplication), ctx, id, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateApplicationStatus", reflect.TypeOf((*MockApplicationRepository)(nil).UpdateApplicationStatus), ctx, id, status)
 }
 
 // MockBoxSolutionRepository is a mock of BoxSolutionRepository interface.
@@ -727,6 +799,34 @@ func (mr *MockRefreshTokenRepositoryMockRecorder) CreateRefreshToken(ctx, userID
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRefreshToken", reflect.TypeOf((*MockRefreshTokenRepository)(nil).CreateRefreshToken), ctx, userID, token, expiresAt)
 }
 
+// DeleteByStaffID mocks base method.
+func (m *MockRefreshTokenRepository) DeleteByStaffID(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByStaffID", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByStaffID indicates an expected call of DeleteByStaffID.
+func (mr *MockRefreshTokenRepositoryMockRecorder) DeleteByStaffID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByStaffID", reflect.TypeOf((*MockRefreshTokenRepository)(nil).DeleteByStaffID), ctx, id)
+}
+
+// DeleteByToken mocks base method.
+func (m *MockRefreshTokenRepository) DeleteByToken(ctx context.Context, token string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByToken", ctx, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByToken indicates an expected call of DeleteByToken.
+func (mr *MockRefreshTokenRepositoryMockRecorder) DeleteByToken(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByToken", reflect.TypeOf((*MockRefreshTokenRepository)(nil).DeleteByToken), ctx, token)
+}
+
 // GetForUpdate mocks base method.
 func (m *MockRefreshTokenRepository) GetForUpdate(ctx context.Context, tx *sqlx.Tx, token string) (*models.RefreshToken, error) {
 	m.ctrl.T.Helper()
@@ -742,18 +842,57 @@ func (mr *MockRefreshTokenRepositoryMockRecorder) GetForUpdate(ctx, tx, token an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetForUpdate", reflect.TypeOf((*MockRefreshTokenRepository)(nil).GetForUpdate), ctx, tx, token)
 }
 
-// Revoke mocks base method.
-func (m *MockRefreshTokenRepository) Revoke(ctx context.Context, token string) error {
+// MockPasswordResetRepository is a mock of PasswordResetRepository interface.
+type MockPasswordResetRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockPasswordResetRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockPasswordResetRepositoryMockRecorder is the mock recorder for MockPasswordResetRepository.
+type MockPasswordResetRepositoryMockRecorder struct {
+	mock *MockPasswordResetRepository
+}
+
+// NewMockPasswordResetRepository creates a new mock instance.
+func NewMockPasswordResetRepository(ctrl *gomock.Controller) *MockPasswordResetRepository {
+	mock := &MockPasswordResetRepository{ctrl: ctrl}
+	mock.recorder = &MockPasswordResetRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPasswordResetRepository) EXPECT() *MockPasswordResetRepositoryMockRecorder {
+	return m.recorder
+}
+
+// CreateToken mocks base method.
+func (m *MockPasswordResetRepository) CreateToken(ctx context.Context, userID int64, token string, expiresAt time.Time) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Revoke", ctx, token)
+	ret := m.ctrl.Call(m, "CreateToken", ctx, userID, token, expiresAt)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Revoke indicates an expected call of Revoke.
-func (mr *MockRefreshTokenRepositoryMockRecorder) Revoke(ctx, token any) *gomock.Call {
+// CreateToken indicates an expected call of CreateToken.
+func (mr *MockPasswordResetRepositoryMockRecorder) CreateToken(ctx, userID, token, expiresAt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Revoke", reflect.TypeOf((*MockRefreshTokenRepository)(nil).Revoke), ctx, token)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateToken", reflect.TypeOf((*MockPasswordResetRepository)(nil).CreateToken), ctx, userID, token, expiresAt)
+}
+
+// GetToken mocks base method.
+func (m *MockPasswordResetRepository) GetToken(ctx context.Context, token string) (*models.PasswordResetToken, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetToken", ctx, token)
+	ret0, _ := ret[0].(*models.PasswordResetToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetToken indicates an expected call of GetToken.
+func (mr *MockPasswordResetRepositoryMockRecorder) GetToken(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetToken", reflect.TypeOf((*MockPasswordResetRepository)(nil).GetToken), ctx, token)
 }
 
 // MockSpecialProjectRepository is a mock of SpecialProjectRepository interface.
@@ -879,6 +1018,21 @@ func (m *MockTxRepository) EXPECT() *MockTxRepositoryMockRecorder {
 	return m.recorder
 }
 
+// BeginTx mocks base method.
+func (m *MockTxRepository) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeginTx", ctx)
+	ret0, _ := ret[0].(*sqlx.Tx)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BeginTx indicates an expected call of BeginTx.
+func (mr *MockTxRepositoryMockRecorder) BeginTx(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTx", reflect.TypeOf((*MockTxRepository)(nil).BeginTx), ctx)
+}
+
 // RunToTx mocks base method.
 func (m *MockTxRepository) RunToTx(ctx context.Context, fn func(context.Context) error) error {
 	m.ctrl.T.Helper()
@@ -917,34 +1071,49 @@ func (m *MockResourcePageRepository) EXPECT() *MockResourcePageRepositoryMockRec
 	return m.recorder
 }
 
-// BeginTx mocks base method.
-func (m *MockResourcePageRepository) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
+// Clear mocks base method.
+func (m *MockResourcePageRepository) Clear(ctx context.Context, slug string) (*models.ResourcePage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BeginTx", ctx)
-	ret0, _ := ret[0].(*sqlx.Tx)
+	ret := m.ctrl.Call(m, "Clear", ctx, slug)
+	ret0, _ := ret[0].(*models.ResourcePage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// BeginTx indicates an expected call of BeginTx.
-func (mr *MockResourcePageRepositoryMockRecorder) BeginTx(ctx any) *gomock.Call {
+// Clear indicates an expected call of Clear.
+func (mr *MockResourcePageRepositoryMockRecorder) Clear(ctx, slug any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTx", reflect.TypeOf((*MockResourcePageRepository)(nil).BeginTx), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clear", reflect.TypeOf((*MockResourcePageRepository)(nil).Clear), ctx, slug)
 }
 
-// GetAllSummaries mocks base method.
-func (m *MockResourcePageRepository) GetAllSummaries(ctx context.Context) ([]*models.ResourcePage, error) {
+// DeleteLink mocks base method.
+func (m *MockResourcePageRepository) DeleteLink(ctx context.Context, slug, id string) (*models.ResourcePage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllSummaries", ctx)
-	ret0, _ := ret[0].([]*models.ResourcePage)
+	ret := m.ctrl.Call(m, "DeleteLink", ctx, slug, id)
+	ret0, _ := ret[0].(*models.ResourcePage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAllSummaries indicates an expected call of GetAllSummaries.
-func (mr *MockResourcePageRepositoryMockRecorder) GetAllSummaries(ctx any) *gomock.Call {
+// DeleteLink indicates an expected call of DeleteLink.
+func (mr *MockResourcePageRepositoryMockRecorder) DeleteLink(ctx, slug, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllSummaries", reflect.TypeOf((*MockResourcePageRepository)(nil).GetAllSummaries), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLink", reflect.TypeOf((*MockResourcePageRepository)(nil).DeleteLink), ctx, slug, id)
+}
+
+// GetAll mocks base method.
+func (m *MockResourcePageRepository) GetAll(ctx context.Context) ([]models.ResourcePage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAll", ctx)
+	ret0, _ := ret[0].([]models.ResourcePage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAll indicates an expected call of GetAll.
+func (mr *MockResourcePageRepositoryMockRecorder) GetAll(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockResourcePageRepository)(nil).GetAll), ctx)
 }
 
 // GetBySlug mocks base method.
@@ -962,33 +1131,19 @@ func (mr *MockResourcePageRepositoryMockRecorder) GetBySlug(ctx, slug any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBySlug", reflect.TypeOf((*MockResourcePageRepository)(nil).GetBySlug), ctx, slug)
 }
 
-// GetBySlugTx mocks base method.
-func (m *MockResourcePageRepository) GetBySlugTx(ctx context.Context, queryable repository.Queryable, slug string, lockForUpdate bool) (*models.ResourcePage, error) {
+// Update mocks base method.
+func (m *MockResourcePageRepository) Update(ctx context.Context, slug string, page models.ResourcePage) (*models.ResourcePage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBySlugTx", ctx, queryable, slug, lockForUpdate)
+	ret := m.ctrl.Call(m, "Update", ctx, slug, page)
 	ret0, _ := ret[0].(*models.ResourcePage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetBySlugTx indicates an expected call of GetBySlugTx.
-func (mr *MockResourcePageRepositoryMockRecorder) GetBySlugTx(ctx, queryable, slug, lockForUpdate any) *gomock.Call {
+// Update indicates an expected call of Update.
+func (mr *MockResourcePageRepositoryMockRecorder) Update(ctx, slug, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBySlugTx", reflect.TypeOf((*MockResourcePageRepository)(nil).GetBySlugTx), ctx, queryable, slug, lockForUpdate)
-}
-
-// UpdatePageContentAndLinksTx mocks base method.
-func (m *MockResourcePageRepository) UpdatePageContentAndLinksTx(ctx context.Context, tx *sqlx.Tx, slug, title, content string, links []models.ResourcePageLink) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdatePageContentAndLinksTx", ctx, tx, slug, title, content, links)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdatePageContentAndLinksTx indicates an expected call of UpdatePageContentAndLinksTx.
-func (mr *MockResourcePageRepositoryMockRecorder) UpdatePageContentAndLinksTx(ctx, tx, slug, title, content, links any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePageContentAndLinksTx", reflect.TypeOf((*MockResourcePageRepository)(nil).UpdatePageContentAndLinksTx), ctx, tx, slug, title, content, links)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockResourcePageRepository)(nil).Update), ctx, slug, page)
 }
 
 // MockQueryable is a mock of Queryable interface.

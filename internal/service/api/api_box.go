@@ -169,11 +169,6 @@ func (s *APIBoxService) Export(ctx context.Context, status string, format string
 	}
 
 	activeServices := make([]models.Service, 0)
-	// for _, svc := range services {
-	// 	// if !svc.DeletedAt.Valid {
-	// 	activeServices = append(activeServices, svc)
-	// 	// }
-	// }
 
 	activeServices = append(activeServices, services...)
 

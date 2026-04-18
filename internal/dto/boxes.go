@@ -6,7 +6,7 @@ import (
 )
 
 type BoxListQuery struct {
-	Status *string `form:"status" binding:"omitempty,oneof=active hidden draft processed"`
+	Status *string `form:"status" binding:"omitempty,oneof=active inactive"`
 	Search *string `form:"search"`
 	Limit  int     `form:"limit" binding:"omitempty,min=1,max=100"`
 	Offset int     `form:"offset" binding:"omitempty,min=0"`

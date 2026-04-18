@@ -29,20 +29,11 @@ CREATE TABLE IF NOT EXISTS staff (
     status user_status_type DEFAULT 'invited',
     department VARCHAR(255),
     position VARCHAR(255),
-    manager_id BIGSERIAL,
     invite_token TEXT,
-    permissions TEXT[] DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
  );
 
--- триггер обновления updated_at для таблицы staff
--- +goose StatementBegin
-CREATE TRIGGER staff_updated_at
-    BEFORE UPDATE ON staff
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at();
--- +goose StatementEnd
 
 -- +goose Down
 DROP INDEX IF EXISTS idx_staff_email_unique;
