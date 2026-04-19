@@ -27,6 +27,8 @@ type UserResponse struct {
 	Status       string    `json:"status"`
 	Department   string    `json:"department"`
 	Position     string    `json:"position"`
+	Supervisor   string    `db:"supervisor"`
+	Address      string    `db:"address"`
 	InviteToken  string    `json:"invite_token"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -46,6 +48,8 @@ type UserRow struct {
 	InviteToken  *string   `db:"invite_token"`
 	Department   *string   `db:"department"`
 	Position     *string   `db:"position"`
+	Supervisor   *string   `db:"supervisor"`
+	Address      *string   `db:"address"`
 	CreatedAt    time.Time `db:"created_at"`
 	UpdatedAt    time.Time `db:"updated_at"`
 }

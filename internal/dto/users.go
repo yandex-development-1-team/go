@@ -11,6 +11,8 @@ type UserCreateRequest struct {
 	Phone      *string `json:"phone,omitempty"`
 	Department *string `json:"department,omitempty"`
 	Position   *string `json:"position,omitempty"`
+	Supervisor *string `json:"supervisor,omitempty"`
+	Address    *string `json:"address,omitempty"`
 	SecondName *string `json:"second_name,omitempty"`
 }
 
@@ -23,6 +25,8 @@ type UserUpdateRequest struct {
 	Phone      *string `json:"phone_number,omitempty"`
 	Department *string `json:"department,omitempty"`
 	Position   *string `json:"position,omitempty"`
+	Supervisor *string `json:"supervisor,omitempty"`
+	Address    *string `json:"address,omitempty"`
 	SecondName *string `json:"second_name,omitempty"`
 }
 
@@ -71,6 +75,8 @@ type UserWithDetails struct {
 	Status        string             `json:"status"`
 	Department    string             `json:"department"`
 	Position      string             `json:"position"`
+	Supervisor    string             `json:"supervisor"`
+	Address       string             `json:"address"`
 	CreatedAt     time.Time          `json:"created_at"`
 	UpdatedAt     time.Time          `json:"updated_at"`
 	Bookings      []UserBookingItem  `json:"bookings"`

@@ -76,6 +76,7 @@ type UserHandler struct {
 }
 
 func NewUserHandler(svc *apiService.UserService) *UserHandler {
+
 	return &UserHandler{svc: svc}
 }
 
@@ -126,6 +127,5 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 		apierrors.WriteErrorGin(c, err)
 		return
 	}
-
 	c.JSON(http.StatusOK, user)
 }

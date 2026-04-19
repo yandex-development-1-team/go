@@ -160,6 +160,8 @@ func toUserResponse(user *models.UserAPI) dto.UserResponse {
 		Status:       user.Status,
 		Department:   user.Department,
 		Position:     user.Position,
+		Supervisor:   user.Supervisor,
+		Address:      user.Address,
 		InviteToken:  user.InviteToken,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,

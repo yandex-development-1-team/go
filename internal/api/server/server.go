@@ -10,7 +10,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 	"github.com/yandex-development-1-team/go/internal/config"
-	"github.com/yandex-development-1-team/go/internal/repository"
 	"github.com/yandex-development-1-team/go/internal/service"
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
@@ -23,8 +22,9 @@ type APIServices struct {
 	RecPageSvc        *service.ResourcePageService
 	UserSvc           *apiService.UserService
 	FileService       *apiService.FileService
-	ApplicationRepo   repository.ApplicationRepository
 	UsersAdmin        *apiService.UsersAdminService
+	ApplicationSvc    *apiService.ApplicationsService
+	BookingSvc        *apiService.BookingsService
 }
 
 type Server struct {
@@ -54,7 +54,7 @@ func New(cfg *config.Config, services *APIServices, authService *apiService.Auth
 	}
 }
 
-func (s *Server) RegisterRoutes() {
+func (s *Server) RegisterRoutes(yandexFormToken string) {
 	authHandler := handlers.NewAuthHandler(s.authService)
 	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
 	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
@@ -63,10 +63,11 @@ func (s *Server) RegisterRoutes() {
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
 	userHandler := handlers.NewUserHandler(s.services.UserSvc)
 	fileHandler := handlers.NewFileHandler(s.services.FileService)
-	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationRepo)
 	usersHandler := handlers.NewUsersHandler(s.services.UsersAdmin)
+	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationSvc, yandexFormToken)
+	bookingHamdler := handlers.NewBookingHandler(s.services.BookingSvc)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, usersHandler)
+	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, usersHandler, bookingHamdler)
 }
 
 func (s *Server) Run(cfg *config.Config) error {

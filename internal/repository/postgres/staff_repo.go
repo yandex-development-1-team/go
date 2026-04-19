@@ -16,8 +16,8 @@ import (
 
 const getUserByEmailQuery = `
     SELECT id, telegram_nick, first_name, last_name, second_name, email,
-		       phone_number, password_hash, role, status, invite_token, department,
-					 position, created_at, updated_at
+           phone_number, password_hash, role, status, invite_token, department,
+           position, supervisor, address, created_at, updated_at
     FROM staff
     WHERE email = $1`
 
@@ -29,39 +29,40 @@ const createUserQuery = `
 `
 
 const insertStaffAdminQuery = `
-	INSERT INTO staff (
-    	first_name, last_name, second_name, email,
-    	phone_number, password_hash, role, status,
-    	department, position, invite_token)
-	VALUES ($1, $2, $3, $4, $5, '', $6::user_role_type, $7::user_status_type,
-    	$8, $9, $10)
-	RETURNING id, telegram_nick, first_name, last_name, second_name, email,
-    	phone_number, role, status, invite_token, department, position, created_at, 
-				updated_at`
+    INSERT INTO staff (
+        first_name, last_name, second_name, email,
+        phone_number, password_hash, role, status,
+        department, position, invite_token, supervisor, address)
+    VALUES ($1, $2, $3, $4, $5, '', $6::user_role_type, $7::user_status_type,
+        $8, $9, $10, $11, $12)
+    RETURNING id, telegram_nick, first_name, last_name, second_name, email,
+        phone_number, role, status, invite_token, department, position,
+        supervisor, address, created_at, updated_at`
 
 const updateStaffQuery = `
-	UPDATE staff SET
-    	first_name   = COALESCE($2, first_name),
-    	last_name    = COALESCE($3, last_name),
-    	second_name  = COALESCE($4, second_name),
-    	email        = COALESCE($5, email),
-    	role         = COALESCE($6::user_role_type, role),
-		status       = COALESCE($7::user_status_type, status),
-    	phone_number = COALESCE($8, phone_number),
-    	department   = COALESCE($9, department),
-    	position     = COALESCE($10, position)
-		WHERE id = $1
-	RETURNING id, telegram_nick, first_name, last_name, second_name, email,
-		phone_number, role, status, invite_token, department, position, created_at,
-				updated_at
-`
+    UPDATE staff SET
+        first_name   = COALESCE($2, first_name),
+        last_name    = COALESCE($3, last_name),
+        second_name  = COALESCE($4, second_name),
+        email        = COALESCE($5, email),
+        role         = COALESCE($6::user_role_type, role),
+        status       = COALESCE($7::user_status_type, status),
+        phone_number = COALESCE($8, phone_number),
+        department   = COALESCE($9, department),
+        position     = COALESCE($10, position),
+        supervisor   = COALESCE($11, supervisor),
+        address      = COALESCE($12, address)
+    WHERE id = $1
+    RETURNING id, telegram_nick, first_name, last_name, second_name, email,
+        phone_number, role, status, invite_token, department, position,
+        supervisor, address, created_at, updated_at`
+
 const blockStaffQuery = `
-	UPDATE staff SET status = 'blocked': :user_status_type
-	WHERE id = $1
-	RETURNING id, telegram_nick, first_name, last_name, second_name, email,
-		phone_number, role, status, invite_token, department, position, created_at, 
-				updated_at
-`
+    UPDATE staff SET status = 'blocked'::user_status_type
+    WHERE id = $1
+    RETURNING id, telegram_nick, first_name, last_name, second_name, email,
+        phone_number, role, status, invite_token, department, position,
+        supervisor, address, created_at, updated_at`
 
 type StaffRepo struct {
 	db *sqlx.DB
@@ -122,6 +123,8 @@ func toUser(user *dto.UserRow) *models.UserAPI {
 		Department:   derefString(user.Department),
 		Position:     derefString(user.Position),
 		InviteToken:  derefString(user.InviteToken),
+		Supervisor:   derefString(user.Supervisor),
+		Address:      derefString(user.Address),
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
 	}
@@ -132,13 +135,6 @@ func derefString(s *string) string {
 		return ""
 	}
 	return *s
-}
-
-func derefBigNumbers(n *int64) int64 {
-	if n == nil {
-		return 0
-	}
-	return *n
 }
 
 func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit, offset int) ([]dto.UserListItem, int, error) {
@@ -220,10 +216,11 @@ func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit
 
 func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails, error) {
 	userQuery := `
-		SELECT id, telegram_nick, first_name, last_name, second_name, email,
-		       phone_number, role, status, department, position, created_at, updated_at
-		FROM staff
-		WHERE id = $1`
+    SELECT id, telegram_nick, first_name, last_name, second_name, email,
+           phone_number, role, status, department, position,
+           supervisor, address, created_at, updated_at
+    FROM staff
+    WHERE id = $1`
 
 	type userRow struct {
 		ID           int64        `db:"id"`
@@ -237,6 +234,8 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		Status       string       `db:"status"`
 		Department   *string      `db:"department"`
 		Position     *string      `db:"position"`
+		Supervisor   *string      `db:"supervisor"`
+		Address      *string      `db:"address"`
 		CreatedAt    sql.NullTime `db:"created_at"`
 		UpdatedAt    sql.NullTime `db:"updated_at"`
 	}
@@ -343,6 +342,8 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		Status:        user.Status,
 		Department:    derefString(user.Department),
 		Position:      derefString(user.Position),
+		Supervisor:    derefString(user.Supervisor),
+		Address:       derefString(user.Address),
 		CreatedAt:     user.CreatedAt.Time,
 		UpdatedAt:     user.UpdatedAt.Time,
 		Bookings:      bookings,
@@ -365,6 +366,8 @@ func (u *StaffRepo) CreateStaffByAdmin(ctx context.Context, req *models.StaffAdm
 		req.Department,
 		req.Position,
 		req.InviteToken,
+		req.Supervisor,
+		req.Address,
 	)
 	if err != nil {
 		var pqErr *pq.Error
@@ -390,6 +393,8 @@ func (u *StaffRepo) UpdateStaff(ctx context.Context, id int64, req *models.Staff
 		req.PhoneNumber,
 		req.Department,
 		req.Position,
+		req.Supervisor,
+		req.Address,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, models.ErrUserNotFound

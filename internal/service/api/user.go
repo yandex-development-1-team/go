@@ -66,6 +66,8 @@ func (s *UsersAdminService) Create(ctx context.Context, req dto.UserCreateReques
 		PhoneNumber: req.Phone,
 		Department:  req.Department,
 		Position:    req.Position,
+		Supervisor:  req.Supervisor,
+		Address:     req.Address,
 		InviteToken: generateInviteToken(),
 	}
 	return s.staffRepo.CreateStaffByAdmin(ctx, m)
@@ -82,6 +84,8 @@ func (s *UsersAdminService) Update(ctx context.Context, id int64, req dto.UserUp
 		PhoneNumber: req.Phone,
 		Department:  req.Department,
 		Position:    req.Position,
+		Supervisor:  req.Supervisor,
+		Address:     req.Address,
 	}
 	if u.Role != nil {
 		if err := validateRole(*u.Role); err != nil {
