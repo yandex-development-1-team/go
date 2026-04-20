@@ -150,6 +150,8 @@ func run() error {
 		RecPageSvc:        resourcePageService,
 		UserSvc:           userService,
 		FileService:       fileService,
+		ApplicationRepo:   applicationRepo,
+		MiddlewareRepo:    dbSqlx,
 		ApplicationSvc:    applicationSvc,
 		BookingSvc:        bookAPISvc,
 	}, apiAuthService)

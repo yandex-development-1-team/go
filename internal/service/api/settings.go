@@ -47,6 +47,16 @@ func (a SettingsService) PutSettings(ctx context.Context, reqService []models.Se
 	return updatedAt, nil
 }
 
+func (a SettingsService) PostSettings(ctx context.Context, reqService models.SettingsPermissions) error {
+	err := a.settingsRepo.PostSettings(ctx, reqService)
+	if err != nil {
+		logger.Error("failed to get settings from service", zap.Error(err))
+		return fmt.Errorf("failed to get settings from service: %w", err)
+	}
+
+	return nil
+}
+
 func convertRespDBToRespService(reqService []models.SettingRow) []models.Setting {
 	var respService []models.Setting
 

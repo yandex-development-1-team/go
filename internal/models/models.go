@@ -13,14 +13,29 @@ const (
 	PermBoxesEdit         = "boxes:edit"
 	PermBoxesDelete       = "boxes:delete"
 	PermSpecProjectView   = "specproject:view"
-	PermSpecPrijectEdit   = "specproject:edit"
+	PermSpecProjectEdit   = "specproject:edit"
 	PermSpecProjectDelete = "specproject:delete"
 	PermAnalyticsView     = "analytics:view"
 	PermAnalyticsDownload = "analytics:download"
-	PermEvents            = "events:yes"
 	PermAboutUs           = "aboutus:yes"
 	PermFAQ               = "faq:yes"
 )
+
+var MapPermissions = map[string]bool{
+	"bookings:view":      true,
+	"bookings:edit":      true,
+	"bookings:delete":    true,
+	"boxes:create":       true,
+	"boxes:edit":         true,
+	"boxes:delete":       true,
+	"specproject:view":   true,
+	"specproject:edit":   true,
+	"specproject:delete": true,
+	"analytics:view":     true,
+	"analytics:download": true,
+	"aboutus:yes":        true,
+	"faq:yes":            true,
+}
 
 var (
 	ErrRequestTimeout         = errors.New("request timeout")

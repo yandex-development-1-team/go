@@ -1,17 +1,30 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
+	"go.uber.org/zap"
 
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	service "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
-func Auth(jwtSecret []byte) gin.HandlerFunc {
+type Middleware struct {
+	client *sqlx.DB
+}
+
+func NewMiddlewareRepository(db *sqlx.DB) *Middleware {
+	return &Middleware{client: db}
+}
+
+func (m *Middleware) Auth(jwtSecret []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -71,6 +84,7 @@ func RequireAdmin() gin.HandlerFunc {
 		}
 
 		if role != service.RoleAdmin {
+			logger.Error("role is not admin")
 			c.JSON(http.StatusForbidden, gin.H{"error": models.ErrForbidden})
 			c.Abort()
 			return
@@ -78,4 +92,99 @@ func RequireAdmin() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func RequireManagersOrAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": models.ErrUnauthorized})
+			c.Abort()
+			return
+		}
+
+		if role == service.RoleUser {
+			c.JSON(http.StatusForbidden, gin.H{"error": models.ErrForbidden})
+			c.Abort()
+			return
+		}
+
+		err := validateRoleFromRequest(role)
+		if err != nil {
+			logger.Error("failed to validate role", zap.Error(err))
+			c.JSON(http.StatusForbidden, gin.H{"error": models.ErrForbidden})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func (m *Middleware) RoleVerification(permission string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		var permissionsForRole pq.StringArray
+		const getRolePermissionsQuery = `SELECT permissions FROM role_permissions WHERE role = $1`
+
+		role, exists := c.Get("role")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": models.ErrUnauthorized})
+			c.Abort()
+			return
+		}
+
+		err := validateRoleFromRequest(role)
+		if err != nil {
+			logger.Error("failed to validate role", zap.Error(err))
+			c.JSON(http.StatusForbidden, gin.H{"error": models.ErrForbidden})
+			c.Abort()
+			return
+		}
+
+		if role == service.RoleAdmin {
+			c.Next()
+			return
+		}
+
+		if role == service.RoleUser {
+			c.JSON(http.StatusForbidden, gin.H{"error": models.ErrForbidden})
+			c.Abort()
+			return
+		}
+
+		err = m.client.QueryRowContext(ctx, getRolePermissionsQuery, role).Scan(&permissionsForRole)
+		if err != nil {
+			logger.Error("failed to get permissions for role from db", zap.Error(err))
+			c.JSON(http.StatusForbidden, gin.H{"error": models.ErrForbidden})
+			c.Abort()
+			return
+		}
+
+		for _, permissionForRole := range permissionsForRole {
+			if permissionForRole == permission {
+				c.Next()
+				return
+			}
+		}
+
+		c.JSON(http.StatusForbidden, gin.H{"error": models.ErrForbidden})
+		c.Abort()
+	}
+}
+
+func validateRoleFromRequest(roleReq any) error {
+	exist := false
+
+	for _, role := range service.Roles {
+		if role == roleReq {
+			exist = true
+		}
+	}
+
+	if !exist {
+		return fmt.Errorf("wrong role")
+	}
+
+	return nil
 }

@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
 	"github.com/yandex-development-1-team/go/internal/config"
+	"github.com/yandex-development-1-team/go/internal/repository"
 	"github.com/yandex-development-1-team/go/internal/service"
 	apiService "github.com/yandex-development-1-team/go/internal/service/api"
 )
@@ -22,6 +25,8 @@ type APIServices struct {
 	RecPageSvc        *service.ResourcePageService
 	UserSvc           *apiService.UserService
 	FileService       *apiService.FileService
+	ApplicationRepo   repository.ApplicationRepository
+	MiddlewareRepo    *sqlx.DB
 	ApplicationSvc    *apiService.ApplicationsService
 	BookingSvc        *apiService.BookingsService
 }
@@ -65,7 +70,7 @@ func (s *Server) RegisterRoutes(yandexFormToken string) {
 	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationSvc, yandexFormToken)
 	bookingHamdler := handlers.NewBookingHandler(s.services.BookingSvc)
 
-	SetupRoutes(s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, bookingHamdler)
+	SetupRoutes(s.services.MiddlewareRepo, s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, bookingHamdler)
 }
 
 func (s *Server) Run(cfg *config.Config) error {

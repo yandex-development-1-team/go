@@ -11,14 +11,14 @@ import (
 	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
-	api "github.com/yandex-development-1-team/go/internal/service/api"
+	service "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
 type SettingsHandler struct {
-	service *api.SettingsService
+	service *service.SettingsService
 }
 
-func NewSettingsHandler(service *api.SettingsService) *SettingsHandler {
+func NewSettingsHandler(service *service.SettingsService) *SettingsHandler {
 	return &SettingsHandler{service: service}
 }
 
@@ -81,6 +81,78 @@ func (a SettingsHandler) Put(c *gin.Context) {
 		"message":    "successful",
 		"updated_at": updatedAt,
 	})
+}
+
+func (a SettingsHandler) Post(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var reqDTO dto.SettingsPermissionsRequest
+
+	if err := c.ShouldBindJSON(&reqDTO); err != nil {
+		logger.Error("failed to get settings permissions from post request", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": models.ErrValidation,
+		})
+		return
+	}
+
+	err := validateSettingsPermissionsFromRequest(reqDTO)
+	if err != nil {
+		logger.Error("request settings permissions is not validate")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": models.ErrValidation,
+		})
+		return
+	}
+
+	reqService := convertDTOToServiceFromSettingsPermissions(reqDTO)
+
+	err = a.service.PostSettings(ctx, reqService)
+	if err != nil {
+		logger.Error("failed to update settings permissions from handler", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": http.StatusInternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "successful",
+	})
+}
+
+func convertDTOToServiceFromSettingsPermissions(reqDTO dto.SettingsPermissionsRequest) models.SettingsPermissions {
+	return models.SettingsPermissions{
+		Role:        reqDTO.Role,
+		Permissions: reqDTO.Permissions,
+	}
+}
+
+func validateSettingsPermissionsFromRequest(req dto.SettingsPermissionsRequest) error {
+	exist := false
+
+	for _, role := range service.Roles {
+		if role == req.Role {
+			exist = true
+		}
+	}
+
+	if !exist {
+		return fmt.Errorf("wrong role")
+	}
+
+	if len(req.Permissions) == 0 {
+		return fmt.Errorf("permissions is empty")
+	}
+
+	for _, permission := range req.Permissions {
+		_, ok := models.MapPermissions[permission]
+		if !ok {
+			return fmt.Errorf("wrong permission: %s", permission)
+		}
+	}
+
+	return nil
 }
 
 func parseSettings(settings []models.Setting) (*dto.SettingsResponse, error) {

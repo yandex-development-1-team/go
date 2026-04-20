@@ -70,6 +70,7 @@ type SessionRepository interface {
 type SettingsRepository interface {
 	GetSettings(ctx context.Context) ([]models.SettingRow, error)
 	PutSettings(ctx context.Context, newSettings []models.Setting) (time.Time, error)
+	PostSettings(ctx context.Context, newSettings models.SettingsPermissions) error
 }
 
 type RefreshTokenRepository interface {

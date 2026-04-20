@@ -20,10 +20,13 @@ import (
 
 const (
 	RoleAdmin    = "admin"
-	RoleManager1 = "manager1"
-	RoleManager2 = "manager2"
-	RoleManager3 = "manager3"
+	RoleManager1 = "manager_1"
+	RoleManager2 = "manager_2"
+	RoleManager3 = "manager_3"
+	RoleUser     = "user"
 )
+
+var Roles = []string{RoleAdmin, RoleManager1, RoleManager2, RoleManager3}
 
 // HashPassword hashes a password for storage (e.g. when creating/updating users).
 func HashPassword(password string) (string, error) {
