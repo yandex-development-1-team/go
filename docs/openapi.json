@@ -2593,42 +2593,49 @@
         "type": "object",
         "properties": {
           "name": {
+            "description": "Название коробочного решения.",
             "type": "string"
           },
           "description": {
+            "description": "Описание.",
             "type": "string"
           },
           "rules": {
+            "description": "Правила участия.",
             "type": "string"
           },
-          "date": {
-            "type": "string",
-            "format": "date",
-            "description": "Дата проведения"
-          },
-          "time": {
-            "type": "string",
-            "description": "Время начала, формат HH:MM"
-          },
           "location": {
+            "description": "Место проведения.",
             "type": "string"
           },
           "price": {
-            "type": "integer"
+            "description": "Цена в рублях, больше 0.",
+            "type": "integer",
+            "minimum": 1
           },
           "image": {
+            "description": "URL изображения.",
             "type": "string",
             "format": "uri"
           },
-          "organizer": {
-            "type": "string"
-          },
           "status": {
+            "description": "Статус коробочного решения.",
             "type": "string",
             "enum": [
               "active",
               "inactive"
             ]
+          },
+          "organizer": {
+            "description": "Организатор.",
+            "type": "string"
+          },
+          "slots": {
+            "description": "Список доступных слотов.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoxAvailableSlot"
+            }
           }
         },
         "required": [
@@ -2680,6 +2687,32 @@
             ]
           }
         }
+      },
+      "BoxAvailableSlot": {
+        "description": "Доступный слот для бронирования коробочного решения.",
+        "type": "object",
+        "properties": {
+          "date": {
+            "description": "Дата слота в формате YYYY-MM-DD.",
+            "type": "string",
+            "format": "date"
+          },
+          "time_from": {
+            "description": "Время начала слота в формате HH:MM.",
+            "type": "string",
+            "example": "10:00"
+          },
+          "time_to": {
+            "description": "Время окончания слота в формате HH:MM.",
+            "type": "string",
+            "example": "12:00"
+          }
+        },
+        "required": [
+          "date",
+          "time_from",
+          "time_to"
+        ]
       },
       "Booking": {
         "type": "object",
