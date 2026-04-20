@@ -330,7 +330,7 @@ func TestBookingFormHandler_StartBooking(t *testing.T) {
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{MessageID: messageID + 1, Chat: &tgbotapi.Chat{ID: chatID}}, nil)
 
-	query := createTestCallbackQuery(chatID, userID, "book:1", messageID)
+	query := createTestCallbackQuery(chatID, userID, "book:1:TestName", messageID)
 
 	err := handler.Handle(ctx, query)
 	assert.NoError(t, err)
@@ -390,8 +390,8 @@ func TestBookingFormHandler_SelectDate(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	// Преобразуем время для callback (заменяем : на .)
 	startTimeCallback := formatTimeForCallback(startTime)
@@ -461,8 +461,8 @@ func TestBookingFormHandler_SelectUnavailableDate(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	unavailableDate := "2025-01-01"
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	startTimeCallback := formatTimeForCallback(startTime)
 	endTimeCallback := formatTimeForCallback(endTime)
@@ -515,8 +515,8 @@ func TestBookingFormHandler_EnterName_Success(t *testing.T) {
 	ensureUserExists(t, userID)
 
 	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	slot := models.BoxAvailableSlot{
 		Date:      targetDate,
@@ -585,8 +585,8 @@ func TestBookingFormHandler_EnterName_ValidationError(t *testing.T) {
 	ensureUserExists(t, userID)
 
 	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	slot := models.BoxAvailableSlot{
 		Date:      targetDate,
@@ -655,8 +655,8 @@ func TestBookingFormHandler_EnterOrganization_Success(t *testing.T) {
 	ensureUserExists(t, userID)
 
 	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	slot := models.BoxAvailableSlot{
 		Date:      targetDate,
@@ -725,8 +725,8 @@ func TestBookingFormHandler_EnterPosition_Success(t *testing.T) {
 	ensureUserExists(t, userID)
 
 	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	slot := models.BoxAvailableSlot{
 		Date:      targetDate,
@@ -796,8 +796,8 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 	ensureUserExists(t, userID)
 
 	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
-	startTime := "10:00:00"
-	endTime := "12:00:00"
+	startTime := "10:00"
+	endTime := "12:00"
 
 	slot := models.BoxAvailableSlot{
 		Date:      targetDate,
@@ -807,12 +807,14 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 	initialState := botService.BookingState{
 		UserID:            userID,
 		ServiceID:         1,
+		ServiceName:       "TestName",
 		SelectedSlot:      slot,
 		GuestName:         "Иванов Иван Иванович",
 		GuestOrganization: "ООО Ромашка",
 		GuestPosition:     "Директор",
 		Step:              botService.StepConfirmation,
-		CreatedAt:         time.Now(),
+		//OldMessageID:      0,
+		CreatedAt: time.Now(),
 	}
 
 	err := handlerSessionRepo.SaveSession(ctx, userID, botService.CallbackBookingPrefix, map[string]interface{}{
@@ -823,7 +825,7 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
-	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil).Times(2)
+	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil).Times(1)
 
 	query := createTestCallbackQuery(chatID, userID, "book:confirm", messageID)
 
@@ -832,8 +834,8 @@ func TestBookingFormHandler_Confirmation(t *testing.T) {
 
 	time.Sleep(200 * time.Millisecond)
 
-	session, _ := handlerSessionRepo.GetSession(ctx, userID)
-	assert.Nil(t, session)
+	updatedState := getBookingStateFromSession(ctx, t, userID)
+	require.NotNil(t, updatedState)
 
 	mockBot.AssertExpectations(t)
 }
@@ -892,7 +894,7 @@ func TestBookingFormHandler_BackToMainMenu(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	session, _ := handlerSessionRepo.GetSession(ctx, userID)
-	assert.Nil(t, session)
+	assert.NotNil(t, session)
 
 	mockBot.AssertExpectations(t)
 }

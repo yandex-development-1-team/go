@@ -28,7 +28,7 @@ var errMappings = []errMapping{
 	{models.ErrUserNotFound, http.StatusNotFound, "Пользователь не найден"},
 	{models.ErrBookingNotFound, http.StatusNotFound, "Заявка не найдена"},
 	{models.ErrSpecialProjectNotFound, http.StatusNotFound, "Спецпроект не найден"},
-	{models.ErrApplicationNotFound, http.StatusNotFound, "Заявка не найдена"},
+	{models.ErrApplicationNotFound, http.StatusNotFound, "Заявка на спец проект не найдена"},
 	{models.ErrSlotOccupied, http.StatusConflict, "Выбранный слот уже занят"},
 	{models.ErrInvalidInput, http.StatusBadRequest, "Некорректные данные"},
 	{models.ErrRequestCanceled, 499, "Запрос отменён"},

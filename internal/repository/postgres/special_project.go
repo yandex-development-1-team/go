@@ -20,29 +20,29 @@ type specialProjectRepo struct {
 
 const (
 	createSpecProjectQuery = `
-		INSERT INTO special_projects (title, description, image, is_active_in_bot)
-		VALUES (:title, :description, :image, :is_active_in_bot)
-		RETURNING id, title, description, image, is_active_in_bot, created_at, updated_at
+		INSERT INTO special_projects (title, description, image, status)
+		VALUES (:title, :description, :image, :status)
+		RETURNING id, title, description, image, status, created_at, updated_at
 	`
 	updateSpecProjectQuery = `
 		UPDATE special_projects 
-		SET title = $1, description = $2, image = $3, is_active_in_bot = $4
+		SET title = $1, description = $2, image = $3, status = $4
 		WHERE id = $5
-		RETURNING title, description, image, is_active_in_bot`
+		RETURNING title, description, image, status`
 
 	getSpecProjectByIDQuery = `SELECT * FROM special_projects WHERE id = $1`
 
-	listSpecProjectsBaseQuery      = `SELECT id, title, is_active_in_bot FROM special_projects WHERE 1=1`
+	listSpecProjectsBaseQuery      = `SELECT id, title, status FROM special_projects WHERE 1=1`
 	listSpecProjectsCountBaseQuery = `SELECT COUNT(1) FROM special_projects WHERE 1=1`
 
 	deactivateApplicationsQuery = `
         UPDATE applications 
-		SET status = 'cancelled', updated_at = now()
+		SET status = 'done', updated_at = now()
 		WHERE special_project_id = $1 AND status IN ('queue', 'in_progress')`
 
 	deleteSpecProjectQuery = `
     UPDATE special_projects 
-    SET deleted_at = now(), updated_at = now(), is_active_in_bot = false
+    SET deleted_at = now(), updated_at = now(), status = 'inactive'
     WHERE id = $1 AND deleted_at IS NULL`
 )
 
@@ -51,7 +51,13 @@ func NewSpecialProjectRepository(db *sqlx.DB) *specialProjectRepo {
 }
 
 func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
-	err := r.db.QueryRowxContext(ctx, createSpecProjectQuery, proj).StructScan(proj)
+	rows, err := r.db.NamedQueryContext(ctx, createSpecProjectQuery, proj)
+	if err == nil {
+		if rows.Next() {
+			err = rows.StructScan(proj)
+		}
+		_ = rows.Close()
+	}
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
 			return nil, fmt.Errorf("%w", models.ErrSpecialProjectAlreadyExists)
@@ -74,7 +80,7 @@ func (r *specialProjectRepo) GetByID(ctx context.Context, id int64) (*models.Spe
 	return &proj, nil
 }
 
-func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+func (r *specialProjectRepo) List(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 	// Base query selecting only required fields for the list endpoint
 	baseQuery := listSpecProjectsBaseQuery
 	baseCountQuery := listSpecProjectsCountBaseQuery
@@ -83,11 +89,11 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searc
 	countArgs := make(map[string]interface{})
 
 	// Apply status filter if provided
-	if statusFilter != nil {
-		baseQuery += " AND is_active_in_bot = :status"
-		baseCountQuery += " AND is_active_in_bot = :status"
-		args["status"] = *statusFilter
-		countArgs["status"] = *statusFilter
+	if statusFilter != "" {
+		baseQuery += " AND status = :status"
+		baseCountQuery += " AND status = :status"
+		args["status"] = statusFilter
+		countArgs["status"] = statusFilter
 	}
 
 	// Apply full-text search if query is provided
@@ -115,7 +121,8 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter *bool, searc
 
 	// Order results by creation date descending
 	baseQuery += " ORDER BY updated_at DESC LIMIT :limit OFFSET :offset"
-
+	args["limit"] = limit
+	args["offset"] = offset
 	// Prepare the named query
 	stmt, err := r.db.PrepareNamedContext(ctx, baseQuery)
 	if err != nil {
@@ -139,9 +146,9 @@ func (r *specialProjectRepo) Update(ctx context.Context, id int64, specialProjec
 		specialProject.Title,
 		specialProject.Description,
 		specialProject.Image,
-		specialProject.IsActiveInBot,
+		specialProject.Status,
 		id,
-	).Scan(&updatedSpecialProject.Title, &updatedSpecialProject.Description, &updatedSpecialProject.Image, &updatedSpecialProject.IsActiveInBot)
+	).Scan(&updatedSpecialProject.Title, &updatedSpecialProject.Description, &updatedSpecialProject.Image, &updatedSpecialProject.Status)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrSpecialProjectNotFound

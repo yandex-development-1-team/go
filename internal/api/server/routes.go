@@ -3,15 +3,14 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/yandex-development-1-team/go/internal/models"
 
 	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
+	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler) {
+func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler, bookingHandler *handlers.BookingHandler) {
 	middlewareRepo := middleware.NewMiddlewareRepository(client)
-
 	apiV1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(apiV1, authHandler)
@@ -27,9 +26,11 @@ func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHand
 			setupResourcesRoutes(protected, recPageHandler)
 			setupFileRoutes(protected, fileHandler)
 			setupApplicationRoutes(protected, applicationHandler, middlewareRepo)
+			setupBookingRoutes(protected, bookingHandler, middlewareRepo)
 		}
 		public := apiV1.Group("/public")
 		public.GET("/resources/:slug", recPageHandler.GetPublicBySlug)
+		public.POST("/applications/", applicationHandler.Create)
 	}
 }
 
@@ -51,6 +52,8 @@ func setupSpecialProjectRoutes(rg *gin.RouterGroup, h *handlers.SpecialProjectHa
 		sp.GET("/", middlewareRepo.RoleVerification(models.PermSpecProjectView), h.ListSpecialProjects)
 		sp.POST("/", middlewareRepo.RoleVerification(models.PermSpecProjectEdit), h.CreateSpecialProject)
 		sp.GET("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectView), h.GetSpecialProjectByID)
+		sp.PUT("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectEdit), h.UpdateSpecialProject)
+		sp.DELETE("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectDelete), h.DeleteSpecialProject)
 	}
 }
 
@@ -112,10 +115,21 @@ func setupFileRoutes(rg *gin.RouterGroup, h *handlers.FileHandler) {
 func setupApplicationRoutes(rg *gin.RouterGroup, h *handlers.ApplicationHandler, middlewareRepo *middleware.Middleware) {
 	applications := rg.Group("/applications")
 	{
-		applications.GET("/", middlewareRepo.RoleVerification(models.PermSpecProjectView), h.List)
+		applications.GET("/", middlewareRepo.RoleVerification(models.PermSpecProjectView), h.ApplicationsList)
 		applications.POST("/", middlewareRepo.RoleVerification(models.PermSpecProjectEdit), h.Create)
 		applications.GET("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectView), h.GetByID)
-		applications.PUT("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectEdit), h.Update)
-		applications.DELETE("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectDelete), h.Delete)
+		applications.PUT("/:id/status", middlewareRepo.RoleVerification(models.PermSpecProjectEdit), h.UpdateApplicationStatus)
+		applications.DELETE("/:id", middlewareRepo.RoleVerification(models.PermSpecProjectDelete), h.DeleteApplication)
+
+	}
+}
+
+func setupBookingRoutes(rg *gin.RouterGroup, h *handlers.BookingHandler, middlewareRepo *middleware.Middleware) {
+	bookings := rg.Group("/bookings")
+	{
+		bookings.GET("/", middlewareRepo.RoleVerification(models.PermBookingsView), h.BookingsList)
+		bookings.GET("/:id", middlewareRepo.RoleVerification(models.PermBookingsView), h.BookingsById)
+		bookings.PUT("/:id/status", middlewareRepo.RoleVerification(models.PermBookingsEdit), h.UpdateBookingStatus)
+		bookings.DELETE("/:id", middlewareRepo.RoleVerification(models.PermBookingsDelete), h.DeleteBooking)
 	}
 }

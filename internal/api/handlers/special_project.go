@@ -27,10 +27,10 @@ func toDomainFromCreate(req *dto.SpecialProjectCreateRequest) *models.SpecialPro
 		return nil
 	}
 	return &models.SpecialProject{
-		Title:         req.Title,
-		Description:   req.Description,
-		Image:         req.Image,
-		IsActiveInBot: req.IsActiveInBot,
+		Title:       req.Title,
+		Description: req.Description,
+		Image:       req.Image,
+		Status:      req.Status,
 	}
 }
 
@@ -39,13 +39,13 @@ func toSpecialProjectResponse(domain *models.SpecialProject) *dto.SpecialProject
 		return nil
 	}
 	return &dto.SpecialProjectResponse{
-		ID:            domain.ID,
-		Title:         domain.Title,
-		Description:   domain.Description,
-		Image:         domain.Image,
-		IsActiveInBot: domain.IsActiveInBot,
-		CreatedAt:     domain.CreatedAt,
-		UpdatedAt:     domain.UpdatedAt,
+		ID:          domain.ID,
+		Title:       domain.Title,
+		Description: domain.Description,
+		Image:       domain.Image,
+		Status:      domain.Status,
+		CreatedAt:   domain.CreatedAt,
+		UpdatedAt:   domain.UpdatedAt,
 	}
 }
 
@@ -56,9 +56,9 @@ func toItemList(domain []*models.SpecialProject) []dto.SpecialProjectListItem {
 	result := make([]dto.SpecialProjectListItem, 0, len(domain))
 	for _, item := range domain {
 		result = append(result, dto.SpecialProjectListItem{
-			ID:            item.ID,
-			Title:         item.Title,
-			IsActiveInBot: item.IsActiveInBot,
+			ID:     item.ID,
+			Title:  item.Title,
+			Status: item.Status,
 		})
 	}
 	return result
@@ -73,7 +73,7 @@ func (h *SpecialProjectHandler) CreateSpecialProject(c *gin.Context) {
 	proj := toDomainFromCreate(&req)
 	project, err := h.svc.Create(c.Request.Context(), proj)
 	if err != nil {
-		sendSpecialProjectErr(c, &proj.ID, err)
+		sendSpecialProjectErr(c, nil, err)
 		return
 	}
 	c.JSON(http.StatusCreated, toSpecialProjectResponse(project))

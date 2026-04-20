@@ -6,10 +6,11 @@ import (
 	"io"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
-	"go.uber.org/zap"
 )
 
 // BoxLister returns box solutions (services with box_solution=true) from storage.
@@ -168,11 +169,6 @@ func (s *APIBoxService) Export(ctx context.Context, status string, format string
 	}
 
 	activeServices := make([]models.Service, 0)
-	// for _, svc := range services {
-	// 	// if !svc.DeletedAt.Valid {
-	// 	activeServices = append(activeServices, svc)
-	// 	// }
-	// }
 
 	activeServices = append(activeServices, services...)
 

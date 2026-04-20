@@ -31,13 +31,16 @@ type BookingRepository interface {
 	GetAvailableSlots(ctx context.Context, serviceID int, date time.Time) ([]time.Time, error)
 	GetBookingsByUserID(ctx context.Context, userID int64) ([]models.Booking, error)
 	UpdateBookingStatus(ctx context.Context, bookingID int64, status string) error
+	GetBookingById(ctx context.Context, id int64) (*models.BookingAPI, error)
+	GetBookingsList(ctx context.Context, filter *models.ApplicationFilter) (*models.BookingList, error)
+	DeleteBooking(ctx context.Context, id int64) error
 }
 
 type ApplicationRepository interface {
-	CreateApplication(ctx context.Context, req *models.ApplicationCreateRequest) (*models.Application, error)
-	GetApplications(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error)
+	CreateApplication(ctx context.Context, req *models.Application) error
 	GetApplicationByID(ctx context.Context, id int64) (*models.Application, error)
-	UpdateApplication(ctx context.Context, id int64, req *models.ApplicationUpdateRequest) (*models.Application, error)
+	UpdateApplicationStatus(ctx context.Context, id int64, status string) error
+	ApplicationsList(ctx context.Context, filter *models.ApplicationFilter) (*models.ApplicationList, error)
 	DeleteApplication(ctx context.Context, id int64) error
 }
 
@@ -86,13 +89,14 @@ type PasswordResetRepository interface {
 type SpecialProjectRepository interface {
 	Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error)
 	GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error)
-	List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
+	List(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
 	Update(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error)
 	Delete(ctx context.Context, id int64) error
 }
 
 type TxRepository interface {
 	RunToTx(ctx context.Context, fn func(ctx context.Context) error) error
+	BeginTx(ctx context.Context) (*sqlx.Tx, error)
 }
 
 type ResourcePageRepository interface {

@@ -1,219 +1,210 @@
 package handlers
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/apierrors"
 	"github.com/yandex-development-1-team/go/internal/dto"
+	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
-	"github.com/yandex-development-1-team/go/internal/repository"
+	svcapi "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
 type ApplicationHandler struct {
-	repo repository.ApplicationRepository
+	svc   *svcapi.ApplicationsService
+	token string
 }
 
-func NewApplicationHandler(repo repository.ApplicationRepository) *ApplicationHandler {
-	return &ApplicationHandler{repo: repo}
+func NewApplicationHandler(svc *svcapi.ApplicationsService, token string) *ApplicationHandler {
+	return &ApplicationHandler{
+		svc:   svc,
+		token: token,
+	}
 }
 
 func (h *ApplicationHandler) Create(c *gin.Context) {
-	var req models.ApplicationCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверный формат запроса"})
+	token := c.GetHeader("X-Webhook-Token")
+	formAnswerID := c.GetHeader("X-Form-Answer-Id")
+	if formAnswerID == "" {
+		logger.Warn("create application: missing form answer id")
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.Abort()
 		return
 	}
 
-	if !req.Type.Valid() || !req.Source.Valid() || req.CustomerName == "" || req.ContactInfo == "" {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректные данные заявки"})
+	if token != h.token {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.Abort()
 		return
 	}
 
-	app, err := h.repo.CreateApplication(c.Request.Context(), &req)
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		apierrors.WriteErrorGin(c, err)
+		logger.Warn("failed to read body")
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		return
+	}
+	cleaned := strings.ReplaceAll(string(body), `\"`, `"`)
+
+	var payload dto.CreateApplicationRequest
+	if err := json.Unmarshal([]byte(cleaned), &payload); err != nil {
+		logger.Warn("create application bad request", zap.Error(err))
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, app)
-}
-
-func (h *ApplicationHandler) List(c *gin.Context) {
-	if c.Query("date_from") != "" || c.Query("date_to") != "" {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверные параметры запроса"})
-		return
+	app := &models.Application{
+		FormAnswerId: formAnswerID,
+		CustomerName: payload.Answer.Data.FirstName.Value + " " + payload.Answer.Data.LastName.Value,
+		ContactInfo:  payload.Answer.Data.Telegram.Value,
+		Description:  payload.Answer.Data.Description.Value,
 	}
 
-	var req dto.ApplicationListQuery
-	if err := c.ShouldBindQuery(&req); err != nil {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверные параметры запроса"})
-		return
-	}
-
-	limit, ok := parseLimit(c.Query("limit"))
-	if !ok {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверные параметры запроса"})
-		return
-	}
-
-	offset, ok := parseOffset(c.Query("offset"))
-	if !ok {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверные параметры запроса"})
-		return
-	}
-
-	managerID, ok := parseOptionalPositiveInt64(c.Query("manager_id"))
-	if !ok {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверные параметры запроса"})
-		return
-	}
-
-	filter := models.ApplicationFilter{
-		CustomerName: req.CustomerName,
-		Limit:        limit,
-		Offset:       offset,
-		ManagerID:    managerID,
-	}
-
-	if req.Status != nil {
-		status := models.ApplicationStatus(*req.Status)
-		filter.Status = &status
-	}
-
-	if req.Type != nil {
-		t := models.ApplicationType(*req.Type)
-		filter.Type = &t
-	}
-
-	items, total, err := h.repo.GetApplications(c.Request.Context(), filter)
+	err = h.svc.Create(c.Request.Context(), app)
 	if err != nil {
-		apierrors.WriteErrorGin(c, err)
-		return
-	}
-	if items == nil {
-		items = []models.Application{}
+		logger.Warn("create application error",
+			zap.Error(err))
 	}
 
-	c.JSON(http.StatusOK, dto.ApplicationListResponse{
-		Items: items,
-		Pagination: dto.Pagination{
-			Total:  total,
-			Limit:  limit,
-			Offset: offset,
-		},
-	})
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 func (h *ApplicationHandler) GetByID(c *gin.Context) {
-	id, ok := parsePositiveID(c.Param("id"))
-	if !ok {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный идентификатор заявки"})
+	var uri models.ApplicationURI
+	if err := c.ShouldBindUri(&uri); err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверные параметры запроса"})
 		return
 	}
 
-	app, err := h.repo.GetApplicationByID(c.Request.Context(), id)
+	app, err := h.svc.GetApplicationByID(c.Request.Context(), uri.ID)
 	if err != nil {
 		apierrors.WriteErrorGin(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, app)
+	c.JSON(http.StatusOK, toAppResponse(app))
 }
 
-func (h *ApplicationHandler) Update(c *gin.Context) {
-	id, ok := parsePositiveID(c.Param("id"))
-	if !ok {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный идентификатор заявки"})
+func (h *ApplicationHandler) UpdateApplicationStatus(c *gin.Context) {
+	idRaw := c.Param("id")
+	id, err := strconv.ParseInt(idRaw, 10, 64)
+	if err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный идентификатор"})
 		return
 	}
 
-	var req models.ApplicationUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверный формат запроса"})
-		return
-	}
-	if !req.HasUpdates() {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Нужно передать хотя бы одно поле для обновления"})
-		return
-	}
-	if req.Status != nil && !req.Status.Valid() {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный статус заявки"})
+	var status dto.ApplicationUpdateStatus
+	if err = c.ShouldBindJSON(&status); err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректные данные"})
 		return
 	}
 
-	app, err := h.repo.UpdateApplication(c.Request.Context(), id, &req)
+	app, err := h.svc.UpdateApplicationStatus(c.Request.Context(), id, status.Status)
 	if err != nil {
 		apierrors.WriteErrorGin(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, app)
+	c.JSON(http.StatusOK, toAppResponse(app))
 }
 
-func (h *ApplicationHandler) Delete(c *gin.Context) {
-	id, ok := parsePositiveID(c.Param("id"))
-	if !ok {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный идентификатор заявки"})
+func (h *ApplicationHandler) ApplicationsList(c *gin.Context) {
+	var query dto.ApplicationListRequest
+	if err := c.ShouldBindQuery(&query); err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректные данные"})
 		return
 	}
 
-	if err := h.repo.DeleteApplication(c.Request.Context(), id); err != nil {
+	list, err := h.svc.ApplicationsList(c.Request.Context(), toAppFilter(&query))
+	if err != nil {
 		apierrors.WriteErrorGin(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Заявка удалена"})
+	c.JSON(http.StatusOK, toApplicationListResponse(list))
 }
 
-func parsePositiveID(raw string) (int64, bool) {
-	id, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil || id <= 0 {
-		return 0, false
-	}
-	return id, true
-}
-
-func parseLimit(raw string) (int, bool) {
-	if raw == "" {
-		return dto.DefaultApplicationLimit, true
+func (h *ApplicationHandler) DeleteApplication(c *gin.Context) {
+	var uri models.ApplicationURI
+	if err := c.ShouldBindUri(&uri); err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Неверные параметры запроса"})
+		return
 	}
 
-	limit, err := strconv.Atoi(raw)
+	err := h.svc.DeleteApplication(c.Request.Context(), uri.ID)
 	if err != nil {
-		return 0, false
-	}
-	if limit < 1 || limit > dto.MaxApplicationLimit {
-		return 0, false
+		apierrors.WriteErrorGin(c, err)
+		return
 	}
 
-	return limit, true
+	c.Status(http.StatusNoContent)
 }
 
-func parseOffset(raw string) (int, bool) {
-	if raw == "" {
-		return 0, true
+func toApplicationListResponse(result *models.ApplicationList) dto.ApplicationListResponse {
+	items := make([]dto.ApplicationListItem, len(result.Items))
+	for i, app := range result.Items {
+		items[i] = dto.ApplicationListItem{
+			ID:           app.ID,
+			Status:       app.Status,
+			ManagerID:    app.ManagerID,
+			ManagerName:  app.ManagerName,
+			CustomerName: app.CustomerName,
+			ContactInfo:  app.ContactInfo,
+			CreatedAt:    app.CreatedAt,
+		}
 	}
 
-	offset, err := strconv.Atoi(raw)
-	if err != nil || offset < 0 {
-		return 0, false
+	return dto.ApplicationListResponse{
+		Items: items,
+		Pagination: dto.Pagination{
+			Total:  result.Total,
+			Limit:  result.Limit,
+			Offset: result.Offset,
+		},
 	}
-
-	return offset, true
 }
 
-func parseOptionalPositiveInt64(raw string) (*int64, bool) {
-	if raw == "" {
-		return nil, true
+func toAppResponse(app *models.Application) *dto.Application {
+	return &dto.Application{
+		ID:           app.ID,
+		Status:       app.Status,
+		ManagerID:    app.ManagerID,
+		ManagerName:  app.ManagerName,
+		FormAnswerId: app.FormAnswerId,
+		CustomerName: app.CustomerName,
+		ContactInfo:  app.ContactInfo,
+		Description:  app.Description,
+		CreatedAt:    app.CreatedAt,
+		UpdatedAt:    app.UpdatedAt,
+	}
+}
+
+func toAppFilter(req *dto.ApplicationListRequest) *models.ApplicationFilter {
+	filter := &models.ApplicationFilter{
+		Limit:  req.Limit,
+		Offset: req.Offset,
 	}
 
-	id, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil || id <= 0 {
-		return nil, false
+	if filter.Limit == 0 {
+		filter.Limit = 20
 	}
 
-	return &id, true
+	if req.Status != nil {
+		filter.Status = *req.Status
+	}
+	if req.ManagerID != nil {
+		filter.ManagerID = *req.ManagerID
+	}
+	if req.CustomerName != nil {
+		filter.CustomerName = *req.CustomerName
+	}
+
+	return filter
 }

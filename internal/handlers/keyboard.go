@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	"github.com/yandex-development-1-team/go/internal/models"
 	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
@@ -22,11 +23,8 @@ const (
 // используется для определения значения serviceType
 const (
 	bookHandler      = "book"
-	privateButtons   = "private"
-	publicButtons    = "public"
 	backButtons      = "back"
 	BackButtonsTitle = "⬅️ Назад"
-	missingParameter = "no"
 )
 
 // KeyboardService генерирует клавиатуры для разных экранов
@@ -37,12 +35,12 @@ func NewKeyboardService() *KeyboardService {
 }
 
 // ServiceDetailKeyboard создаёт клавиатуру для детального просмотра услуги
-func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64) tgbotapi.InlineKeyboardMarkup {
+func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64, serviceName string) tgbotapi.InlineKeyboardMarkup {
 	var buttons [][]tgbotapi.InlineKeyboardButton
 
 	buttons = [][]tgbotapi.InlineKeyboardButton{
 		{
-			tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%d", bookHandler, serviceID)),
+			tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%d:%s", bookHandler, serviceID, serviceName)),
 		},
 	}
 
@@ -176,4 +174,14 @@ func (ks *KeyboardService) formatSlotButton(slot models.BoxAvailableSlot) string
 	timeStr := fmt.Sprintf("%s-%s", slot.StartTime, slot.EndTime)
 
 	return fmt.Sprintf("%s\n%s", dateStr, timeStr)
+}
+
+// CreateButton creates a button with 'text' and 'data'
+func (ks *KeyboardService) CreateButton(text string, data string) *tgbotapi.InlineKeyboardMarkup {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(text, data),
+		),
+	)
+	return &keyboard
 }

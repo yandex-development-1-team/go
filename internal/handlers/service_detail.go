@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -44,6 +46,8 @@ func (h *DetailHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) 
 	chatID := tg.Message.Chat.ID
 	callbackData := tg.Data
 
+	delTgMessage(h.bot, tg.Message)
+
 	parts := strings.Split(callbackData, ":")
 	back, err := h.checkBack(ctx, parts, tg)
 	if err != nil {
@@ -73,8 +77,9 @@ func (h *DetailHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) 
 
 	serviceName := h.service.GetDisplayName(service)
 	messageText := h.buildServiceMessage(service, serviceName)
-	keyboard := h.keyboard.ServiceDetailKeyboard(service.ID)
-	if err := h.sendMessage(chatID, messageText, keyboard); err != nil {
+
+	keyboard := h.keyboard.ServiceDetailKeyboard(service.ID, serviceName)
+	if err := h.sendMessage(chatID, service.Image, messageText, keyboard); err != nil {
 		logger.Error("failed_to_send_service_detail",
 			zap.Int64("service_id", serviceID),
 			zap.Int64("user_id", userID),
@@ -106,10 +111,45 @@ func (h *DetailHandler) sendError(chatID int64, errorMsg string) error {
 }
 
 // sendMessage sends a message with an inline keyboard to the user
-func (h *DetailHandler) sendMessage(userID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) error {
-	msg := tgbotapi.NewMessage(userID, text)
-	msg.ReplyMarkup = keyboard
-	_, err := h.bot.Send(msg)
+func (h *DetailHandler) sendMessage(chatID int64, link *string, text string, keyboard tgbotapi.InlineKeyboardMarkup) error {
+	var err error
+	if link != nil {
+		logger.Info("link",
+			zap.String("addr", *link),
+		)
+
+		resp, err := http.Get(*link)
+		if err != nil {
+			logger.Error("failed to download", zap.Error(err))
+			return err
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		imgData, err := io.ReadAll(resp.Body)
+		if err != nil {
+			logger.Error("failed to read", zap.Error(err))
+			return err
+		}
+
+		photoConfig := tgbotapi.NewPhoto(chatID, tgbotapi.FileBytes{
+			Name:  "image.jpg",
+			Bytes: imgData,
+		})
+		photoConfig.Caption = text
+		photoConfig.ReplyMarkup = keyboard
+		_, err = h.bot.Send(photoConfig)
+		if err != nil {
+			return err
+		}
+	} else {
+		msg := tgbotapi.NewMessage(chatID, text)
+		msg.ReplyMarkup = keyboard
+		_, err = h.bot.Send(msg)
+		if err != nil {
+			return err
+		}
+	}
+
 	return err
 }
 

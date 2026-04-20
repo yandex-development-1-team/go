@@ -11,15 +11,14 @@ import (
 	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
-	api "github.com/yandex-development-1-team/go/internal/service/api"
 	service "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
 type SettingsHandler struct {
-	service *api.SettingsService
+	service *service.SettingsService
 }
 
-func NewSettingsHandler(service *api.SettingsService) *SettingsHandler {
+func NewSettingsHandler(service *service.SettingsService) *SettingsHandler {
 	return &SettingsHandler{service: service}
 }
 

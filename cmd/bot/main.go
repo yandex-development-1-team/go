@@ -112,11 +112,18 @@ func run() error {
 	bsService := service.NewBoxSolutionsService(boxSolutionRepo)
 	detailService := botService.NewDetailService(boxSolutionRepo)
 	fileService := apiService.NewFileService(fileRepo, fileStorage)
+	aboutService := botService.NewAboutService(resourcePageRepo)
+	guideService := botService.NewGuideService(resourcePageRepo)
+	exampleService := botService.NewExamplesSpService(resourcePageRepo)
+	linksService := botService.NewUsefulLinksService(resourcePageRepo)
+	reqSpService := botService.NewRequestSpService(resourcePageRepo)
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo, fileService)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
 	resourcePageService := service.NewResourcePageService(resourcePageRepo)
 	userService := apiService.NewUserService(staffRepo)
+	applicationSvc := apiService.NewApplicationsService(applicationRepo, txRepo)
+	bookAPISvc := apiService.NewBookingsService(bookRepo, txRepo)
 
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
@@ -145,6 +152,8 @@ func run() error {
 		FileService:       fileService,
 		ApplicationRepo:   applicationRepo,
 		MiddlewareRepo:    dbSqlx,
+		ApplicationSvc:    applicationSvc,
+		BookingSvc:        bookAPISvc,
 	}, apiAuthService)
 
 	if cfg.FileGC.Enabled {
@@ -163,7 +172,7 @@ func run() error {
 		)
 	}
 
-	apiServer.RegisterRoutes()
+	apiServer.RegisterRoutes(cfg.YandexForms.WebhookToken)
 
 	var wg sync.WaitGroup
 	go func() {
@@ -193,18 +202,31 @@ func run() error {
 		return fmt.Errorf("rate limiter: %w", err)
 	}
 
-	startHandler := botHandlers.NewStartHandler(tgBot, telegramUserRepo)
+	startHandler := botHandlers.NewStartHandler(tgBot.Api, telegramUserRepo, sessionRepo)
+	statusHandler := botHandlers.NewStatusHandler(tgBot.Api, bookRepo, sessionRepo)
 	bsHandler := botHandlers.NewBoxSolutions(tgBot.Api, bsService)
 	bcHandler := botHandlers.NewBookingFormHandler(tgBot.Api, bookService, startHandler, bsHandler, keyboard)
 	infoHandler := botHandlers.NewDetailHandler(detailService, tgBot.Api, startHandler, bsHandler, keyboard)
 
+	aboutHandler := botHandlers.NewAboutHandler(aboutService, tgBot.Api, startHandler, bsHandler, keyboard)
+	guideHandler := botHandlers.NewGuideHandler(guideService, tgBot.Api, startHandler, bsHandler, keyboard)
+	exampleHandler := botHandlers.NewExamplesSpHandler(exampleService, tgBot.Api, startHandler, bsHandler, keyboard)
+	linksHandler := botHandlers.NewUsefulLinksHandler(linksService, tgBot.Api, startHandler, bsHandler, keyboard)
+	reqSpHandler := botHandlers.NewRequestSpHandler(reqSpService, tgBot.Api, startHandler, bsHandler, keyboard)
+
 	callbackRouter := botHandlers.NewCallbackRouter(tgBot.Api)
-	msgRouter := botHandlers.NewMessageRouter(tgBot.Api, startHandler, sessionRepo, bcHandler, msgRL)
+	msgRouter := botHandlers.NewMessageRouter(tgBot.Api, startHandler, statusHandler, sessionRepo, bcHandler, msgRL)
 
 	callbackRouter.Register(botHandlers.CallbackBoxSolutions, bsHandler)
 	callbackRouter.Register(botService.CallbackBookingPrefix, bcHandler)
 	callbackRouter.Register(botHandlers.CallbackInfoPrefix, infoHandler)
 	callbackRouter.Register(botHandlers.BoxSolutionsButtonBackToMainMenu, startHandler)
+
+	callbackRouter.Register(botHandlers.CallbackAboutUs, aboutHandler)
+	callbackRouter.Register(botHandlers.CallbackVisitGuide, guideHandler)
+	callbackRouter.Register(botHandlers.CallbackProjectExamples, exampleHandler)
+	callbackRouter.Register(botHandlers.CallbackSupport, linksHandler)
+	callbackRouter.Register(botHandlers.CallbackSpecialProject, reqSpHandler)
 
 	handler := botHandlers.NewHandler(tgBot, msgRL, msgRouter, callbackRouter)
 

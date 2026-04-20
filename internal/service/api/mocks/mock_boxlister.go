@@ -13,8 +13,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	models "github.com/yandex-development-1-team/go/internal/models"
 	gomock "go.uber.org/mock/gomock"
+
+	models "github.com/yandex-development-1-team/go/internal/models"
 )
 
 // MockBoxLister is a mock of BoxLister interface.

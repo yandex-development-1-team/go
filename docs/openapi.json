@@ -721,6 +721,206 @@
         }
       }
     },
+    "/api/v1/bookings": {
+      "get": {
+        "summary": "Список заявок",
+        "tags": [
+          "bookings"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "confirmed",
+                "cancelled"
+              ]
+            }
+          },
+          {
+            "name": "manager_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "customer_name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список заявок",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BookingListItem"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "pagination"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}": {
+      "get": {
+        "summary": "Детали бронирования",
+        "tags": [
+          "bookings"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Бронирование",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Удалить бронирование",
+        "tags": [
+          "bookings"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Бронирование удалено"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/status": {
+      "put": {
+        "summary": "Сменить статус бронирования",
+        "tags": [
+          "bookings"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdPathParam"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "confirmed",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Статус обновлён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
     "/api/v1/events": {
       "get": {
         "summary": "Список событий/слотов",
@@ -1075,20 +1275,9 @@
             "schema": {
               "type": "string",
               "enum": [
-                "queue",
-                "in_progress",
-                "done"
-              ]
-            }
-          },
-          {
-            "name": "type",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "box",
-                "special_project"
+                "pending",
+                "confirmed",
+                "cancelled"
               ]
             }
           },
@@ -1154,39 +1343,11 @@
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          }
-        }
-      },
-      "post": {
-        "summary": "Создать заявку (из бота или вручную)",
-        "tags": [
-          "applications"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApplicationCreateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Заявка создана",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Application"
-                }
-              }
-            }
-          },
           "400": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
           }
         }
       }
@@ -1221,48 +1382,6 @@
           }
         }
       },
-      "put": {
-        "summary": "Обновить заявку",
-        "tags": [
-          "applications"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdPathParam"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApplicationUpdateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Заявка обновлена",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Application"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/ValidationError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      },
       "delete": {
         "summary": "Удалить заявку",
         "tags": [
@@ -1274,39 +1393,23 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Заявка удалена",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
+          "204": {
+            "description": "Заявка удалена"
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
           }
         }
       }
     },
-    "/api/v1/applications/{id}/create-box": {
-      "post": {
-        "summary": "Создать коробку из заявки",
+    "/api/v1/applications/{id}/status": {
+      "put": {
+        "summary": "Сменить статус заявки на специальное преложение",
         "tags": [
-          "applications",
-          "boxes"
+          "applications"
         ],
         "parameters": [
           {
@@ -1318,18 +1421,31 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateBoxFromApplicationRequest"
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "confirmed",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Коробка создана и связана с заявкой",
+            "description": "Статус обновлён",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreateBoxFromApplicationResponse"
+                  "$ref": "#/components/schemas/Application"
                 }
               }
             }
@@ -2542,6 +2658,133 @@
           }
         }
       },
+      "Booking": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "service_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "service_name": {
+            "type": "string"
+          },
+          "booking_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "booking_time": {
+            "type": "string",
+            "example": "15:04"
+          },
+          "guest_name": {
+            "type": "string"
+          },
+          "guest_organization": {
+            "type": "string"
+          },
+          "guest_contact": {
+            "type": "string"
+          },
+          "guest_position": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "cancelled"
+            ]
+          },
+          "manager_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "manager_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "service_id",
+          "service_name",
+          "booking_date",
+          "booking_time",
+          "guest_name",
+          "guest_organization",
+          "guest_contact",
+          "guest_position",
+          "status",
+          "manager_id",
+          "manager_name",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "BookingListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "cancelled"
+            ]
+          },
+          "guest_name": {
+            "type": "string"
+          },
+          "guest_contact": {
+            "type": "string"
+          },
+          "service_name": {
+            "type": "string"
+          },
+          "manager_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "manager_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "guest_name",
+          "guest_contact",
+          "service_name",
+          "manager_id",
+          "manager_name",
+          "created_at"
+        ]
+      },
       "Event": {
         "type": "object",
         "properties": {
@@ -2727,56 +2970,32 @@
             "type": "integer",
             "format": "int64"
           },
-          "type": {
+          "status": {
             "type": "string",
             "enum": [
-              "box",
-              "special_project"
+              "pending",
+              "confirmed",
+              "cancelled"
             ]
           },
-          "source": {
-            "type": "string",
-            "enum": [
-              "telegram_bot",
-              "manual"
-            ]
+          "manager_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "manager_name": {
+            "type": "string"
+          },
+          "form_answer_id": {
+            "type": "string"
           },
           "customer_name": {
             "type": "string"
           },
-          "project_name": {
-            "type": "string",
-            "nullable": true
-          },
           "contact_info": {
             "type": "string"
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queue",
-              "in_progress",
-              "done"
-            ]
-          },
-          "box_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "special_project_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "manager_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "manager_name": {
-            "type": "string",
-            "nullable": true
+          "description": {
+            "type": "string"
           },
           "created_at": {
             "type": "string",
@@ -2789,13 +3008,14 @@
         },
         "required": [
           "id",
-          "type",
-          "source",
           "customer_name",
           "contact_info",
           "status",
+          "manager_id",
+          "manager_name",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "form_answer_id"
         ]
       },
       "ApplicationCreateRequest": {
@@ -2851,75 +3071,40 @@
             "type": "integer",
             "format": "int64"
           },
-          "type": {
+          "status": {
             "type": "string",
             "enum": [
-              "box",
-              "special_project"
+              "pending",
+              "confirmed",
+              "cancelled"
             ]
           },
-          "source": {
-            "type": "string",
-            "enum": [
-              "telegram_bot",
-              "manual"
-            ]
+          "manager_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "manager_name": {
+            "type": "string"
           },
           "customer_name": {
             "type": "string"
           },
-          "project_name": {
-            "type": "string",
-            "nullable": true
-          },
           "contact_info": {
             "type": "string"
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queue",
-              "in_progress",
-              "done"
-            ]
-          },
-          "box_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "special_project_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "manager_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "manager_name": {
-            "type": "string",
-            "nullable": true
-          },
           "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
             "type": "string",
             "format": "date-time"
           }
         },
         "required": [
           "id",
-          "type",
-          "source",
           "customer_name",
           "contact_info",
           "status",
           "created_at",
-          "updated_at"
+          "manager_id",
+          "manager_name"
         ]
       },
       "ApplicationUpdateRequest": {
@@ -3135,18 +3320,8 @@
           "position": {
             "type": "string"
           },
-          "manager_id": {
-            "type": "integer",
-            "format": "int64"
-          },
           "invite_token": {
             "type": "string"
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "created_at": {
             "type": "string",
@@ -3231,16 +3406,10 @@
           },
           "status": {
             "type": "string"
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         }
       },
-      "UserWithDetails": {
+      "UserWithDetails":  {
         "allOf": [
           {
             "$ref": "#/components/schemas/User"

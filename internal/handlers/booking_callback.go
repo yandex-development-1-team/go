@@ -16,7 +16,7 @@ import (
 
 // stepStartBooking handles the step of starting the booking process
 func (h *BookingFormHandler) stepStartBooking(ctx context.Context, query *tgbotapi.CallbackQuery, parts []string) error {
-	if len(parts) < 2 {
+	if len(parts) < 3 {
 		return h.sendError(query.Message.Chat.ID, "неверный формат запроса")
 	}
 
@@ -24,7 +24,7 @@ func (h *BookingFormHandler) stepStartBooking(ctx context.Context, query *tgbota
 	if err != nil {
 		return err
 	}
-	return h.startBooking(ctx, query, serviceID)
+	return h.startBooking(ctx, query, serviceID, parts[2])
 }
 
 // stepMainMenu handles the step of going to the Main Menu
@@ -72,12 +72,12 @@ func (h *BookingFormHandler) startBooking(
 	ctx context.Context,
 	query *tgbotapi.CallbackQuery,
 	serviceID int64,
+	serviceName string,
 ) error {
 	userID := query.From.ID
 	chatID := query.Message.Chat.ID
-	msgID := query.Message.MessageID
 
-	state, err := h.service.CreateSession(ctx, userID, serviceID)
+	state, err := h.service.CreateSession(ctx, userID, serviceID, serviceName)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (h *BookingFormHandler) startBooking(
 		zap.Int64("user_id", userID),
 		zap.Int64("service_id", serviceID))
 
-	return h.renderDateSelection(ctx, state, chatID, msgID)
+	return h.renderDateSelection(ctx, state, chatID)
 }
 
 // renderDateSelection displays the date selection step with buttons
@@ -94,7 +94,6 @@ func (h *BookingFormHandler) renderDateSelection(
 	ctx context.Context,
 	state *botService.BookingState,
 	chatID int64,
-	msgID int,
 ) error {
 	slots, err := h.service.GetAvailableSlots(ctx, int64(state.ServiceID))
 	if err != nil {
@@ -104,25 +103,26 @@ func (h *BookingFormHandler) renderDateSelection(
 		return h.sendError(chatID, "Ошибка получения слотов дат")
 	}
 
+	var msg tgbotapi.MessageConfig
 	if len(slots) == 0 {
-		msg := tgbotapi.NewEditMessageText(state.UserID, msgID,
-			"На данный момент нет доступных слотов для бронирования",
-		)
+		msg = tgbotapi.NewMessage(chatID, "На данный момент нет доступных слотов для бронирования")
 		keyboard := h.keyboard.FormNavigationKeyboard(botService.StepReturnInBoxList)
 		msg.ReplyMarkup = &keyboard
-		if _, err := h.bot.Send(msg); err != nil {
-			return err
-		}
-		return nil
+	} else {
+		keyboard := h.keyboard.DatesKeyboard(slots)
+		messageText := "Выберите дату:\n"
+		msg = tgbotapi.NewMessage(chatID, messageText)
+		msg.ReplyMarkup = &keyboard
 	}
 
-	keyboard := h.keyboard.DatesKeyboard(slots)
-	messageText := "Выберите дату:\n"
-	msg := tgbotapi.NewEditMessageText(state.UserID, msgID, messageText)
-	msg.ParseMode = "Markdown"
-	msg.ReplyMarkup = &keyboard
+	sent, err := h.bot.Send(msg)
+	if err != nil {
+		return err
+	}
 
-	if _, err := h.bot.Send(msg); err != nil {
+	state.OldMessageID = &sent.MessageID
+	err = h.service.SaveSession(ctx, state.UserID, *state)
+	if err != nil {
 		return err
 	}
 	return nil
@@ -137,7 +137,6 @@ func (h *BookingFormHandler) dateSelection(
 ) error {
 	userID := query.From.ID
 	chatID := query.Message.Chat.ID
-	msgID := query.Message.MessageID
 
 	res, err := h.service.ProcessDateSelection(ctx, state, slot)
 	if err != nil {
@@ -147,7 +146,7 @@ func (h *BookingFormHandler) dateSelection(
 
 	if !res {
 		logger.Info("slot not available, restarting booking")
-		return h.startBooking(ctx, query, state.ServiceID)
+		return h.startBooking(ctx, query, state.ServiceID, state.ServiceName)
 	}
 
 	logger.Info("Date selected successfully",
@@ -156,7 +155,7 @@ func (h *BookingFormHandler) dateSelection(
 		zap.String("start_time", state.SelectedSlot.StartTime),
 		zap.String("end_time", state.SelectedSlot.EndTime))
 
-	return h.renderNameInput(chatID, msgID)
+	return h.renderNameInput(ctx, query, state)
 }
 
 // stepConfirmation processes the booking confirmation
@@ -176,6 +175,8 @@ func (h *BookingFormHandler) stepConfirmation(ctx context.Context, query *tgbota
 	if _, err := fmt.Fprintf(&messageText, "%d", bookingID); err != nil {
 		return fmt.Errorf("format booking id: %w", err)
 	}
+	messageText.WriteString("\nНазвание: ")
+	messageText.WriteString(state.ServiceName)
 	messageText.WriteString("\nДата: ")
 	messageText.WriteString(state.SelectedSlot.Date)
 	messageText.WriteString("\nВремя: ")
@@ -188,9 +189,15 @@ func (h *BookingFormHandler) stepConfirmation(ctx context.Context, query *tgbota
 
 	msg := tgbotapi.NewMessage(chatID, successMsg)
 	msg.ParseMode = "Markdown"
-	msg.ReplyMarkup = h.keyboard.MainMenuKeyboard()
 
-	if _, err := h.bot.Send(msg); err != nil {
+	sent, err := h.bot.Send(msg)
+	if err != nil {
+		return err
+	}
+
+	state.OldMessageID = &sent.MessageID
+	err = h.service.SaveSession(ctx, state.UserID, *state)
+	if err != nil {
 		return err
 	}
 

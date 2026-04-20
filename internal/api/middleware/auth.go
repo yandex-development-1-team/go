@@ -2,14 +2,14 @@ package middleware
 
 import (
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
-	"go.uber.org/zap"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
+	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"

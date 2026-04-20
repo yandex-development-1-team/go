@@ -4,32 +4,40 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/yandex-development-1-team/go/internal/ctxutil"
+	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/models"
 	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
 const (
-	advisoryLockQuery = `SELECT pg_advisory_xact_lock(hashtext(concat($1::text, $2::text, $3::text)))`
-
 	createBookingAtomicQuery = `
-		INSERT INTO bookings (
-			user_id, service_id, booking_date, booking_time, 
-			guest_name, guest_organization, guest_position, 
-			visit_type, tracker_ticket_id
-		) 
-		SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
-		WHERE NOT EXISTS (
-			SELECT 1 FROM bookings 
-			WHERE service_id = $2 
-			  AND booking_date = $3 
-			  AND booking_time IS NOT DISTINCT FROM $4 
-			  AND status = 'confirmed'
-		)
-		RETURNING id`
+	INSERT INTO bookings (
+    user_id, service_id, booking_date, booking_time, 
+    guest_name, guest_organization, guest_position, 
+    visit_type, tracker_ticket_id, manager_id
+	) 
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+    (
+        SELECT s.id
+        FROM staff s
+        LEFT JOIN applications a ON a.manager_id = s.id
+            AND a.status != 'cancelled'
+        LEFT JOIN bookings b ON b.manager_id = s.id
+            AND b.status != 'cancelled'
+        WHERE s.role IN ('manager_1', 'manager_2', 'manager_3', 'admin')
+        GROUP BY s.id
+        ORDER BY COUNT(a.id) + COUNT(b.id) ASC
+        LIMIT 1
+    )
+	)
+	RETURNING id`
 
 	getAvailableSlotsQuery = `
 		SELECT booking_time 
@@ -47,10 +55,54 @@ const (
 		WHERE user_id = $1 
 		ORDER BY booking_date DESC, booking_time DESC`
 
+	getBookingsByUserIDExtQuery = `
+		SELECT b.id, b.user_id, b.service_id, s.name as service_name,
+		       b.booking_date, b.booking_time, 
+		       b.guest_name, b.guest_organization, b.guest_position, 
+		       b.visit_type, b.status, b.tracker_ticket_id, 
+		       b.created_at, b.updated_at
+		FROM bookings b
+		LEFT JOIN services s ON b.service_id = s.id
+		WHERE b.user_id = $1 
+		ORDER BY b.booking_date ASC, b.booking_time ASC`
+
 	updateBookingStatusQuery = `
-		UPDATE bookings 
-		SET status = $1, updated_at = CURRENT_TIMESTAMP 
-		WHERE id = $2`
+	UPDATE bookings 
+	SET status = $1, updated_at = NOW()
+	WHERE id = $2 AND deleted_at IS NULL
+			`
+
+	getBookingById = `
+		SELECT b.id, b.user_id, b.service_id, b.booking_date, b.booking_time,
+			b.guest_name, b.guest_organization, b.guest_position,
+			b.status, b.created_at, b.updated_at,
+			COALESCE(b.manager_id, 0) AS manager_id,
+			COALESCE(s.first_name || ' ' || s.last_name, '') AS manager_name,
+			u.username AS guest_contact,
+			sv.name AS service_name
+		FROM bookings b
+		LEFT JOIN staff s ON s.id = b.manager_id
+		LEFT JOIN users u ON b.user_id = u.telegram_id
+		LEFT JOIN services sv ON sv.id = b.service_id
+		WHERE b.id = $1 AND b.deleted_at IS NULL
+	`
+	listBookingsBaseQuery = `
+		SELECT 
+				b.id, b.status, b.guest_name, b.created_at,
+				COALESCE(b.manager_id, 0) AS manager_id,
+				COALESCE(s.first_name || ' ' || s.last_name, '') AS manager_name,
+        sv.name AS service_name, u.username AS guest_contact,
+				COUNT(*) OVER() AS total
+		FROM bookings b
+		LEFT JOIN staff s ON s.id = b.manager_id
+		LEFT JOIN services sv ON sv.id = b.service_id
+    LEFT JOIN users u ON b.user_id = u.telegram_id
+		`
+
+	deleteBookings = `
+	UPDATE bookings 
+	SET deleted_at = NOW(), updated_at = NOW() 
+	WHERE id = $1`
 )
 
 type BookingRepo struct {
@@ -75,10 +127,6 @@ func (r *BookingRepo) CreateBooking(ctx context.Context, b *models.Booking) (int
 			return 0, err
 		}
 		defer func() { _ = tx.Rollback() }()
-
-		if _, err := tx.ExecContext(ctx, advisoryLockQuery, b.ServiceID, b.BookingDate, b.BookingTime); err != nil {
-			return 0, err
-		}
 
 		var id int64
 		err = tx.QueryRowContext(ctx, createBookingAtomicQuery,
@@ -136,29 +184,129 @@ func (r *BookingRepo) GetBookingsByUserID(ctx context.Context, userID int64) ([]
 	})
 }
 
-func (r *BookingRepo) UpdateBookingStatus(ctx context.Context, bookingID int64, status string) error {
-	const operation = "update_booking_status"
+func (r *BookingRepo) GetExtBookingsByUserID(ctx context.Context, userID int64) ([]models.BookingExt, error) {
+	const operation = "get_booking_by_id"
+	var bookings []models.BookingExt
 
-	return repository.WithDBMetrics(operation, func() error {
+	return repository.WithDBMetricsValue(operation, func() ([]models.BookingExt, error) {
 
-		if bookingID <= 0 || status == "" {
-			return models.ErrInvalidInput
-		}
-
-		res, err := r.db.ExecContext(ctx, updateBookingStatusQuery, status, bookingID)
+		err := r.db.SelectContext(ctx, &bookings, getBookingsByUserIDExtQuery, userID)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		affected, err := res.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if affected == 0 {
-			return models.ErrBookingNotFound
-		}
-		return nil
+		return bookings, nil
 	})
+}
+
+func (r *BookingRepo) GetBookingById(ctx context.Context, id int64) (*models.BookingAPI, error) {
+	var booking dto.BookingAPIRaw
+	err := sqlx.GetContext(ctx, r.getDB(ctx), &booking, getBookingById, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrBookingNotFound
+		}
+		return nil, err
+	}
+
+	return toBookingDomainModel(&booking), nil
+}
+
+func (r *BookingRepo) GetBookingsList(ctx context.Context, filter *models.ApplicationFilter) (*models.BookingList, error) {
+	conditions := make([]string, 0, 4)
+	args := make([]any, 0, 5)
+	i := 1
+
+	conditions = append(conditions, "b.deleted_at IS NULL")
+
+	if filter.Status != "" {
+		conditions = append(conditions, fmt.Sprintf("b.status = $%d", i))
+		args = append(args, filter.Status)
+		i++
+	}
+	if filter.ManagerID != 0 {
+		conditions = append(conditions, fmt.Sprintf("b.manager_id = $%d", i))
+		args = append(args, filter.ManagerID)
+		i++
+	}
+	if filter.CustomerName != "" {
+		conditions = append(conditions, fmt.Sprintf("b.guest_name ILIKE $%d", i))
+		args = append(args, "%"+filter.CustomerName+"%")
+		i++
+	}
+
+	where := ""
+	if len(conditions) > 0 {
+		where = " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	args = append(args, filter.Limit, filter.Offset)
+	dataSQL := listBookingsBaseQuery + where +
+		fmt.Sprintf(" ORDER BY b.created_at DESC LIMIT $%d OFFSET $%d", i, i+1)
+
+	var rows []dto.BookingRow
+	if err := r.db.SelectContext(ctx, &rows, dataSQL, args...); err != nil {
+		return nil, err
+	}
+
+	apps := make([]models.BookingAPI, len(rows))
+	for i, row := range rows {
+		apps[i] = models.BookingAPI{
+			ID:           row.ID,
+			Status:       row.Status,
+			ManagerID:    row.ManagerID,
+			ManagerName:  row.ManagerName,
+			GuestName:    row.CustomerName,
+			ServiceName:  row.ServiceName,
+			GuestContact: row.ContactInfo,
+			CreatedAt:    row.CreatedAt,
+		}
+	}
+
+	total := 0
+	if len(rows) > 0 {
+		total = rows[0].Total
+	}
+
+	return &models.BookingList{
+		Items:  apps,
+		Total:  total,
+		Limit:  filter.Limit,
+		Offset: filter.Offset,
+	}, nil
+}
+
+func (r *BookingRepo) UpdateBookingStatus(ctx context.Context, id int64, status string) error {
+	result, err := r.getDB(ctx).ExecContext(ctx, updateBookingStatusQuery, status, id)
+	if err != nil {
+		return fmt.Errorf("update booking status: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if rows == 0 {
+		return models.ErrBookingNotFound
+	}
+
+	return nil
+}
+
+func (r *BookingRepo) DeleteBooking(ctx context.Context, id int64) error {
+	result, err := r.db.ExecContext(ctx, deleteBookings, id)
+	if err != nil {
+		return fmt.Errorf("delete booking: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if rows == 0 {
+		return models.ErrBookingNotFound
+	}
+
+	return nil
 }
 
 func (r *BookingRepo) validateBooking(b *models.Booking) error {
@@ -166,4 +314,36 @@ func (r *BookingRepo) validateBooking(b *models.Booking) error {
 		return models.ErrInvalidInput
 	}
 	return nil
+}
+
+func toBookingDomainModel(b *dto.BookingAPIRaw) *models.BookingAPI {
+	bookingTime := ""
+	if b.BookingTime != nil {
+		bookingTime = b.BookingTime.Format("15:04")
+	}
+
+	return &models.BookingAPI{
+		ID:                b.ID,
+		UserID:            b.UserID,
+		ServiceID:         b.ServiceID,
+		ServiceName:       b.ServiceName,
+		BookingDate:       b.BookingDate.Format("2006-01-02"),
+		BookingTime:       bookingTime,
+		GuestName:         b.GuestName,
+		GuestOrganization: b.GuestOrganization,
+		GuestContact:      "@" + b.GuestContact,
+		GuestPosition:     b.GuestPosition,
+		Status:            b.Status,
+		ManagerID:         b.ManagerID,
+		ManagerName:       b.ManagerName,
+		CreatedAt:         b.CreatedAt,
+		UpdatedAt:         b.UpdatedAt,
+	}
+}
+
+func (r *BookingRepo) getDB(ctx context.Context) sqlx.ExtContext {
+	if tx, ok := ctxutil.TxFromContext(ctx); ok {
+		return tx
+	}
+	return r.db
 }

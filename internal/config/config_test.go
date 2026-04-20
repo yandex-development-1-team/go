@@ -8,6 +8,8 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
+	t.Setenv("YANDEX_FORMS_WEBHOOK_TOKEN", "test-webhook-token")
+
 	configYAML := filepath.Join("..", "..", "config", "config.yaml")
 	if _, err := os.Stat(configYAML); err != nil {
 		t.Skip("нет локального config/config.yaml:", err)

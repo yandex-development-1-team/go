@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/signintech/gopdf"
+
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 

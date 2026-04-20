@@ -3,8 +3,9 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"net/http"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/gin-gonic/gin"
 
@@ -26,6 +27,8 @@ type APIServices struct {
 	FileService       *apiService.FileService
 	ApplicationRepo   repository.ApplicationRepository
 	MiddlewareRepo    *sqlx.DB
+	ApplicationSvc    *apiService.ApplicationsService
+	BookingSvc        *apiService.BookingsService
 }
 
 type Server struct {
@@ -55,7 +58,7 @@ func New(cfg *config.Config, services *APIServices, authService *apiService.Auth
 	}
 }
 
-func (s *Server) RegisterRoutes() {
+func (s *Server) RegisterRoutes(yandexFormToken string) {
 	authHandler := handlers.NewAuthHandler(s.authService)
 	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
 	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
@@ -64,9 +67,10 @@ func (s *Server) RegisterRoutes() {
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
 	userHandler := handlers.NewUserHandler(s.services.UserSvc)
 	fileHandler := handlers.NewFileHandler(s.services.FileService)
-	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationRepo)
+	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationSvc, yandexFormToken)
+	bookingHamdler := handlers.NewBookingHandler(s.services.BookingSvc)
 
-	SetupRoutes(s.services.MiddlewareRepo, s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler)
+	SetupRoutes(s.services.MiddlewareRepo, s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, bookingHamdler)
 }
 
 func (s *Server) Run(cfg *config.Config) error {

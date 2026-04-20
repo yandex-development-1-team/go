@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
@@ -128,19 +129,24 @@ func TestFileService_Upload_Success(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+		return
 	}
 
 	if resp == nil {
 		t.Fatalf("expected response")
+		return
 	}
 	if resp.UUID == "" {
 		t.Fatalf("expected uuid in response")
+		return
 	}
 	if resp.URL == "" {
 		t.Fatalf("expected url in response")
+		return
 	}
 	if resp.Filename != "avatar.png" {
 		t.Fatalf("unexpected filename: %s", resp.Filename)
+		return
 	}
 }
 

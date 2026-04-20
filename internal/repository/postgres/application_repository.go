@@ -9,20 +9,54 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/yandex-development-1-team/go/internal/ctxutil"
+	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/models"
-	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
-const applicationSelectColumns = `
-	a.id, a.type, a.source, a.status, a.customer_name, a.contact_info,
-	a.project_name, a.box_id, a.special_project_id, a.manager_id,
-	NULLIF(TRIM(CONCAT_WS(' ', s.first_name, s.last_name)), '') AS manager_name,
-	a.created_at, a.updated_at`
+const createApplicationQuery = `
+INSERT INTO applications (manager_id, customer_name, contact_info, description, form_answer_id)
+VALUES (
+    (
+        SELECT s.id
+        FROM staff s
+        LEFT JOIN applications a ON a.manager_id = s.id
+            AND a.status != 'cancelled'
+        LEFT JOIN bookings b ON b.manager_id = s.id
+            AND b.status != 'cancelled'
+        WHERE s.role IN ('manager_1', 'manager_2', 'manager_3', 'admin')
+        GROUP BY s.id
+        ORDER BY COUNT(a.id) + COUNT(b.id) ASC
+        LIMIT 1
+    ),
+    $1, $2, $3, $4
+)
+	`
 
-const insertApplicationQuery = `
-	INSERT INTO applications (type, source, customer_name, contact_info, project_name, box_id, special_project_id)
-	VALUES ($1, $2, $3, $4, $5, $6, $7)
-	RETURNING id`
+const getApplicationQuery = `
+	SELECT a.id, a.status, a.form_answer_id, a.customer_name, a.contact_info,
+		a.description, a.created_at, a.updated_at, 
+		COALESCE(a.manager_id, 0) AS manager_id,
+		COALESCE(s.first_name || ' ' || s.last_name, '') AS manager_name
+	FROM applications a
+	LEFT JOIN staff s ON a.manager_id = s.id
+	WHERE a.id = $1
+`
+const updateApplicationsStatus = `
+UPDATE applications 
+SET status = $1, updated_at = NOW()
+WHERE id = $2
+		`
+const listApplicationsBaseQuery = `
+		SELECT 
+				a.id, a.status, a.customer_name, a.contact_info, a.created_at,
+				COALESCE(a.manager_id, 0) AS manager_id,
+				COALESCE(s.first_name || ' ' || s.last_name, '') AS manager_name,
+				COUNT(*) OVER() AS total
+		FROM applications a
+		LEFT JOIN staff s ON s.id = a.manager_id
+		`
+const deleteApplication = `DELETE FROM applications WHERE id=$1`
 
 type ApplicationRepo struct {
 	db *sqlx.DB
@@ -32,171 +66,158 @@ func NewApplicationRepository(db *sqlx.DB) *ApplicationRepo {
 	return &ApplicationRepo{db: db}
 }
 
-func (r *ApplicationRepo) CreateApplication(ctx context.Context, req *models.ApplicationCreateRequest) (*models.Application, error) {
-	const operation = "create_application"
-
-	if req == nil || req.CustomerName == "" || req.ContactInfo == "" || !req.Type.Valid() || !req.Source.Valid() {
-		return nil, models.ErrInvalidInput
-	}
-
-	var id int64
-	err := r.db.QueryRowContext(ctx, insertApplicationQuery,
-		req.Type, req.Source, req.CustomerName, req.ContactInfo,
-		req.ProjectName, req.BoxID, req.SpecialProjectID,
-	).Scan(&id)
+func (r *ApplicationRepo) CreateApplication(ctx context.Context, req *models.Application) error {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, repository.CheckDBError(operation, err)
+		return err
 	}
-
-	return r.GetApplicationByID(ctx, id)
-}
-
-func (r *ApplicationRepo) GetApplications(ctx context.Context, filter models.ApplicationFilter) ([]models.Application, int, error) {
-	const operation = "get_applications"
-
-	if filter.Limit <= 0 {
-		filter.Limit = 20
-	}
-	if filter.Offset < 0 {
-		filter.Offset = 0
-	}
-
-	where, args := buildApplicationWhere(filter)
-
-	var total int
-	if err := r.db.QueryRowContext(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM applications a %s`, where), args...).Scan(&total); err != nil {
-		return nil, 0, repository.CheckDBError(operation, err)
-	}
-
-	listQuery := fmt.Sprintf(`
-		SELECT %s
-		FROM applications a
-		LEFT JOIN staff s ON s.id = a.manager_id
-		%s
-		ORDER BY a.created_at DESC
-		LIMIT $%d OFFSET $%d`, applicationSelectColumns, where, len(args)+1, len(args)+2)
-
-	var apps []models.Application
-	if err := r.db.SelectContext(ctx, &apps, listQuery, append(args, filter.Limit, filter.Offset)...); err != nil {
-		return nil, 0, repository.CheckDBError(operation, err)
-	}
-	return apps, total, nil
-}
-
-const selectApplicationByIDQuery = `
-	SELECT ` + applicationSelectColumns + `
-	FROM applications a
-	LEFT JOIN staff s ON s.id = a.manager_id
-	WHERE a.id = $1`
-
-func (r *ApplicationRepo) GetApplicationByID(ctx context.Context, id int64) (*models.Application, error) {
-	const operation = "get_application_by_id"
-
-	var app models.Application
-	err := r.db.QueryRowxContext(ctx, selectApplicationByIDQuery, id).StructScan(&app)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrApplicationNotFound
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
 		}
-		return nil, repository.CheckDBError(operation, err)
-	}
-	return &app, nil
-}
+	}()
 
-func (r *ApplicationRepo) UpdateApplication(ctx context.Context, id int64, req *models.ApplicationUpdateRequest) (*models.Application, error) {
-	const operation = "update_application"
-
-	if req == nil || !req.HasUpdates() {
-		return nil, models.ErrInvalidInput
-	}
-
-	var setClauses []string
-	var args []interface{}
-
-	addSet := func(col string, val interface{}) {
-		args = append(args, val)
-		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", col, len(args)))
-	}
-
-	if req.Status != nil {
-		addSet("status", *req.Status)
-	}
-	if req.ContactInfo != nil {
-		addSet("contact_info", *req.ContactInfo)
-	}
-	if req.BoxID != nil {
-		addSet("box_id", *req.BoxID)
-	}
-	if req.SpecialProjectID != nil {
-		addSet("special_project_id", *req.SpecialProjectID)
-	}
-
-	args = append(args, id)
-	query := fmt.Sprintf(`
-		UPDATE applications
-		SET %s, updated_at = NOW()
-		WHERE id = $%d
-		RETURNING id`,
-		strings.Join(setClauses, ", "), len(args))
-
-	var updatedID int64
-	err := r.db.QueryRowContext(ctx, query, args...).Scan(&updatedID)
+	_, err = tx.ExecContext(ctx, createApplicationQuery,
+		req.CustomerName,
+		req.ContactInfo,
+		req.Description,
+		req.FormAnswerId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrApplicationNotFound
-		}
-		return nil, repository.CheckDBError(operation, err)
+		return fmt.Errorf("create application tx: %w", err)
 	}
-	return r.GetApplicationByID(ctx, updatedID)
-}
 
-func (r *ApplicationRepo) DeleteApplication(ctx context.Context, id int64) error {
-	const operation = "delete_application"
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("commit application tx: %w", err)
+	}
 
-	result, err := r.db.ExecContext(ctx, `DELETE FROM applications WHERE id = $1`, id)
-	if err != nil {
-		return repository.CheckDBError(operation, err)
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return repository.CheckDBError(operation, err)
-	}
-	if affected == 0 {
-		return models.ErrApplicationNotFound
-	}
 	return nil
 }
 
-func buildApplicationWhere(f models.ApplicationFilter) (string, []interface{}) {
-	var conditions []string
-	var args []interface{}
+func (r *ApplicationRepo) GetApplicationByID(ctx context.Context, id int64) (*models.Application, error) {
+	var app dto.ApplicationDB
+	err := sqlx.GetContext(ctx, r.getDB(ctx), &app, getApplicationQuery, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, models.ErrApplicationNotFound
+		}
+		return nil, err
+	}
+	return toDomainModel(&app), nil
+}
 
-	add := func(clause string, val interface{}) {
-		args = append(args, val)
-		conditions = append(conditions, fmt.Sprintf(clause, len(args)))
-	}
-
-	if f.Status != nil {
-		add("a.status = $%d", *f.Status)
-	}
-	if f.Type != nil {
-		add("a.type = $%d", *f.Type)
-	}
-	if f.ManagerID != nil {
-		add("a.manager_id = $%d", *f.ManagerID)
-	}
-	if f.CustomerName != "" {
-		add("a.customer_name ILIKE $%d", "%"+f.CustomerName+"%")
-	}
-	if f.DateFrom != nil {
-		add("a.created_at >= $%d", *f.DateFrom)
-	}
-	if f.DateTo != nil {
-		add("a.created_at <= $%d", *f.DateTo)
+func (r *ApplicationRepo) UpdateApplicationStatus(ctx context.Context, id int64, status string) error {
+	result, err := r.getDB(ctx).ExecContext(ctx, updateApplicationsStatus, status, id)
+	if err != nil {
+		return fmt.Errorf("update application status: %w", err)
 	}
 
-	if len(conditions) == 0 {
-		return "", args
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
 	}
-	return "WHERE " + strings.Join(conditions, " AND "), args
+	if rows == 0 {
+		return models.ErrApplicationNotFound
+	}
+
+	return nil
+}
+
+func (r *ApplicationRepo) ApplicationsList(ctx context.Context, filter *models.ApplicationFilter) (*models.ApplicationList, error) {
+	conditions := make([]string, 0, 4)
+	args := make([]any, 0, 5)
+	i := 1
+
+	if filter.Status != "" {
+		conditions = append(conditions, fmt.Sprintf("a.status = $%d", i))
+		args = append(args, filter.Status)
+		i++
+	}
+	if filter.ManagerID != 0 {
+		conditions = append(conditions, fmt.Sprintf("a.manager_id = $%d", i))
+		args = append(args, filter.ManagerID)
+		i++
+	}
+	if filter.CustomerName != "" {
+		conditions = append(conditions, fmt.Sprintf("a.customer_name ILIKE $%d", i))
+		args = append(args, "%"+filter.CustomerName+"%")
+		i++
+	}
+
+	where := ""
+	if len(conditions) > 0 {
+		where = " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	args = append(args, filter.Limit, filter.Offset)
+	dataSQL := listApplicationsBaseQuery + where +
+		fmt.Sprintf(" ORDER BY a.created_at DESC LIMIT $%d OFFSET $%d", i, i+1)
+
+	var rows []dto.ApplicationRow
+	if err := r.db.SelectContext(ctx, &rows, dataSQL, args...); err != nil {
+		return nil, fmt.Errorf("list applications: %w", err)
+	}
+
+	apps := make([]models.Application, len(rows))
+	for i, row := range rows {
+		apps[i] = models.Application{
+			ID:           row.ID,
+			Status:       row.Status,
+			ManagerID:    row.ManagerID,
+			ManagerName:  row.ManagerName,
+			CustomerName: row.CustomerName,
+			ContactInfo:  row.ContactInfo,
+			CreatedAt:    row.CreatedAt,
+		}
+	}
+
+	total := 0
+	if len(rows) > 0 {
+		total = rows[0].Total
+	}
+
+	return &models.ApplicationList{
+		Items:  apps,
+		Total:  total,
+		Limit:  filter.Limit,
+		Offset: filter.Offset,
+	}, nil
+}
+
+func (r *ApplicationRepo) DeleteApplication(ctx context.Context, id int64) error {
+	result, err := r.db.ExecContext(ctx, deleteApplication, id)
+	if err != nil {
+		return fmt.Errorf("delete application: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if rows == 0 {
+		return models.ErrApplicationNotFound
+	}
+
+	return nil
+}
+
+func toDomainModel(a *dto.ApplicationDB) *models.Application {
+	return &models.Application{
+		ID:           a.ID,
+		Status:       a.Status,
+		ManagerID:    a.ManagerID,
+		ManagerName:  a.ManagerName,
+		FormAnswerId: a.FormAnswerId,
+		CustomerName: a.CustomerName,
+		ContactInfo:  a.ContactInfo,
+		Description:  a.Description,
+		CreatedAt:    a.CreatedAt,
+		UpdatedAt:    a.UpdatedAt,
+	}
+}
+
+func (r *ApplicationRepo) getDB(ctx context.Context) sqlx.ExtContext {
+	if tx, ok := ctxutil.TxFromContext(ctx); ok {
+		return tx
+	}
+	return r.db
 }
