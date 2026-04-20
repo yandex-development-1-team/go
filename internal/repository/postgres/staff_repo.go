@@ -28,6 +28,65 @@ const createUserQuery = `
 						role, status,
 						created_at, updated_at
 `
+const getDashboardOverview = `
+	WITH combined AS (
+		SELECT status::TEXT FROM applications
+		WHERE deleted_at IS NULL
+		UNION ALL
+		SELECT status::TEXT FROM bookings
+		WHERE deleted_at IS NULL
+	)
+	SELECT
+		COUNT(*) FILTER (WHERE status = 'pending')   AS new_applications,
+		COUNT(*) FILTER (WHERE status = 'confirmed') AS in_progress_applications
+	FROM combined;`
+
+const getDashboardManagerStats = `
+	WITH combined AS (
+    SELECT status::TEXT, manager_id FROM applications
+    WHERE deleted_at IS NULL
+    UNION ALL
+    SELECT status::TEXT, manager_id FROM bookings
+    WHERE deleted_at IS NULL
+	)
+	SELECT
+			COUNT(*) FILTER (WHERE status = 'confirmed') AS in_progress,
+			COUNT(*) FILTER (WHERE status = 'cancelled') AS processed
+	FROM combined
+	WHERE manager_id = $1;`
+
+const listOfShortApplications = `
+		WITH combined AS (
+			SELECT
+					a.contact_info       AS tg_account,
+					a.customer_name,
+					'Спецпроект'         AS service_type,
+					'Спецпроект'         AS service_name,
+					a.status::TEXT,
+					a.manager_id,
+					a.created_at
+			FROM applications a
+			WHERE a.deleted_at IS NULL
+
+			UNION ALL
+
+			SELECT
+					'@' || u.username    AS tg_account,
+					b.guest_name         AS customer_name,
+					'Коробочное решение' AS service_type,
+					s.name               AS service_name,
+					b.status::TEXT,
+					b.manager_id,
+					b.created_at
+			FROM bookings b
+			JOIN users u ON u.telegram_id = b.user_id
+			JOIN services s ON s.id = b.service_id
+			WHERE b.deleted_at IS NULL
+	)
+	SELECT tg_account, customer_name, service_type, service_name, status, created_at
+	FROM combined
+	WHERE manager_id = $1 AND status != 'cancelled'
+	ORDER BY created_at DESC;`
 
 type StaffRepo struct {
 	db *sqlx.DB
@@ -307,5 +366,31 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		Bookings:      bookings,
 		VisitHistory:  visitHistory,
 		FavoriteBoxes: favoriteBoxes,
+	}, nil
+}
+
+func (u *StaffRepo) GetDashboard(ctx context.Context, managerId int64) (*dto.DashboardResponse, error) {
+	var overview dto.DashboardOverview
+	err := u.db.GetContext(ctx, &overview, getDashboardOverview)
+	if err != nil {
+		return nil, err
+	}
+
+	var managerStats dto.DashboardManagerStats
+	err = u.db.GetContext(ctx, &managerStats, getDashboardManagerStats, managerId)
+	if err != nil {
+		return nil, err
+	}
+
+	applicationShort := make([]dto.ApplicationShort, 0)
+	err = u.db.SelectContext(ctx, &applicationShort, listOfShortApplications, managerId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.DashboardResponse{
+		Overview:     overview,
+		ManagerStats: managerStats,
+		Applications: applicationShort,
 	}, nil
 }
