@@ -8,7 +8,7 @@
   "paths": {
     "/api/v1/dashboard": {
       "get": {
-        "summary": "Дашборд менеджера",
+        "summary": "Главная страница",
         "tags": [
           "dashboard"
         ],
