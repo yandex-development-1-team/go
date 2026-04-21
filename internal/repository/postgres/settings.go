@@ -7,12 +7,11 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"go.uber.org/zap"
+
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
-	"go.uber.org/zap"
 )
-
-//const getSettingsQuery = `SELECT key, value, category FROM settings`
 
 type SettingsRep struct {
 	client *sqlx.DB
@@ -90,6 +89,8 @@ func (r *SettingsRep) PostSettings(ctx context.Context, newSettings models.Setti
 	return err
 }
 
+//const getSettingsQuery = `SELECT key, value, category FROM settings`
+//
 //func (r *SettingsRep) GetSettings(ctx context.Context) ([]models.SettingRow, error) {
 //	var settings []models.SettingRow
 //	err := r.client.SelectContext(ctx, &settings, getSettingsQuery)
