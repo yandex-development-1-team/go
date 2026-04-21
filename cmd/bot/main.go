@@ -117,7 +117,7 @@ func run() error {
 	exampleService := botService.NewExamplesSpService(resourcePageRepo)
 	linksService := botService.NewUsefulLinksService(resourcePageRepo)
 	reqSpService := botService.NewRequestSpService(resourcePageRepo)
-	boxService := apiService.NewAPIBoxService(boxSolutionRepo, fileService)
+	boxService := apiService.NewAPIBoxService(boxSolutionRepo, fileService, txRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
 	resourcePageService := service.NewResourcePageService(resourcePageRepo)
