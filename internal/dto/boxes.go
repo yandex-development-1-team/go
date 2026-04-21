@@ -92,7 +92,7 @@ type BoxUpdateRequest struct {
 	Location    *string            `json:"location"      binding:"omitempty,max=255"`
 	Price       *int               `json:"price"         binding:"omitempty,min=0"`
 	Image       *string            `json:"image"         binding:"omitempty,max=500"`
-	Status      *string            `json:"status"        binding:"required,oneof=active inactive"`
+	Status      *string            `json:"status"        binding:"omitempty,oneof=active inactive"`
 	Organizer   *string            `json:"organizer"     binding:"omitempty,max=255"`
 }
 
