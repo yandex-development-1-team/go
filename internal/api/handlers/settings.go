@@ -2,14 +2,14 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 	service "github.com/yandex-development-1-team/go/internal/service/api"
+	"go.uber.org/zap"
 )
 
 type SettingsHandler struct {

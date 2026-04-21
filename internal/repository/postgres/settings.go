@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/yandex-development-1-team/go/internal/logger"
@@ -11,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const getSettingsQuery = `SELECT key, value, category FROM settings`
+//const getSettingsQuery = `SELECT key, value, category FROM settings`
 
 type SettingsRep struct {
 	client *sqlx.DB
