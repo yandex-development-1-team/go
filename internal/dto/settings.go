@@ -1,5 +1,15 @@
 package dto
 
+type SettingsFormMessages struct {
+	WelcomeMessage          string `json:"welcome_message"`
+	RecordConfirmation      string `json:"record_confirmation"`
+	EventReminderForWeek    string `json:"event_reminder_for_week"`
+	EventReminderFor24Hours string `json:"event_reminder_for_24_hours"`
+	CancellationMessage     string `json:"cancellation_message"`
+	ThanksMessage           string `json:"thanks_message"`
+	SystemErrMessage        string `json:"system_err_message"`
+}
+
 type SettingsResponse struct {
 	Notifications Notifications `json:"notifications,omitempty"`
 	Booking       Booking       `json:"booking"`

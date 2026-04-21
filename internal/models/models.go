@@ -15,8 +15,12 @@ const (
 	PermSpecProjectView   = "specproject:view"
 	PermSpecProjectEdit   = "specproject:edit"
 	PermSpecProjectDelete = "specproject:delete"
+	PresentationView      = "presentation:view"
+	PresentationEdit      = "presentation:edit"
+	PresentationDelete    = "presentation:delete"
 	PermAnalyticsView     = "analytics:view"
 	PermAnalyticsDownload = "analytics:download"
+	PermPoster            = "poster:yes"
 	PermAboutUs           = "aboutus:yes"
 	PermFAQ               = "faq:yes"
 )
