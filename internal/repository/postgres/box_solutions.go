@@ -29,12 +29,10 @@ func NewBoxSolutionRepo(db *sqlx.DB) *BoxSolutionRepo {
 const getBoxServicesQuery = `
 	SELECT
 		s.id, s.name, s.slug, s.description, s.rules, s.location, s.price, s.image,
-		s.status, s.organizer, s.created_at, s.updated_at,
-		a.slot_date, a.start_time, a.end_time
+		s.status, s.organizer, s.created_at, s.updated_at
 	FROM services s
-	LEFT JOIN service_available_slots a ON s.id = a.service_id
-	WHERE s.deleted_at IS NULL
-	ORDER BY s.id, a.slot_date, a.start_time`
+	WHERE s.deleted_at IS NULL AND s.status = 'active'
+	ORDER BY s.id`
 
 const getServiceByIDQuery = `
 	SELECT
@@ -284,54 +282,88 @@ func nullStringToString(ns sql.NullString) string {
 
 // GetServices gets a list of all active services (boxed solutions)
 func (r *BoxSolutionRepo) GetServices(ctx context.Context, telegramID int64) ([]models.Service, error) {
-	var rows []dto.BoxRaw
-	err := r.db.SelectContext(ctx, &rows, getBoxServicesQuery)
+	type ServiceRaw struct {
+		ID          int64          `db:"id"`
+		Name        string         `db:"name"`
+		Slug        string         `db:"slug"`
+		Description sql.NullString `db:"description"`
+		Rules       sql.NullString `db:"rules"`
+		Location    sql.NullString `db:"location"`
+		Price       int            `db:"price"`
+		Image       *string        `db:"image"`
+		Status      string         `db:"status"`
+		Organizer   sql.NullString `db:"organizer"`
+		CreatedAt   time.Time      `db:"created_at"`
+		UpdatedAt   time.Time      `db:"updated_at"`
+	}
+
+	var serviceRows []ServiceRaw
+	err := r.db.SelectContext(ctx, &serviceRows, getBoxServicesQuery)
 	if err != nil {
-		logger.Error("failed to get box solutions from db", zap.Int64("chat_id", telegramID), zap.Error(err))
+		logger.Error("failed to get services from db", zap.Int64("chat_id", telegramID), zap.Error(err))
 		return nil, err
 	}
-	if len(rows) == 0 {
+
+	if len(serviceRows) == 0 {
 		return []models.Service{}, nil
 	}
 
-	servicesMap := make(map[int64]*models.Service)
+	serviceIDs := make([]int64, len(serviceRows))
+	for i, row := range serviceRows {
+		serviceIDs[i] = row.ID
+	}
 
-	for _, row := range rows {
-		service, exists := servicesMap[row.ID]
-		if !exists {
-			service = &models.Service{
-				ID:                row.ID,
-				Name:              row.Name,
-				Slug:              row.Slug,
-				Description:       derefString(row.Description),
-				Rules:             derefString(row.Rules),
-				Location:          derefString(row.Location),
-				Price:             row.Price,
-				Image:             row.Image,
-				Status:            row.Status,
-				Organizer:         derefString(row.Organizer),
-				CreatedAt:         row.CreatedAt,
-				UpdatedAt:         row.UpdatedAt,
-				BoxAvailableSlots: []models.BoxAvailableSlot{},
-			}
-			servicesMap[row.ID] = service
-		}
+	slotQuery := `
+        SELECT service_id, slot_date, start_time, end_time
+        FROM service_available_slots
+        WHERE service_id = ANY($1)
+        ORDER BY service_id, slot_date, start_time
+    `
 
-		if row.SlotDate.Valid {
-			service.BoxAvailableSlots = append(service.BoxAvailableSlots, models.BoxAvailableSlot{
-				Date:      row.SlotDate.Time.Format("2006-01-02"),
-				StartTime: row.StartTime.Time.Format("15:04"),
-				EndTime:   row.EndTime.Time.Format("15:04"),
+	var slots []struct {
+		ServiceID int64        `db:"service_id"`
+		SlotDate  sql.NullTime `db:"slot_date"`
+		StartTime sql.NullTime `db:"start_time"`
+		EndTime   sql.NullTime `db:"end_time"`
+	}
+
+	err = r.db.SelectContext(ctx, &slots, slotQuery, serviceIDs)
+	if err != nil {
+		logger.Error("failed to get slots for services", zap.Int64("chat_id", telegramID), zap.Error(err))
+	}
+
+	slotsMap := make(map[int64][]models.BoxAvailableSlot)
+	for _, slot := range slots {
+		if slot.SlotDate.Valid {
+			slotsMap[slot.ServiceID] = append(slotsMap[slot.ServiceID], models.BoxAvailableSlot{
+				Date:      slot.SlotDate.Time.Format("2006-01-02"),
+				StartTime: slot.StartTime.Time.Format("15:04"),
+				EndTime:   slot.EndTime.Time.Format("15:04"),
 			})
 		}
 	}
 
-	services := make([]models.Service, 0, len(servicesMap))
-	for _, service := range servicesMap {
-		services = append(services, *service)
+	items := make([]models.Service, 0, len(serviceRows))
+	for _, row := range serviceRows {
+		svc := models.Service{
+			ID:                row.ID,
+			Name:              row.Name,
+			Slug:              row.Slug,
+			Description:       nullStringToString(row.Description),
+			Rules:             nullStringToString(row.Rules),
+			Location:          nullStringToString(row.Location),
+			Price:             row.Price,
+			Image:             row.Image,
+			Status:            row.Status,
+			Organizer:         nullStringToString(row.Organizer),
+			CreatedAt:         row.CreatedAt,
+			UpdatedAt:         row.UpdatedAt,
+			BoxAvailableSlots: slotsMap[row.ID],
+		}
+		items = append(items, svc)
 	}
 
-	return services, nil
+	return items, nil
 }
 
 // GetServiceByID gets detailed information about a specific service by its identifier

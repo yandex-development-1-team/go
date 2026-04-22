@@ -45,7 +45,7 @@ func (s *DetailService) GetByID(ctx context.Context, serviceID int64) (*models.S
 func (s *DetailService) ParseServiceID(callbackData string) (int64, error) {
 	parts := strings.Split(callbackData, ":")
 
-	if len(parts) != 3 {
+	if len(parts) != 4 {
 		return 0, ErrIncorrectData
 	}
 

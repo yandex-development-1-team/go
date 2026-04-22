@@ -35,7 +35,7 @@ func NewKeyboardService() *KeyboardService {
 }
 
 // ServiceDetailKeyboard создаёт клавиатуру для детального просмотра услуги
-func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64, serviceName string) tgbotapi.InlineKeyboardMarkup {
+func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64, serviceName string, page string) tgbotapi.InlineKeyboardMarkup {
 	var buttons [][]tgbotapi.InlineKeyboardButton
 
 	buttons = [][]tgbotapi.InlineKeyboardButton{
@@ -44,7 +44,7 @@ func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64, serviceName st
 		},
 	}
 
-	backButton := tgbotapi.NewInlineKeyboardButtonData(BackButtonsTitle, fmt.Sprintf("info:%s", backButtons))
+	backButton := tgbotapi.NewInlineKeyboardButtonData(BackButtonsTitle, fmt.Sprintf("info:%s:%s", backButtons, page))
 	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{backButton})
 
 	return tgbotapi.NewInlineKeyboardMarkup(buttons...)

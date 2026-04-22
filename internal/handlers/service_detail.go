@@ -78,7 +78,7 @@ func (h *DetailHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) 
 	serviceName := h.service.GetDisplayName(service)
 	messageText := h.buildServiceMessage(service, serviceName)
 
-	keyboard := h.keyboard.ServiceDetailKeyboard(service.ID, serviceName)
+	keyboard := h.keyboard.ServiceDetailKeyboard(service.ID, serviceName, parts[3])
 	if err := h.sendMessage(chatID, service.Image, messageText, keyboard); err != nil {
 		logger.Error("failed_to_send_service_detail",
 			zap.Int64("service_id", serviceID),
@@ -94,8 +94,9 @@ func (h *DetailHandler) Handle(ctx context.Context, tg *tgbotapi.CallbackQuery) 
 
 // checkBack checks for pressing the Back button
 func (h *DetailHandler) checkBack(ctx context.Context, parts []string, query *tgbotapi.CallbackQuery) (bool, error) {
-	if len(parts) == 2 {
+	if len(parts) == 3 {
 		if parts[1] == "back" {
+			query.Data = fmt.Sprintf("%s:page:%s", CallbackBoxSolutions, parts[2])
 			return true, h.bs.Handle(ctx, query)
 		}
 	}
