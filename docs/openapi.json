@@ -3525,10 +3525,13 @@
       "UserCreateRequest": {
         "type": "object",
         "properties": {
-          "telegram_nick": {
+          "first_name": {
             "type": "string"
           },
-          "name": {
+          "last_name": {
+            "type": "string"
+          },
+          "second_name": {
             "type": "string"
           },
           "email": {
@@ -3540,35 +3543,58 @@
           "status": {
             "type": "string"
           },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "phone_number": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "supervisor": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
           }
         },
-        "required": [
-          "name",
-          "email",
-          "role"
-        ]
+        "required": ["first_name", "last_name", "email", "role"]
       },
       "UserUpdateRequest": {
         "type": "object",
         "properties": {
-          "telegram_nick": {
+          "first_name": {
             "type": "string"
           },
-          "name": {
+          "last_name": {
+            "type": "string"
+          },
+          "second_name": {
             "type": "string"
           },
           "email": {
-            "type": "string"
+            "type": "string", "format": "email"
           },
           "role": {
-            "type": "string"
+            "type": "string", "enum": ["admin", "manager_1", "manager_2", "manager_3", "user"]
           },
           "status": {
+            "type": "string", "enum": ["active", "blocked", "invited"]
+          },
+          "phone_number": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "supervisor": {
+            "type": "string"
+          },
+          "address": {
             "type": "string"
           }
         }
