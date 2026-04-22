@@ -163,6 +163,10 @@ func (h *BookingFormHandler) handleBack(
 	userID := query.From.ID
 	chatID := query.Message.Chat.ID
 
+	if len(parts) == 4 {
+		parts[2] = strconv.Itoa(botService.StepReturnInBoxList)
+	}
+
 	if len(parts) < 3 {
 		return h.sendError(chatID, "Неверный формат кнопки Назад")
 	}
@@ -186,6 +190,7 @@ func (h *BookingFormHandler) handleBack(
 			return fmt.Errorf("clear session: %w", err)
 		}
 
+		query.Data = fmt.Sprintf("%s:page:%s", CallbackBoxSolutions, parts[3])
 		return h.bs.Handle(ctx, query)
 
 	case botService.StepStartBooking:
@@ -194,7 +199,7 @@ func (h *BookingFormHandler) handleBack(
 		if err := h.service.SaveSession(ctx, userID, *state); err != nil {
 			return err
 		}
-		return h.renderDateSelection(ctx, state, chatID)
+		return h.renderDateSelection(ctx, state, chatID, "1")
 
 	case botService.StepEnterName:
 		state.Step = botService.StepEnterName
