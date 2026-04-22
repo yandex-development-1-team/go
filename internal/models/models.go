@@ -58,7 +58,18 @@ var (
 	ErrTokenNotFound          = errors.New("token not found")
 	ErrBoxSolutionNotFound    = errors.New("box solution not found")
 	ErrSlotsNotFound          = errors.New("slots not found")
+	ErrInvalidSlug            = errors.New("wrong slug")
+	ErrInvalidFileType        = errors.New("wrong format file")
 )
+
+var AllowedSlugs = map[string]struct{}{
+	"org-info":          {},
+	"useful-links":      {},
+	"faq":               {},
+	"spec-projects":     {},
+	"req-spec-projects": {},
+	"event-schedule":    {},
+}
 
 type ApplicationURI struct {
 	ID int64 `uri:"id" binding:"required,min=1"`

@@ -100,6 +100,7 @@ func setupResourcesRoutes(rg *gin.RouterGroup, h *handlers.ResourcePageHandler) 
 		resources.GET("/", middleware.RequireManagersOrAdmin(), h.GetAll)
 		resources.GET("/:slug", middleware.RequireManagersOrAdmin(), h.GetBySlug)
 		resources.PUT("/:slug", middleware.RequireManagersOrAdmin(), h.Update)
+		resources.PUT("/:slug/file", middleware.RequireManagersOrAdmin(), h.UploadFile)
 		resources.DELETE("/:slug/:id", middleware.RequireManagersOrAdmin(), h.DeleteLink)
 		resources.DELETE("/:slug", middleware.RequireManagersOrAdmin(), h.Delete)
 	}

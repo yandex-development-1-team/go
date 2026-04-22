@@ -23,4 +23,5 @@ type FileRepository interface {
 	ListInactiveOlderThan(ctx context.Context, olderThan time.Time, limit int) ([]models.File, error)
 	IsFileReferenced(ctx context.Context, file models.File) (bool, error)
 	DeleteHard(ctx context.Context, fileID int64) error
+	ActivateByURL(ctx context.Context, url string) error
 }

@@ -116,6 +116,37 @@ func (h *ResourcePageHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, toResourcePageResponse(*updatedPage))
 }
 
+func (h *ResourcePageHandler) UploadFile(c *gin.Context) {
+	slug := c.Param("slug")
+
+	formFile, err := c.FormFile("file")
+	if err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Файл обязателен"})
+		return
+	}
+
+	src, err := formFile.Open()
+	if err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Не удалось открыть файл"})
+		return
+	}
+	defer func() { _ = src.Close() }()
+
+	resp, err := h.service.UploadFile(
+		c.Request.Context(),
+		slug,
+		src,
+		formFile.Filename,
+		formFile.Size,
+	)
+	if err != nil {
+		apierrors.WriteErrorGin(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, resp)
+}
+
 func toResourcePageResponse(p models.ResourcePage) dto.ResourcePageResponse {
 	links := make([]dto.ResourcePageLink, 0, len(p.Links))
 	for _, l := range p.Links {

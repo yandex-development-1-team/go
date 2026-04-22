@@ -34,6 +34,7 @@ type fileRepositoryMock struct {
 	listInactiveOlderThanFn func(ctx context.Context, olderThan time.Time, limit int) ([]models.File, error)
 	isFileReferencedFn      func(ctx context.Context, file models.File) (bool, error)
 	deleteHardFn            func(ctx context.Context, fileID int64) error
+	activateByURLFn         func(ctx context.Context, url string) error
 }
 
 func (m *fileRepositoryMock) Create(ctx context.Context, file *models.File) error {
@@ -52,6 +53,10 @@ func (m *fileRepositoryMock) GetByURL(ctx context.Context, url string) (*models.
 		return nil, nil
 	}
 	return m.getByURLFn(ctx, url)
+}
+
+func (m *fileRepositoryMock) ActivateByURL(ctx context.Context, url string) error {
+	return m.activateByURLFn(ctx, url)
 }
 
 func (m *fileRepositoryMock) DeactivateByURL(ctx context.Context, url string) error {
@@ -87,6 +92,7 @@ func TestFileService_Upload_Success(t *testing.T) {
 			}
 			return nil
 		},
+		activateByURLFn:   func(ctx context.Context, url string) error { return nil },
 		deactivateByURLFn: func(ctx context.Context, url string) error { return nil },
 		listInactiveOlderThanFn: func(ctx context.Context, olderThan time.Time, limit int) ([]models.File, error) {
 			return nil, nil

@@ -2162,6 +2162,64 @@
         }
       }
     },
+    "/api/v1/resources/{slug}/file": {
+      "put": {
+        "summary": "Загрузить файл для ресурса",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Файл успешно загружен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
     "/api/v1/public/resources/{slug}": {
       "get": {
         "summary": "Публичный доступ к ресурсной странице (для бота)",
@@ -2194,6 +2252,56 @@
           }
         },
         "security": []
+      }
+    },
+    "/api/v1/files/upload": {
+      "post": {
+        "summary": "Загрузить изображение",
+        "description": "Универсальный эндпоинт загрузки изображений. Используется для фото услуг и фото профиля.",
+        "tags": [
+          "files"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Изображение (JPEG, PNG, WEBP)"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Изображение успешно загружено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
       }
     },
     "/api/v1/analytics/overview": {
@@ -3409,7 +3517,7 @@
           }
         }
       },
-      "UserWithDetails":  {
+      "UserWithDetails": {
         "allOf": [
           {
             "$ref": "#/components/schemas/User"
@@ -3681,6 +3789,27 @@
             }
           }
         }
+      },
+      "FileUploadResponse": {
+        "type": "object",
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "filename": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uuid",
+          "url",
+          "filename"
+        ]
       },
       "EventParticipantsResponse": {
         "type": "object",
