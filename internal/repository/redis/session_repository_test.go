@@ -20,6 +20,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
 	logger.NewLogger("dev", "debug")
 	metrics.Initialize(config.Config{Environment: "test", HostName: "test"})
 	os.Exit(m.Run())
@@ -30,7 +32,8 @@ func TestMain(m *testing.M) {
 func newTestRepo(t *testing.T, opts ...Option) (*SessionRepo, *goredis.Client) {
 	t.Helper()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	t.Cleanup(cancel)
 	redisContainer, err := tcredis.Run(ctx, "redis:7")
 	require.NoError(t, err)
 	t.Cleanup(func() {

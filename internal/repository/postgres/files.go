@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/yandex-development-1-team/go/internal/ctxutil"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
@@ -119,7 +120,7 @@ func (r *FileRepository) ActivateByURL(ctx context.Context, url string) error {
         WHERE url = $1
           AND is_active = false
     `
-	_, err := r.db.ExecContext(ctx, query, url)
+	_, err := r.getDB(ctx).ExecContext(ctx, query, url)
 	if err != nil {
 		return fmt.Errorf("activate file by url: %w", err)
 	}
@@ -136,7 +137,7 @@ func (r *FileRepository) DeactivateByURL(ctx context.Context, url string) error 
 		  AND is_active = true
 	`
 
-	_, err := r.db.ExecContext(ctx, query, url)
+	_, err := r.getDB(ctx).ExecContext(ctx, query, url)
 	if err != nil {
 		return fmt.Errorf("deactivate file by url: %w", err)
 	}
@@ -222,4 +223,11 @@ func (r *FileRepository) DeleteHard(ctx context.Context, fileID int64) error {
 	}
 
 	return nil
+}
+
+func (r *FileRepository) getDB(ctx context.Context) sqlx.ExtContext {
+	if tx, ok := ctxutil.TxFromContext(ctx); ok {
+		return tx
+	}
+	return r.db
 }

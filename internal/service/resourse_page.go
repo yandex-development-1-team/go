@@ -12,13 +12,25 @@ import (
 	svc "github.com/yandex-development-1-team/go/internal/service/api"
 )
 
-type ResourcePageService struct {
-	repo        repository.ResourcePageRepository
-	fileService *svc.FileService
+//go:generate mockgen -source=resourse_page.go -destination=api/mocks/mock_resource_page_deps.go -package=mocks
+type fileUploader interface {
+	Upload(ctx context.Context, src io.Reader, name, contentType string, size int64) (*dto.FileUploadResponse, error)
+	ActivateByURL(ctx context.Context, url string) error
+	DeactivateByURL(ctx context.Context, url string) error
 }
 
-func NewResourcePageService(repo repository.ResourcePageRepository, fs *svc.FileService) *ResourcePageService {
-	return &ResourcePageService{repo: repo, fileService: fs}
+type ResourcePageService struct {
+	repo        repository.ResourcePageRepository
+	fileService fileUploader
+	txRepo      repository.TxRepository
+}
+
+func NewResourcePageService(repo repository.ResourcePageRepository, fs *svc.FileService, txRepo repository.TxRepository) *ResourcePageService {
+	return &ResourcePageService{
+		repo:        repo,
+		fileService: fs,
+		txRepo:      txRepo,
+	}
 }
 
 func (s *ResourcePageService) GetResourcePage(ctx context.Context, slug string) (*models.ResourcePage, error) {
@@ -83,31 +95,34 @@ func (s *ResourcePageService) UploadFile(
 		return nil, fmt.Errorf("upload file: %w", err)
 	}
 
-	// берём текущую страницу чтобы не потерять title и content
 	page, err := s.repo.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, fmt.Errorf("get resource page: %w", err)
 	}
 
-	// деактивируем старый если есть и отличается
-	if len(page.Links) > 0 && page.Links[0].URL != uploaded.URL {
-		if err := s.fileService.DeactivateByURL(ctx, page.Links[0].URL); err != nil {
-			return nil, fmt.Errorf("deactivate old file: %w", err)
+	err = s.txRepo.RunToTx(ctx, func(txCtx context.Context) error {
+		if len(page.Links) > 0 && page.Links[0].URL != uploaded.URL {
+			if err := s.fileService.DeactivateByURL(txCtx, page.Links[0].URL); err != nil {
+				return fmt.Errorf("deactivate old file: %w", err)
+			}
 		}
-	}
 
-	// активируем новый
-	if err := s.fileService.ActivateByURL(ctx, uploaded.URL); err != nil {
-		return nil, fmt.Errorf("activate new file: %w", err)
-	}
+		if err := s.fileService.ActivateByURL(txCtx, uploaded.URL); err != nil {
+			return fmt.Errorf("activate new file: %w", err)
+		}
 
-	// обновляем только links, title и content берём из текущей страницы
-	page.Links = []models.ResourcePageLink{{
-		Title: name,
-		URL:   uploaded.URL,
-	}}
-	if _, err := s.repo.Update(ctx, slug, *page); err != nil {
-		return nil, fmt.Errorf("update resource page: %w", err)
+		page.Links = []models.ResourcePageLink{{
+			Title: name,
+			URL:   uploaded.URL,
+		}}
+		if _, err := s.repo.Update(txCtx, slug, *page); err != nil {
+			return fmt.Errorf("update resource page: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return uploaded, nil

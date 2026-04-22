@@ -33,10 +33,10 @@ import (
 var db *sqlx.DB
 
 func TestMain(m *testing.M) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 
-	container, err := startContainer()
+	container, err := startContainer(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,7 +48,9 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	_ = container.Terminate(ctx)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	_ = container.Terminate(shutdownCtx)
+	shutdownCancel()
 	os.Exit(code)
 }
 
@@ -367,7 +369,7 @@ func checkServiceErrorBody(t *testing.T, body map[string]any) {
 	assert.NotEmpty(t, errors, "errors must not be empty")
 }
 
-func startContainer() (tc.Container, error) {
+func startContainer(ctx context.Context) (tc.Container, error) {
 	req := tc.ContainerRequest{
 		Image:        "postgres:latest",
 		ExposedPorts: []string{"5432/tcp"},
@@ -387,7 +389,7 @@ func startContainer() (tc.Container, error) {
 	}
 
 	dbContainer, err := tc.GenericContainer(
-		context.Background(),
+		ctx,
 		tc.GenericContainerRequest{
 			ContainerRequest: req,
 			Started:          true,
