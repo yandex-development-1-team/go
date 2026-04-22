@@ -10,7 +10,7 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	AccessToken  string       `json:"token"`
+	Token        string       `json:"token"`
 	RefreshToken string       `json:"refresh_token"`
 	User         UserResponse `json:"user"`
 }
@@ -29,6 +29,7 @@ type UserResponse struct {
 	Position     string    `json:"position"`
 	Supervisor   string    `json:"supervisor"`
 	Address      string    `json:"address"`
+	Image        string    `json:"image"`
 	InviteToken  string    `json:"invite_token"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -60,7 +61,7 @@ type RefreshRequest struct {
 }
 
 type RefreshResponse struct {
-	AccessToken  string `json:"token"`
+	Token        string `json:"token"`
 	RefreshToken string `json:"refresh_token"`
 }
 

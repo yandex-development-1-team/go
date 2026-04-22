@@ -36,7 +36,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.LoginResponse{
-		AccessToken:  authResult.Token,
+		Token:        authResult.Token,
 		RefreshToken: authResult.RefreshToken,
 		User:         toUserResponse(authResult.User),
 	})
@@ -59,7 +59,7 @@ func (h *AuthHandler) HandleRefresh(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.RefreshResponse{
-		AccessToken:  tokenResponse.Token,
+		Token:        tokenResponse.Token,
 		RefreshToken: tokenResponse.RefreshToken,
 	})
 }
@@ -83,7 +83,7 @@ func (h *AuthHandler) RegisterHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, dto.LoginResponse{
-		AccessToken:  authResult.Token,
+		Token:        authResult.Token,
 		RefreshToken: authResult.RefreshToken,
 		User:         toUserResponse(authResult.User),
 	})
@@ -162,6 +162,7 @@ func toUserResponse(user *models.UserAPI) dto.UserResponse {
 		Position:     user.Position,
 		Supervisor:   user.Supervisor,
 		Address:      user.Address,
+		Image:        user.Image,
 		InviteToken:  user.InviteToken,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
