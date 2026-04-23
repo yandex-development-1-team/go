@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"time"
 
 	"go.uber.org/zap"
@@ -196,4 +198,47 @@ func parseBoxSlots(slots []models.BoxAvailableSlot) (models.BoxNewSlots, error) 
 	}
 
 	return boxNewSlots, nil
+}
+
+func (s *APIBoxService) UploadImage(
+	ctx context.Context,
+	id int64,
+	reader io.Reader,
+	originalName string,
+	contentType string,
+	size int64,
+) (string, error) {
+	if s.fileService == nil {
+		return "", fmt.Errorf("file service is nil")
+	}
+
+	currentBox, err := s.lister.GetServiceByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+
+	var oldImage string
+	if currentBox != nil && currentBox.Image != nil {
+		oldImage = *currentBox.Image
+	}
+	uploadResp, err := s.fileService.Upload(ctx, reader, originalName, contentType, size)
+	if err != nil {
+		return "", err
+	}
+
+	updateReq := &models.BoxUpdate{
+		Image: &uploadResp.URL,
+	}
+
+	_, err = s.Update(ctx, id, updateReq)
+	if err != nil {
+		return "", err
+	}
+
+	if oldImage != "" && oldImage != uploadResp.URL {
+		if err := s.fileService.DeactivateByURL(ctx, oldImage); err != nil {
+			return "", err
+		}
+	}
+	return uploadResp.URL, nil
 }

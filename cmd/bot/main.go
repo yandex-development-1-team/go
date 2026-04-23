@@ -124,6 +124,7 @@ func run() error {
 	userService := apiService.NewUserService(staffRepo)
 	applicationSvc := apiService.NewApplicationsService(applicationRepo, txRepo)
 	bookAPISvc := apiService.NewBookingsService(bookRepo, txRepo)
+	usersAdminService := apiService.NewUsersAdminService(staffRepo, refreshTokenRepoRepo)
 
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", metrics.NewHandler())
@@ -154,6 +155,7 @@ func run() error {
 		MiddlewareRepo:    dbSqlx,
 		ApplicationSvc:    applicationSvc,
 		BookingSvc:        bookAPISvc,
+		UsersAdmin:        usersAdminService,
 	}, apiAuthService)
 
 	if cfg.FileGC.Enabled {

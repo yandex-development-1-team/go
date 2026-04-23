@@ -16,17 +16,17 @@ import (
 
 const getUserByEmailQuery = `
     SELECT id, telegram_nick, first_name, last_name, second_name, email,
-		       phone_number, password_hash, role, status, invite_token, department,
-					 position,  created_at, updated_at
+               phone_number, password_hash, role, status, invite_token, department,
+               position, supervisor, address, image, created_at, updated_at
     FROM staff
     WHERE email = $1`
 
 const createUserQuery = `
-	INSERT INTO staff(first_name, last_name, email, invite_token, password_hash)
-	VALUES ($1, $2, $3, $4, $5)
-	RETURNING id, telegram_nick, first_name, email,
-						role, status,
-						created_at, updated_at
+    INSERT INTO staff(first_name, last_name, email, invite_token, password_hash)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id, telegram_nick, first_name, email,
+              role, status,
+              created_at, updated_at
 `
 const getDashboardOverview = `
 	WITH combined AS (
@@ -88,6 +88,43 @@ const listOfShortApplications = `
 	WHERE manager_id = $1 AND status != 'cancelled'
 	ORDER BY created_at DESC;`
 
+const insertStaffAdminQuery = `
+    INSERT INTO staff (
+        first_name, last_name, second_name, email,
+        phone_number, password_hash, role, status,
+        department, position, image, invite_token, supervisor, address)
+    VALUES ($1, $2, $3, $4, $5, '', $6::user_role_type, $7::user_status_type,
+        $8, $9, $10, $11, $12, $13)
+    RETURNING id, telegram_nick, first_name, last_name, second_name, email,
+        phone_number, role, status, invite_token, department, position,
+        supervisor, address, image, created_at, updated_at`
+
+const updateStaffQuery = `
+    UPDATE staff SET
+        first_name   = COALESCE($2, first_name),
+        last_name    = COALESCE($3, last_name),
+        second_name  = COALESCE($4, second_name),
+        email        = COALESCE($5, email),
+        role         = COALESCE($6::user_role_type, role),
+        status       = COALESCE($7::user_status_type, status),
+        phone_number = COALESCE($8, phone_number),
+        department   = COALESCE($9, department),
+        position     = COALESCE($10, position),
+        supervisor   = COALESCE($11, supervisor),
+        address      = COALESCE($12, address),
+        image        = COALESCE($13, image)
+    WHERE id = $1
+    RETURNING id, telegram_nick, first_name, last_name, second_name, email,
+        phone_number, role, status, invite_token, department, position,
+        supervisor, address, image, created_at, updated_at`
+
+const blockStaffQuery = `
+    UPDATE staff SET status = 'blocked'::user_status_type
+    WHERE id = $1
+    RETURNING id, telegram_nick, first_name, last_name, second_name, email,
+        phone_number, role, status, invite_token, department, position,
+        supervisor, address, image, created_at, updated_at`
+
 type StaffRepo struct {
 	db *sqlx.DB
 }
@@ -146,6 +183,9 @@ func toUser(user *dto.UserRow) *models.UserAPI {
 		Status:       user.Status,
 		Department:   derefString(user.Department),
 		Position:     derefString(user.Position),
+		Supervisor:   derefString(user.Supervisor),
+		Address:      derefString(user.Address),
+		Image:        derefString(user.Image),
 		InviteToken:  derefString(user.InviteToken),
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
@@ -161,7 +201,7 @@ func derefString(s *string) string {
 
 func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit, offset int) ([]dto.UserListItem, int, error) {
 	query := `
-		SELECT id, telegram_nick, first_name, last_name, role, status, created_at
+		SELECT id, telegram_nick, first_name, last_name, role, status, department, supervisor, position, phone_number, email, created_at
 		FROM staff
 		WHERE 1=1`
 	countQuery := `SELECT COUNT(*) FROM staff WHERE 1=1`
@@ -209,6 +249,11 @@ func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit
 		LastName     string       `db:"last_name"`
 		Role         string       `db:"role"`
 		Status       string       `db:"status"`
+		Department   *string      `db:"department"`
+		Supervisor   *string      `db:"supervisor"`
+		Position     *string      `db:"position"`
+		PhoneNumber  *string      `db:"phone_number"`
+		Email        string       `db:"email"`
 		CreatedAt    sql.NullTime `db:"created_at"`
 	}
 
@@ -229,6 +274,11 @@ func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit
 			Name:         name,
 			Role:         row.Role,
 			Status:       row.Status,
+			Department:   derefString(row.Department),
+			Supervisor:   derefString(row.Supervisor),
+			Position:     derefString(row.Position),
+			PhoneNumber:  derefString(row.PhoneNumber),
+			Email:        row.Email,
 			CreatedAt:    row.CreatedAt.Time,
 		})
 	}
@@ -239,7 +289,8 @@ func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit
 func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails, error) {
 	userQuery := `
 		SELECT id, telegram_nick, first_name, last_name, second_name, email,
-		       phone_number, role, status, department, position, created_at, updated_at
+		       phone_number, role, status, department, position, address,
+           			supervisor, image, created_at, updated_at
 		FROM staff
 		WHERE id = $1`
 
@@ -255,6 +306,9 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		Status       string       `db:"status"`
 		Department   *string      `db:"department"`
 		Position     *string      `db:"position"`
+		Supervisor   *string      `db:"supervisor"`
+		Address      *string      `db:"address"`
+		Image        *string      `db:"image"`
 		CreatedAt    sql.NullTime `db:"created_at"`
 		UpdatedAt    sql.NullTime `db:"updated_at"`
 	}
@@ -361,12 +415,82 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		Status:        user.Status,
 		Department:    derefString(user.Department),
 		Position:      derefString(user.Position),
+		Supervisor:    derefString(user.Supervisor),
+		Address:       derefString(user.Address),
+		Image:         derefString(user.Image),
 		CreatedAt:     user.CreatedAt.Time,
 		UpdatedAt:     user.UpdatedAt.Time,
 		Bookings:      bookings,
 		VisitHistory:  visitHistory,
 		FavoriteBoxes: favoriteBoxes,
 	}, nil
+}
+
+func (u *StaffRepo) CreateStaffByAdmin(ctx context.Context, req *models.StaffAdminCreate) (*models.UserAPI, error) {
+	var row dto.UserRow
+
+	err := u.db.GetContext(ctx, &row, insertStaffAdminQuery,
+		req.FirstName,
+		req.LastName,
+		req.SecondName,
+		req.Email,
+		req.PhoneNumber,
+		req.Role,
+		req.Status,
+		req.Department,
+		req.Position,
+		req.InviteToken,
+		req.Supervisor,
+		req.Address,
+		req.Image,
+	)
+	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return nil, models.ErrEmailAlreadyExist
+		}
+		return nil, err
+	}
+	return toUser(&row), nil
+}
+
+func (u *StaffRepo) UpdateStaff(ctx context.Context, id int64, req *models.StaffAdminUpdate) (*models.UserAPI, error) {
+	var row dto.UserRow
+
+	err := u.db.GetContext(ctx, &row, updateStaffQuery,
+		id,
+		req.FirstName,
+		req.LastName,
+		req.SecondName,
+		req.Email,
+		req.Role,
+		req.Status,
+		req.PhoneNumber,
+		req.Department,
+		req.Position,
+		req.Supervisor,
+		req.Address,
+		req.Image,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, models.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return toUser(&row), nil
+}
+
+func (u *StaffRepo) BlockStaff(ctx context.Context, id int64) (*models.UserAPI, error) {
+	var row dto.UserRow
+	err := u.db.GetContext(ctx, &row, blockStaffQuery, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, models.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return toUser(&row), nil
 }
 
 func (u *StaffRepo) GetDashboard(ctx context.Context, managerId int64) (*dto.DashboardResponse, error) {

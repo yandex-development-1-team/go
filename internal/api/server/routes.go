@@ -9,7 +9,7 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler, bookingHandler *handlers.BookingHandler) {
+func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler, usersHandler *handlers.UsersHandler, bookingHandler *handlers.BookingHandler) {
 	middlewareRepo := middleware.NewMiddlewareRepository(client)
 	apiV1 := router.Group("/api/v1")
 	{
@@ -25,6 +25,7 @@ func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHand
 			setupUserRoutes(protected, userHandler)
 			setupResourcesRoutes(protected, recPageHandler)
 			setupFileRoutes(protected, fileHandler)
+			setupUsersAdminRoutes(protected, usersHandler)
 			setupApplicationRoutes(protected, applicationHandler, middlewareRepo)
 			setupBookingRoutes(protected, bookingHandler, middlewareRepo)
 			setupDashboardRoutes(protected, userHandler)
@@ -73,6 +74,7 @@ func setupBoxRoutes(rg *gin.RouterGroup, boxHandler *handlers.BoxHandler, middle
 		boxes.GET("/:id", middleware.RequireManagersOrAdmin(), boxHandler.GetByID)
 		boxes.PUT("/:id", middlewareRepo.RoleVerification(models.PermBoxesEdit), boxHandler.Update)
 		boxes.DELETE("/:id", middlewareRepo.RoleVerification(models.PermBoxesDelete), boxHandler.Delete)
+		boxes.POST("/:id/image", middlewareRepo.RoleVerification(models.PermBoxesEdit), boxHandler.UploadImage)
 		boxes.PUT("/:id/status", middlewareRepo.RoleVerification(models.PermBoxesEdit), boxHandler.UpdateStatus)
 	}
 }
@@ -133,6 +135,16 @@ func setupBookingRoutes(rg *gin.RouterGroup, h *handlers.BookingHandler, middlew
 		bookings.GET("/:id", middlewareRepo.RoleVerification(models.PermBookingsView), h.BookingsById)
 		bookings.PUT("/:id/status", middlewareRepo.RoleVerification(models.PermBookingsEdit), h.UpdateBookingStatus)
 		bookings.DELETE("/:id", middlewareRepo.RoleVerification(models.PermBookingsDelete), h.DeleteBooking)
+	}
+}
+
+func setupUsersAdminRoutes(rg *gin.RouterGroup, h *handlers.UsersHandler) {
+	users := rg.Group("/users")
+	users.Use(middleware.RequireAdmin())
+	{
+		users.POST("", h.Create)
+		users.PUT("/:id", h.Update)
+		users.PUT("/:id/block", h.Block)
 	}
 }
 

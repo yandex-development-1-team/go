@@ -18,6 +18,9 @@ type StaffRepository interface {
 	List(ctx context.Context, role, status, search string, limit, offset int) ([]dto.UserListItem, int, error)
 	GetByID(ctx context.Context, id int64) (*dto.UserWithDetails, error)
 	GetDashboard(ctx context.Context, managerId int64) (*dto.DashboardResponse, error)
+	CreateStaffByAdmin(ctx context.Context, req *models.StaffAdminCreate) (*models.UserAPI, error)
+	UpdateStaff(ctx context.Context, id int64, req *models.StaffAdminUpdate) (*models.UserAPI, error)
+	BlockStaff(ctx context.Context, id int64) (*models.UserAPI, error)
 }
 
 type TelegramUserRepository interface {

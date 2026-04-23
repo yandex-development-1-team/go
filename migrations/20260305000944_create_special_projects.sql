@@ -13,11 +13,14 @@ CREATE TABLE IF NOT EXISTS special_projects (
     image TEXT,
     status spec_type,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ NULL DEFAULT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_special_projects_status ON special_projects (status);
 CREATE INDEX IF NOT EXISTS idx_special_projects_updated_at ON special_projects (updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_special_projects_search ON special_projects USING GIN (to_tsvector('russian', title || ' ' || COALESCE(description, '')));
 
 -- +goose Down
 DROP TABLE IF EXISTS special_projects;
+DROP TYPE IF EXISTS spec_type;
