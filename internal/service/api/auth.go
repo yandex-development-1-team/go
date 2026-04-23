@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -230,7 +229,6 @@ func generateRandomToken() string {
 func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
 	user, err := s.staffRepo.GetUserByEmail(ctx, email)
 	if err != nil {
-		// Не раскрываем, существует ли email
 		return nil
 	}
 
@@ -258,8 +256,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
 	// Send email
 	err = s.emailSvc.SendPasswordResetEmail(ctx, email, signedToken)
 	if err != nil {
-		log.Printf("Failed to send password reset email: %v", err)
-		// Не возвращаем ошибку
+		return err
 	}
 
 	return nil

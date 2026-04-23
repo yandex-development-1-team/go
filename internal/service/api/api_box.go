@@ -13,21 +13,6 @@ import (
 	"github.com/yandex-development-1-team/go/internal/repository"
 )
 
-// BoxLister returns box solutions (services with box_solution=true) from storage.
-//
-
-//go:generate mockgen -source=../../repository/interfaces.go -destination=mocks/mock_box_solution_repository.go -package=mocks
-// type BoxLister interface {
-// 	GetServices(ctx context.Context, telegramID int64) (*[]models.Service, error)
-// 	GetServiceByID(ctx context.Context, serviceID int64) (*models.Service, error)
-// 	// GetServicesByStatus(ctx context.Context, status *models.ServiceStatus) ([]models.Service, error)
-// 	UpdateService(ctx context.Context, id int64, service *models.BoxUpdate) error
-// 	SoftDeleteService(ctx context.Context, serviceID int64) error
-// 	UpdateServiceStatus(ctx context.Context, serviceID int64, status models.ServiceStatus) (*models.BoxUpdateStatusResult, error)
-// 	UpdateServiceSlots(ctx context.Context, id int64, slots *models.BoxNewSlots) error
-// 	DeleteServiceSlots(ctx context.Context, id int64) error
-// }
-
 // APIBoxService implements HTTP API logic for boxed solutions.
 type APIBoxService struct {
 	lister      repository.BoxSolutionRepository

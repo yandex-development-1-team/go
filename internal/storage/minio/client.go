@@ -44,7 +44,7 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 	}
 
 	if exists {
-		return nil
+		return c.makeBucketPublic(ctx)
 	}
 
 	err = c.client.MakeBucket(ctx, c.bucket, minioSDK.MakeBucketOptions{})

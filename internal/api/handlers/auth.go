@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
@@ -113,7 +112,6 @@ func (h *AuthHandler) HandleForgotPassword(c *gin.Context) {
 
 	err := h.svc.ForgotPassword(c.Request.Context(), req.Email)
 	if err != nil {
-		log.Printf("forgot password: %v", err)
 		apierrors.WriteErrorGin(c, err)
 		return
 	}
@@ -136,7 +134,6 @@ func (h *AuthHandler) HandleResetPassword(c *gin.Context) {
 
 	err := h.svc.ResetPassword(c.Request.Context(), token, newPassword)
 	if err != nil {
-		log.Printf("reset password: %v", err)
 		apierrors.WriteErrorGin(c, err)
 		return
 	}

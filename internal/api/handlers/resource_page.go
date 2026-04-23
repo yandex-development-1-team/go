@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -94,7 +93,6 @@ func (h *ResourcePageHandler) DeleteLink(c *gin.Context) {
 	ctx := c.Request.Context()
 	page, err := h.service.DeleteResourcePageLink(ctx, slug, id)
 	if err != nil {
-		log.Printf("ERROR: failed to delete link %s from %s: %v", id, slug, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
