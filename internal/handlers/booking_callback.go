@@ -16,7 +16,7 @@ import (
 
 // stepStartBooking handles the step of starting the booking process
 func (h *BookingFormHandler) stepStartBooking(ctx context.Context, query *tgbotapi.CallbackQuery, parts []string) error {
-	if len(parts) < 3 {
+	if len(parts) < 4 {
 		return h.sendError(query.Message.Chat.ID, "неверный формат запроса")
 	}
 
@@ -24,7 +24,7 @@ func (h *BookingFormHandler) stepStartBooking(ctx context.Context, query *tgbota
 	if err != nil {
 		return err
 	}
-	return h.startBooking(ctx, query, serviceID, parts[2])
+	return h.startBooking(ctx, query, serviceID, parts[2], parts[3])
 }
 
 // stepMainMenu handles the step of going to the Main Menu
@@ -73,6 +73,7 @@ func (h *BookingFormHandler) startBooking(
 	query *tgbotapi.CallbackQuery,
 	serviceID int64,
 	serviceName string,
+	page string,
 ) error {
 	userID := query.From.ID
 	chatID := query.Message.Chat.ID
@@ -86,7 +87,7 @@ func (h *BookingFormHandler) startBooking(
 		zap.Int64("user_id", userID),
 		zap.Int64("service_id", serviceID))
 
-	return h.renderDateSelection(ctx, state, chatID)
+	return h.renderDateSelection(ctx, state, chatID, page)
 }
 
 // renderDateSelection displays the date selection step with buttons
@@ -94,6 +95,7 @@ func (h *BookingFormHandler) renderDateSelection(
 	ctx context.Context,
 	state *botService.BookingState,
 	chatID int64,
+	page string,
 ) error {
 	slots, err := h.service.GetAvailableSlots(ctx, int64(state.ServiceID))
 	if err != nil {
@@ -109,7 +111,7 @@ func (h *BookingFormHandler) renderDateSelection(
 		keyboard := h.keyboard.FormNavigationKeyboard(botService.StepReturnInBoxList)
 		msg.ReplyMarkup = &keyboard
 	} else {
-		keyboard := h.keyboard.DatesKeyboard(slots)
+		keyboard := h.keyboard.DatesKeyboard(slots, page)
 		messageText := "Выберите дату:\n"
 		msg = tgbotapi.NewMessage(chatID, messageText)
 		msg.ReplyMarkup = &keyboard
@@ -146,7 +148,7 @@ func (h *BookingFormHandler) dateSelection(
 
 	if !res {
 		logger.Info("slot not available, restarting booking")
-		return h.startBooking(ctx, query, state.ServiceID, state.ServiceName)
+		return h.startBooking(ctx, query, state.ServiceID, state.ServiceName, "1")
 	}
 
 	logger.Info("Date selected successfully",

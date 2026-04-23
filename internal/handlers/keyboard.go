@@ -8,7 +8,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/yandex-development-1-team/go/internal/models"
-	botService "github.com/yandex-development-1-team/go/internal/service/bot"
 )
 
 // ServiceType определяет тип услуги для выбора правильного набора кнопок
@@ -35,16 +34,16 @@ func NewKeyboardService() *KeyboardService {
 }
 
 // ServiceDetailKeyboard создаёт клавиатуру для детального просмотра услуги
-func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64, serviceName string) tgbotapi.InlineKeyboardMarkup {
+func (ks *KeyboardService) ServiceDetailKeyboard(serviceID int64, serviceName string, page string) tgbotapi.InlineKeyboardMarkup {
 	var buttons [][]tgbotapi.InlineKeyboardButton
 
 	buttons = [][]tgbotapi.InlineKeyboardButton{
 		{
-			tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%d:%s", bookHandler, serviceID, serviceName)),
+			tgbotapi.NewInlineKeyboardButtonData("📅 Забронировать", fmt.Sprintf("%s:%d:%s:%s", bookHandler, serviceID, serviceName, page)),
 		},
 	}
 
-	backButton := tgbotapi.NewInlineKeyboardButtonData(BackButtonsTitle, fmt.Sprintf("info:%s", backButtons))
+	backButton := tgbotapi.NewInlineKeyboardButtonData(BackButtonsTitle, fmt.Sprintf("info:%s:%s", backButtons, page))
 	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{backButton})
 
 	return tgbotapi.NewInlineKeyboardMarkup(buttons...)
@@ -94,7 +93,7 @@ func (ks *KeyboardService) MainMenuKeyboard() *tgbotapi.InlineKeyboardMarkup {
 }
 
 // DatesKeyboard creates an inline keyboard with available dates and time slots
-func (ks *KeyboardService) DatesKeyboard(slots []models.BoxAvailableSlot) tgbotapi.InlineKeyboardMarkup {
+func (ks *KeyboardService) DatesKeyboard(slots []models.BoxAvailableSlot, page string) tgbotapi.InlineKeyboardMarkup {
 	if len(slots) == 0 {
 		return tgbotapi.InlineKeyboardMarkup{}
 	}
@@ -126,8 +125,16 @@ func (ks *KeyboardService) DatesKeyboard(slots []models.BoxAvailableSlot) tgbota
 		rows = append(rows, row)
 	}
 
-	navKeyboard := ks.FormNavigationKeyboard(botService.StepReturnInBoxList)
-	rows = append(rows, navKeyboard.InlineKeyboard...)
+	buttons := [][]tgbotapi.InlineKeyboardButton{
+		{
+			getBackButton(fmt.Sprintf("book:back:page:%s", page)),
+		},
+		{
+			tgbotapi.NewInlineKeyboardButtonData("В главное меню", "book:main_menu"),
+		},
+	}
+
+	rows = append(rows, buttons...)
 
 	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }

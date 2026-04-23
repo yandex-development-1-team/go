@@ -335,7 +335,7 @@ func TestBookingFormHandler_StartBooking(t *testing.T) {
 	mockBot.On("Request", mock.Anything).Return(&tgbotapi.APIResponse{Ok: true}, nil)
 	mockBot.On("Send", mock.Anything).Return(tgbotapi.Message{MessageID: messageID + 1, Chat: &tgbotapi.Chat{ID: chatID}}, nil)
 
-	query := createTestCallbackQuery(chatID, userID, "book:1:TestName", messageID)
+	query := createTestCallbackQuery(chatID, userID, "book:1:TestName:1", messageID)
 
 	err := handler.Handle(ctx, query)
 	assert.NoError(t, err)
