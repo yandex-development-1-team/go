@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/jmoiron/sqlx"
+
+	"github.com/yandex-development-1-team/go/internal/ctxutil"
 )
 
 type TxRepo struct {
@@ -21,9 +23,15 @@ func (u *TxRepo) RunToTx(ctx context.Context, fn func(ctx context.Context) error
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
 
-	if err := fn(ctx); err != nil {
-		_ = tx.Rollback()
+	txCtx := ctxutil.WithTx(ctx, tx)
+
+	if err = fn(txCtx); err != nil {
 		return err
 	}
 

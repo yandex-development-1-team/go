@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"time"
 
 	"go.uber.org/zap"
@@ -32,13 +30,17 @@ import (
 type APIBoxService struct {
 	lister      repository.BoxSolutionRepository
 	fileService *FileService
+	txRepo      repository.TxRepository
 }
 
 // NewAPIBoxService creates a new instance of the box service.
-func NewAPIBoxService(lister repository.BoxSolutionRepository, fileService *FileService) *APIBoxService {
+func NewAPIBoxService(lister repository.BoxSolutionRepository,
+	fileService *FileService,
+	txRepo repository.TxRepository) *APIBoxService {
 	return &APIBoxService{
 		lister:      lister,
 		fileService: fileService,
+		txRepo:      txRepo,
 	}
 }
 
@@ -85,53 +87,35 @@ func (s *APIBoxService) GetByID(ctx context.Context, id int64) (*models.Service,
 
 // Update updates the box
 func (s *APIBoxService) Update(ctx context.Context, id int64, req *models.BoxUpdate) (*models.Service, error) {
-	var err error
-	var boxNewSlots models.BoxNewSlots
-
-	if len(req.Slots) > 0 {
-		boxNewSlots = models.BoxNewSlots{
-			Date:      make([]time.Time, len(req.Slots)),
-			StartTime: make([]time.Time, len(req.Slots)),
-			EndTime:   make([]time.Time, len(req.Slots)),
-		}
-		for i, t := range req.Slots {
-			date, err := time.Parse("2006-01-02", t.Date)
-			if err != nil {
-				return nil, models.ErrInvalidInput
-			}
-			startTime, err := time.Parse("15:04", t.StartTime)
-			if err != nil {
-				return nil, models.ErrInvalidInput
-			}
-			endTime, err := time.Parse("15:04", t.EndTime)
-			if err != nil {
-				return nil, models.ErrInvalidInput
-			}
-			boxNewSlots.Date[i] = date
-			boxNewSlots.StartTime[i] = startTime
-			boxNewSlots.EndTime[i] = endTime
-		}
-	}
-
-	err = s.lister.UpdateService(ctx, id, req)
+	boxNewSlots, err := parseBoxSlots(req.Slots)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.Slots != nil {
-		if err = s.lister.DeleteServiceSlots(ctx, id); err != nil {
-			return nil, err
+	var svc *models.Service
+	err = s.txRepo.RunToTx(ctx, func(txCtx context.Context) error {
+		err := s.lister.UpdateService(txCtx, id, req)
+		if err != nil {
+			return err
 		}
-	}
 
-	if len(req.Slots) > 0 {
-		err = s.lister.UpdateServiceSlots(ctx, id, &boxNewSlots)
-	}
-	if err != nil {
-		return nil, err
-	}
+		// nil = slots unchanged, [] = delete all slots, [...] = replace
+		if req.Slots != nil {
+			if err = s.lister.DeleteServiceSlots(txCtx, id); err != nil {
+				return err
+			}
+		}
 
-	svc, err := s.lister.GetServiceByID(ctx, id)
+		if len(req.Slots) > 0 {
+			err = s.lister.UpdateServiceSlots(txCtx, id, &boxNewSlots)
+		}
+		if err != nil {
+			return err
+		}
+
+		svc, err = s.lister.GetServiceByID(txCtx, id)
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -184,45 +168,32 @@ func (s *APIBoxService) Export(ctx context.Context, status string, format string
 	}
 }
 
-func (s *APIBoxService) UploadImage(
-	ctx context.Context,
-	id int64,
-	reader io.Reader,
-	originalName string,
-	contentType string,
-	size int64,
-) (string, error) {
-	if s.fileService == nil {
-		return "", fmt.Errorf("file service is nil")
-	}
-
-	currentBox, err := s.lister.GetServiceByID(ctx, id)
-	if err != nil {
-		return "", err
-	}
-
-	var oldImage string
-	if currentBox != nil && currentBox.Image != nil {
-		oldImage = *currentBox.Image
-	}
-	uploadResp, err := s.fileService.Upload(ctx, reader, originalName, contentType, size)
-	if err != nil {
-		return "", err
-	}
-
-	updateReq := &models.BoxUpdate{
-		Image: &uploadResp.URL,
-	}
-
-	_, err = s.Update(ctx, id, updateReq)
-	if err != nil {
-		return "", err
-	}
-
-	if oldImage != "" && oldImage != uploadResp.URL {
-		if err := s.fileService.DeactivateByURL(ctx, oldImage); err != nil {
-			return "", err
+func parseBoxSlots(slots []models.BoxAvailableSlot) (models.BoxNewSlots, error) {
+	var boxNewSlots models.BoxNewSlots
+	if len(slots) > 0 {
+		boxNewSlots = models.BoxNewSlots{
+			Date:      make([]time.Time, len(slots)),
+			StartTime: make([]time.Time, len(slots)),
+			EndTime:   make([]time.Time, len(slots)),
+		}
+		for i, t := range slots {
+			date, err := time.Parse("2006-01-02", t.Date)
+			if err != nil {
+				return models.BoxNewSlots{}, models.ErrInvalidInput
+			}
+			startTime, err := time.Parse("15:04", t.StartTime)
+			if err != nil {
+				return models.BoxNewSlots{}, models.ErrInvalidInput
+			}
+			endTime, err := time.Parse("15:04", t.EndTime)
+			if err != nil {
+				return models.BoxNewSlots{}, models.ErrInvalidInput
+			}
+			boxNewSlots.Date[i] = date
+			boxNewSlots.StartTime[i] = startTime
+			boxNewSlots.EndTime[i] = endTime
 		}
 	}
-	return uploadResp.URL, nil
+
+	return boxNewSlots, nil
 }

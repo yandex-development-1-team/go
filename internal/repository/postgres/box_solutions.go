@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 
+	"github.com/yandex-development-1-team/go/internal/ctxutil"
 	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
@@ -47,23 +48,53 @@ const getServiceByIDQuery = `
 	ORDER BY a.slot_date, a.start_time`
 
 const updateServiceByIDQuery = `
-	UPDATE services SET
-		name        = COALESCE($2, name),
-		description = COALESCE($3, description),
-		rules       = COALESCE($4, rules),
-		location    = COALESCE($5, location),
-		price       = COALESCE($6, price),
-		image       = COALESCE($7, image),
-		status      = COALESCE($8, status),
-		organizer   = COALESCE($9, organizer),
-		updated_at  = NOW()
+WITH 
+old_image AS (
+    SELECT image FROM services WHERE id = $1
+),
+deactivate AS (
+    UPDATE files f
+    SET is_active = false
+    FROM old_image o
+    WHERE f.url = o.image
+        AND o.image IS NOT NULL
+        AND o.image != ''
+        AND ($7::TEXT) IS NOT NULL
+        AND ($7::TEXT) != ''
+        AND o.image != ($7::TEXT)
+),
+activate AS (
+    UPDATE files
+    SET is_active = true
+    WHERE url = ($7::TEXT)
+        AND ($7::TEXT) IS NOT NULL
+        AND ($7::TEXT) != ''
+)
+UPDATE services SET
+	name        = COALESCE($2, name),
+	description = COALESCE($3, description),
+	rules       = COALESCE($4, rules),
+	location    = COALESCE($5, location),
+	price       = COALESCE($6, price),
+	image       = COALESCE($7, image),
+	status      = COALESCE($8, status),
+	organizer   = COALESCE($9, organizer),
+	updated_at  = NOW()
 	WHERE id = $1`
 
 const createServiceQuery = `
-	INSERT INTO services (
-		name, slug, description, rules, location, price, image, status, organizer
-	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	RETURNING id, created_at, updated_at`
+WITH
+new_image AS (
+    UPDATE files
+    SET is_active = true
+    WHERE url = $7
+        AND $7 IS NOT NULL
+        AND $7 != ''
+)
+INSERT INTO services (
+    name, slug, description, rules, location, price, image, status, organizer
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, created_at, updated_at`
 
 const createAvailableSlotQuery = `
 	INSERT INTO service_available_slots (
@@ -337,7 +368,7 @@ func (r *BoxSolutionRepo) GetServices(ctx context.Context, telegramID int64) ([]
 // GetServiceByID gets detailed information about a specific service by its identifier
 func (r *BoxSolutionRepo) GetServiceByID(ctx context.Context, serviceID int64) (*models.Service, error) {
 	var rows []dto.BoxRaw
-	if err := r.db.SelectContext(ctx, &rows, getServiceByIDQuery, serviceID); err != nil {
+	if err := sqlx.SelectContext(ctx, r.getDB(ctx), &rows, getServiceByIDQuery, serviceID); err != nil {
 		return nil, err
 	}
 	if len(rows) == 0 {
@@ -656,7 +687,7 @@ func (r *BoxSolutionRepo) GetServicesByStatus(ctx context.Context, status *model
 }
 
 func (r *BoxSolutionRepo) UpdateService(ctx context.Context, id int64, service *models.BoxUpdate) error {
-	result, err := r.db.ExecContext(ctx, updateServiceByIDQuery,
+	result, err := r.getDB(ctx).ExecContext(ctx, updateServiceByIDQuery,
 		id, service.Name, service.Description, service.Rules, service.Location,
 		service.Price, service.Image, service.Status, service.Organizer)
 	if err != nil {
@@ -676,7 +707,7 @@ func (r *BoxSolutionRepo) UpdateService(ctx context.Context, id int64, service *
 }
 
 func (r *BoxSolutionRepo) DeleteServiceSlots(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(ctx, deleteSlotsQuery, id)
+	_, err := r.getDB(ctx).ExecContext(ctx, deleteSlotsQuery, id)
 	if err != nil {
 		return err
 	}
@@ -685,8 +716,7 @@ func (r *BoxSolutionRepo) DeleteServiceSlots(ctx context.Context, id int64) erro
 }
 
 func (r *BoxSolutionRepo) UpdateServiceSlots(ctx context.Context, id int64, slots *models.BoxNewSlots) error {
-
-	_, err := r.db.ExecContext(ctx, createSlotsQuery, id, slots.Date, slots.StartTime, slots.EndTime)
+	_, err := r.getDB(ctx).ExecContext(ctx, createSlotsQuery, id, slots.Date, slots.StartTime, slots.EndTime)
 	if err != nil {
 		return err
 	}
@@ -720,4 +750,11 @@ func (r *BoxSolutionRepo) UpdateServiceStatus(ctx context.Context, serviceID int
 		Status:    result.Status,
 		UpdatedAt: result.UpdatedAt,
 	}, nil
+}
+
+func (r *BoxSolutionRepo) getDB(ctx context.Context) sqlx.ExtContext {
+	if tx, ok := ctxutil.TxFromContext(ctx); ok {
+		return tx
+	}
+	return r.db
 }

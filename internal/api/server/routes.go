@@ -73,7 +73,6 @@ func setupBoxRoutes(rg *gin.RouterGroup, boxHandler *handlers.BoxHandler, middle
 		boxes.GET("/:id", middleware.RequireManagersOrAdmin(), boxHandler.GetByID)
 		boxes.PUT("/:id", middlewareRepo.RoleVerification(models.PermBoxesEdit), boxHandler.Update)
 		boxes.DELETE("/:id", middlewareRepo.RoleVerification(models.PermBoxesDelete), boxHandler.Delete)
-		boxes.POST("/:id/image", middlewareRepo.RoleVerification(models.PermBoxesEdit), boxHandler.UploadImage)
 		boxes.PUT("/:id/status", middlewareRepo.RoleVerification(models.PermBoxesEdit), boxHandler.UpdateStatus)
 	}
 }
