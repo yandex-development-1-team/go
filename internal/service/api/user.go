@@ -34,3 +34,7 @@ func (s *UserService) GetByID(ctx context.Context, id int64) (*dto.UserWithDetai
 
 	return s.repo.GetByID(ctx, id)
 }
+
+func (s *UserService) Dashboard(ctx context.Context, managerId int64) (*dto.DashboardResponse, error) {
+	return s.repo.GetDashboard(ctx, managerId)
+}

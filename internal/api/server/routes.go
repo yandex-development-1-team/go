@@ -27,6 +27,7 @@ func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHand
 			setupFileRoutes(protected, fileHandler)
 			setupApplicationRoutes(protected, applicationHandler, middlewareRepo)
 			setupBookingRoutes(protected, bookingHandler, middlewareRepo)
+			setupDashboardRoutes(protected, userHandler)
 		}
 		public := apiV1.Group("/public")
 		public.GET("/resources/:slug", recPageHandler.GetPublicBySlug)
@@ -131,5 +132,12 @@ func setupBookingRoutes(rg *gin.RouterGroup, h *handlers.BookingHandler, middlew
 		bookings.GET("/:id", middlewareRepo.RoleVerification(models.PermBookingsView), h.BookingsById)
 		bookings.PUT("/:id/status", middlewareRepo.RoleVerification(models.PermBookingsEdit), h.UpdateBookingStatus)
 		bookings.DELETE("/:id", middlewareRepo.RoleVerification(models.PermBookingsDelete), h.DeleteBooking)
+	}
+}
+
+func setupDashboardRoutes(rg *gin.RouterGroup, h *handlers.UserHandler) {
+	dashboard := rg.Group("/dashboard")
+	{
+		dashboard.GET("", middleware.RequireManagersOrAdmin(), h.GetDashboard)
 	}
 }

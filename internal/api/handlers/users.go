@@ -70,3 +70,14 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, user)
 }
+
+func (h *UserHandler) GetDashboard(c *gin.Context) {
+	managerId := c.GetInt64("user_id")
+
+	resp, err := h.svc.Dashboard(c.Request.Context(), managerId)
+	if err != nil {
+		apierrors.WriteErrorGin(c, err)
+	}
+
+	c.JSON(http.StatusOK, resp)
+}

@@ -31,6 +31,7 @@ var (
 	boxRepo          *BoxSolutionRepo
 	resourcePageRepo *ResourcePageRepository
 	applicationRepo  *ApplicationRepo
+	staffRepo        *StaffRepo
 )
 
 // cleanBookingsTables удаляет данные из всех связанных таблиц
@@ -140,6 +141,7 @@ func TestMain(m *testing.M) {
 	boxRepo = NewBoxSolutionRepo(db)
 	resourcePageRepo = NewResourcePageRepo(db)
 	applicationRepo = NewApplicationRepository(db)
+	staffRepo = NewStaffRepo(db)
 
 	code := m.Run()
 

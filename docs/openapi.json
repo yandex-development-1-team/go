@@ -6,6 +6,29 @@
     "description": "CRM-система для интеграции с Telegram-ботом: админка для коробочных решений, спецпроектов, заявок, расписания, аналитики, прав доступа, системных настроек и ресурсных ссылок.\n\n**Формат ошибок:** при любой ошибке со стороны сервиса ответ имеет единый формат — объект с полем `errors` (массив строк, человекочитаемые сообщения). Детали БД (SQL, стек, внутренние коды) клиенту не возвращаются. Коды ответа: 401 — не авторизован; 403 — доступ запрещён (недостаточно прав); 404 — ресурс не найден; 409 — конфликт (например, слот уже занят); 400 — невалидные данные; 5xx — внутренняя ошибка сервиса."
   },
   "paths": {
+    "/api/v1/dashboard": {
+      "get": {
+        "summary": "Главная страница",
+        "tags": [
+          "dashboard"
+        ],
+        "responses": {
+          "200": {
+            "description": "Данные дашборда",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
     "/api/v1/auth/register": {
       "post": {
         "summary": "Регистрация менеджера/админа",
@@ -13,7 +36,7 @@
           "auth"
         ],
         "requestBody": {
-          "requered": true,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -2570,42 +2593,49 @@
         "type": "object",
         "properties": {
           "name": {
+            "description": "Название коробочного решения.",
             "type": "string"
           },
           "description": {
+            "description": "Описание.",
             "type": "string"
           },
           "rules": {
+            "description": "Правила участия.",
             "type": "string"
           },
-          "date": {
-            "type": "string",
-            "format": "date",
-            "description": "Дата проведения"
-          },
-          "time": {
-            "type": "string",
-            "description": "Время начала, формат HH:MM"
-          },
           "location": {
+            "description": "Место проведения.",
             "type": "string"
           },
           "price": {
-            "type": "integer"
+            "description": "Цена в рублях, больше 0.",
+            "type": "integer",
+            "minimum": 1
           },
           "image": {
+            "description": "URL изображения.",
             "type": "string",
             "format": "uri"
           },
-          "organizer": {
-            "type": "string"
-          },
           "status": {
+            "description": "Статус коробочного решения.",
             "type": "string",
             "enum": [
               "active",
               "inactive"
             ]
+          },
+          "organizer": {
+            "description": "Организатор.",
+            "type": "string"
+          },
+          "slots": {
+            "description": "Список доступных слотов.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoxAvailableSlot"
+            }
           }
         },
         "required": [
@@ -2657,6 +2687,32 @@
             ]
           }
         }
+      },
+      "BoxAvailableSlot": {
+        "description": "Доступный слот для бронирования коробочного решения.",
+        "type": "object",
+        "properties": {
+          "date": {
+            "description": "Дата слота в формате YYYY-MM-DD.",
+            "type": "string",
+            "format": "date"
+          },
+          "time_from": {
+            "description": "Время начала слота в формате HH:MM.",
+            "type": "string",
+            "example": "10:00"
+          },
+          "time_to": {
+            "description": "Время окончания слота в формате HH:MM.",
+            "type": "string",
+            "example": "12:00"
+          }
+        },
+        "required": [
+          "date",
+          "time_from",
+          "time_to"
+        ]
       },
       "Booking": {
         "type": "object",
@@ -3409,7 +3465,7 @@
           }
         }
       },
-      "UserWithDetails":  {
+      "UserWithDetails": {
         "allOf": [
           {
             "$ref": "#/components/schemas/User"
@@ -3911,6 +3967,117 @@
             }
           }
         }
+      },
+      "DashboardResponse": {
+        "description": "Ответ дашборда менеджера — общая статистика, личная статистика и список активных заявок.",
+        "type": "object",
+        "properties": {
+          "overview": {
+            "$ref": "#/components/schemas/DashboardOverview"
+          },
+          "manager_stats": {
+            "$ref": "#/components/schemas/DashboardManagerStats"
+          },
+          "applications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationShort"
+            }
+          }
+        },
+        "required": [
+          "overview",
+          "manager_stats",
+          "applications"
+        ]
+      },
+      "DashboardOverview": {
+        "description": "Общая статистика по всем заявкам платформы — не зависит от менеджера.",
+        "type": "object",
+        "properties": {
+          "new_applications": {
+            "description": "Количество новых заявок со статусом pending.",
+            "type": "integer",
+            "format": "int64"
+          },
+          "in_progress_applications": {
+            "description": "Количество заявок в работе со статусом confirmed.",
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "new_applications",
+          "in_progress_applications"
+        ]
+      },
+      "DashboardManagerStats": {
+        "description": "Статистика по заявкам текущего менеджера.",
+        "type": "object",
+        "properties": {
+          "in_progress": {
+            "description": "Количество заявок менеджера со статусом confirmed.",
+            "type": "integer",
+            "format": "int64"
+          },
+          "processed": {
+            "description": "Количество заявок менеджера со статусом cancelled.",
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "in_progress",
+          "processed"
+        ]
+      },
+      "ApplicationShort": {
+        "description": "Краткое представление заявки для отображения в списке на дашборде.",
+        "type": "object",
+        "properties": {
+          "telegram_nick": {
+            "description": "Telegram-аккаунт клиента. Для коробочных решений формируется как @username.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Имя клиента.",
+            "type": "string"
+          },
+          "service_type": {
+            "description": "Тип заявки — спецпроект или коробочное решение.",
+            "type": "string",
+            "enum": [
+              "Спецпроект",
+              "Коробочное решение"
+            ]
+          },
+          "service_name": {
+            "description": "Название услуги. Для спецпроектов совпадает с service_type.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Текущий статус заявки.",
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "cancelled"
+            ]
+          },
+          "created_at": {
+            "description": "Дата и время создания заявки.",
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "telegram_nick",
+          "name",
+          "service_type",
+          "service_name",
+          "status",
+          "created_at"
+        ]
       },
       "Pagination": {
         "type": "object",

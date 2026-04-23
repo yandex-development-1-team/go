@@ -80,7 +80,7 @@ type BoxCreateRequest struct {
 	Image       *string            `json:"image,omitempty" binding:"omitempty,url"`
 	Status      *string            `json:"status" binding:"required,oneof=active inactive"`
 	Organizer   *string            `json:"organizer,omitempty"`
-	Slots       []BoxAvailableSlot `json:"slots" binding:"required,min=1,dive"`
+	Slots       []BoxAvailableSlot `json:"slots,omitempty"`
 }
 
 type BoxUpdateRequest struct {
