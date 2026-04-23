@@ -25,6 +25,7 @@ type APIServices struct {
 	RecPageSvc        *service.ResourcePageService
 	UserSvc           *apiService.UserService
 	FileService       *apiService.FileService
+	UsersAdmin        *apiService.UsersAdminService
 	ApplicationRepo   repository.ApplicationRepository
 	MiddlewareRepo    *sqlx.DB
 	ApplicationSvc    *apiService.ApplicationsService
@@ -67,10 +68,11 @@ func (s *Server) RegisterRoutes(yandexFormToken string) {
 	recPageHandler := handlers.NewResourcePageHandler(s.services.RecPageSvc)
 	userHandler := handlers.NewUserHandler(s.services.UserSvc)
 	fileHandler := handlers.NewFileHandler(s.services.FileService)
+	usersHandler := handlers.NewUsersHandler(s.services.UsersAdmin)
 	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationSvc, yandexFormToken)
 	bookingHamdler := handlers.NewBookingHandler(s.services.BookingSvc)
 
-	SetupRoutes(s.services.MiddlewareRepo, s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, bookingHamdler)
+	SetupRoutes(s.services.MiddlewareRepo, s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, usersHandler, bookingHamdler)
 }
 
 func (s *Server) Run(cfg *config.Config) error {

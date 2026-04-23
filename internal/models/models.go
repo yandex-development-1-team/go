@@ -120,8 +120,11 @@ type UserAPI struct {
 	PhoneNumber  string
 	Role         string
 	Status       string
+	Image        string
 	Department   string
 	Position     string
+	Supervisor   string
+	Address      string
 	InviteToken  string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -169,4 +172,35 @@ type UserSession struct {
 type RefreshResponse struct {
 	Token        string
 	RefreshToken string
+}
+
+type StaffAdminCreate struct {
+	FirstName   string
+	LastName    string
+	SecondName  string
+	Email       string
+	Role        string
+	Status      string
+	PhoneNumber *string
+	Department  *string
+	Position    *string
+	Supervisor  *string
+	Address     *string
+	InviteToken string
+	Image       *string
+}
+
+type StaffAdminUpdate struct {
+	FirstName   *string
+	LastName    *string
+	SecondName  *string
+	Email       *string
+	Role        *string
+	Status      *string
+	PhoneNumber *string
+	Department  *string
+	Position    *string
+	Supervisor  *string
+	Address     *string
+	Image       *string
 }

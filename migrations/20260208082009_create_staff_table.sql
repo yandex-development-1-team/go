@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS staff (
     status user_status_type DEFAULT 'invited',
     department VARCHAR(255),
     position VARCHAR(255),
+    supervisor VARCHAR(255),
+    address VARCHAR(255),
+    image TEXT,
     invite_token TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

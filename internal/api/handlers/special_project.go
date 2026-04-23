@@ -87,23 +87,14 @@ func (h *SpecialProjectHandler) ListSpecialProjects(c *gin.Context) {
 		return
 	}
 
-	limitP := c.Query("limit")
-	limit, err := strconv.Atoi(limitP)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_limit"})
-		return
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if err != nil || limit < 0 {
+		limit = 20
 	}
 
-	offsetP := c.Query("offset")
-	offset, err := strconv.Atoi(offsetP)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_limit"})
-		return
-	}
-
-	if limit < 0 || offset < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_status"})
-		return
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil || offset < 0 {
+		offset = 0
 	}
 
 	domainlist, total, err := h.svc.List(c.Request.Context(), status, search, limit, offset)
