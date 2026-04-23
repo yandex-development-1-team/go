@@ -120,7 +120,7 @@ func run() error {
 	boxService := apiService.NewAPIBoxService(boxSolutionRepo, fileService, txRepo)
 	specialProjectService := service.NewSpecialProjectService(specialProjectRepo)
 	analyticsService := apiService.NewAnalyticsService(analyticsRepo)
-	resourcePageService := service.NewResourcePageService(resourcePageRepo)
+	resourcePageService := service.NewResourcePageService(resourcePageRepo, fileService, txRepo)
 	userService := apiService.NewUserService(staffRepo)
 	applicationSvc := apiService.NewApplicationsService(applicationRepo, txRepo)
 	bookAPISvc := apiService.NewBookingsService(bookRepo, txRepo)

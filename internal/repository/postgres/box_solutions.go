@@ -725,7 +725,16 @@ func (r *BoxSolutionRepo) UpdateServiceSlots(ctx context.Context, id int64, slot
 }
 
 func (r *BoxSolutionRepo) SoftDeleteService(ctx context.Context, serviceID int64) error {
-	query := `UPDATE services SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
+	query := `WITH deleted_service AS (
+    UPDATE services
+    SET deleted_at = NOW(), updated_at = NOW()
+    WHERE id = $1 AND deleted_at IS NULL
+    RETURNING image
+	)
+	UPDATE files
+	SET is_active = false, updated_at = NOW()
+	WHERE url = (SELECT image FROM deleted_service)
+		AND (SELECT image FROM deleted_service) IS NOT NULL`
 
 	_, err := r.db.ExecContext(ctx, query, serviceID)
 	if err != nil {

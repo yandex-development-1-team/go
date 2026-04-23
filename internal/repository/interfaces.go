@@ -45,7 +45,7 @@ type ApplicationRepository interface {
 	DeleteApplication(ctx context.Context, id int64) error
 }
 
-//go:generate mockgen -source=../../repository/postgres/interfaces.go -destination=mocks/mock_boxlister.go -package=mocks
+//go:generate mockgen -source=interfaces.go -destination=../service/api/mocks/mock_boxlister.go -package=mocks
 type BoxSolutionRepository interface {
 	GetServices(ctx context.Context, telegramID int64) ([]models.Service, error)
 	GetServiceByID(ctx context.Context, serviceID int64) (*models.Service, error)
@@ -95,6 +95,7 @@ type SpecialProjectRepository interface {
 	Delete(ctx context.Context, id int64) error
 }
 
+//go:generate mockgen -source=interfaces.go -destination=../service/api/mocks/mock_repository.go -package=mocks
 type TxRepository interface {
 	RunToTx(ctx context.Context, fn func(ctx context.Context) error) error
 	BeginTx(ctx context.Context) (*sqlx.Tx, error)

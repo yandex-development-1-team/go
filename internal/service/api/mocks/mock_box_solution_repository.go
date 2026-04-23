@@ -16,10 +16,9 @@ import (
 	time "time"
 
 	sqlx "github.com/jmoiron/sqlx"
-	gomock "go.uber.org/mock/gomock"
-
 	dto "github.com/yandex-development-1-team/go/internal/dto"
 	models "github.com/yandex-development-1-team/go/internal/models"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockStaffRepository is a mock of StaffRepository interface.
@@ -732,6 +731,20 @@ func (mr *MockSettingsRepositoryMockRecorder) GetSettings(ctx any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSettings", reflect.TypeOf((*MockSettingsRepository)(nil).GetSettings), ctx)
 }
 
+// PostSettings mocks base method.
+func (m *MockSettingsRepository) PostSettings(ctx context.Context, newSettings models.SettingsPermissions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PostSettings", ctx, newSettings)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PostSettings indicates an expected call of PostSettings.
+func (mr *MockSettingsRepositoryMockRecorder) PostSettings(ctx, newSettings any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostSettings", reflect.TypeOf((*MockSettingsRepository)(nil).PostSettings), ctx, newSettings)
+}
+
 // PutSettings mocks base method.
 func (m *MockSettingsRepository) PutSettings(ctx context.Context, newSettings []models.Setting) (time.Time, error) {
 	m.ctrl.T.Helper()
@@ -964,7 +977,7 @@ func (mr *MockSpecialProjectRepositoryMockRecorder) GetByID(ctx, id any) *gomock
 }
 
 // List mocks base method.
-func (m *MockSpecialProjectRepository) List(ctx context.Context, statusFilter *bool, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
+func (m *MockSpecialProjectRepository) List(ctx context.Context, statusFilter, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx, statusFilter, searchQuery, limit, offset)
 	ret0, _ := ret[0].([]*models.SpecialProjectDB)

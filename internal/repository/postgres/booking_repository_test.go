@@ -38,6 +38,9 @@ var (
 func cleanBookingsTables(t *testing.T) {
 	_, err := db.Exec("TRUNCATE TABLE bookings, users, services, staff RESTART IDENTITY CASCADE")
 	require.NoError(t, err)
+
+	_, err = db.Exec(`INSERT INTO services (id, name, slug, price) VALUES (1, 'Test Service', 'test-service', 0), (5, 'Slot Service', 'slot-service', 0), (50, 'Race Service', 'race-service', 0)`)
+	require.NoError(t, err)
 }
 
 // seedUser создаёт пользователя с заданным telegram_id и username

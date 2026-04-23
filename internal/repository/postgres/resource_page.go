@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/yandex-development-1-team/go/internal/ctxutil"
 	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
@@ -67,7 +68,7 @@ func (r *ResourcePageRepository) Update(ctx context.Context, slug string, page m
 	}
 
 	var row dto.ResourcePageDB
-	err = r.db.GetContext(ctx, &row, `
+	err = sqlx.GetContext(ctx, r.getDB(ctx), &row, `
 			UPDATE resource_pages
 			SET title = $1, content = $2, links = $3, updated_at = NOW()
 			WHERE slug = $4
@@ -135,4 +136,11 @@ func toDomain(row *dto.ResourcePageDB) (*models.ResourcePage, error) {
 		Links:     links,
 		UpdatedAt: row.UpdatedAt,
 	}, nil
+}
+
+func (r *ResourcePageRepository) getDB(ctx context.Context) sqlx.ExtContext {
+	if tx, ok := ctxutil.TxFromContext(ctx); ok {
+		return tx
+	}
+	return r.db
 }

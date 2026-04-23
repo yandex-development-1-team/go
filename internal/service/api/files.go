@@ -94,6 +94,11 @@ func (s *FileService) Upload(
 	}, nil
 }
 
+// ActivateByURL marks a file as active by its public URL.
+func (s *FileService) ActivateByURL(ctx context.Context, url string) error {
+	return s.repo.ActivateByURL(ctx, url)
+}
+
 // DeactivateByURL marks a file as inactive by its public URL.
 func (s *FileService) DeactivateByURL(ctx context.Context, fileURL string) error {
 	fileURL = strings.TrimSpace(fileURL)

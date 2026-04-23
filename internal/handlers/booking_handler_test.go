@@ -69,13 +69,15 @@ var (
 const TestUserID = int64(12345)
 
 func TestMain(m *testing.M) {
+	os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
 	logger.NewLogger("dev", "debug")
 	metrics.Initialize(config.Config{Environment: "test", HostName: "test"})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 
-	postgresContainer, err := startPostgresContainer()
+	postgresContainer, err := startPostgresContainer(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,7 +87,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to connect to postgres: %s", err.Error())
 	}
 
-	redisContainer, err := startRedisContainer()
+	redisContainer, err := startRedisContainer(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -109,12 +111,14 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	_ = postgresContainer.Terminate(ctx)
-	_ = redisContainer.Terminate(ctx)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	_ = postgresContainer.Terminate(shutdownCtx)
+	_ = redisContainer.Terminate(shutdownCtx)
+	shutdownCancel()
 	os.Exit(code)
 }
 
-func startPostgresContainer() (tc.Container, error) {
+func startPostgresContainer(ctx context.Context) (tc.Container, error) {
 	req := tc.ContainerRequest{
 		Image:        "postgres:15",
 		ExposedPorts: []string{"5432/tcp"},
@@ -124,23 +128,24 @@ func startPostgresContainer() (tc.Container, error) {
 		},
 		WaitingFor: wait.ForSQL(nat.Port("5432/tcp"), "postgres", func(host string, port nat.Port) string {
 			return fmt.Sprintf("host=%s port=%s user=postgres password=password dbname=testdb sslmode=disable", host, port.Port())
-		}).WithStartupTimeout(120 * time.Second),
+		}).WithStartupTimeout(180 * time.Second),
 	}
 
-	return tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+	return tc.GenericContainer(ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
+		Reuse:            false,
 	})
 }
 
-func startRedisContainer() (tc.Container, error) {
+func startRedisContainer(ctx context.Context) (tc.Container, error) {
 	req := tc.ContainerRequest{
 		Image:        "redis:7-alpine",
 		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForLog("Ready to accept connections"),
+		WaitingFor:   wait.ForLog("Ready to accept connections").WithStartupTimeout(120 * time.Second),
 	}
 
-	return tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+	return tc.GenericContainer(ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
