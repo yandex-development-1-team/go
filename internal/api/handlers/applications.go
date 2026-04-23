@@ -193,7 +193,7 @@ func toAppFilter(req *dto.ApplicationListRequest) *models.ApplicationFilter {
 	}
 
 	if filter.Limit == 0 {
-		filter.Limit = 20
+		filter.Limit = 15
 	}
 
 	if req.Status != nil {
