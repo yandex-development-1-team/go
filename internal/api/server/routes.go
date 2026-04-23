@@ -77,12 +77,13 @@ func setupBoxRoutes(rg *gin.RouterGroup, boxHandler *handlers.BoxHandler, middle
 	}
 }
 
+// todo для settings адреса страниц (permissions и messages) указаны самостоятельно, нужно согласование
 func setupSettingsRoutes(rg *gin.RouterGroup, settingsHandler *handlers.SettingsHandler) {
 	settings := rg.Group("/settings")
 	{
-		settings.GET("/", middleware.RequireManagersOrAdmin(), settingsHandler.Get)
-		settings.PUT("/", middleware.RequireAdmin(), settingsHandler.Put)
-		settings.POST("/", middleware.RequireAdmin(), settingsHandler.Post)
+		settings.GET("/messages", middleware.RequireManagersOrAdmin(), settingsHandler.Get)
+		settings.PUT("/messages", middleware.RequireAdmin(), settingsHandler.Put)
+		settings.POST("/permissions", middleware.RequireAdmin(), settingsHandler.Post)
 	}
 }
 
