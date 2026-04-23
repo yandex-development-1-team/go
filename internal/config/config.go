@@ -275,6 +275,13 @@ func bindEnvs(v *viper.Viper) {
 	_ = v.BindEnv("file_gc.orphan_grace_period", "FILE_GC_ORPHAN_GRACE_PERIOD")
 	_ = v.BindEnv("file_gc.delete_batch_size", "FILE_GC_DELETE_BATCH_SIZE")
 	_ = v.BindEnv("yandex_forms.webhook_token", "YANDEX_FORMS_WEBHOOK_TOKEN")
+
+	_ = v.BindEnv("email.smtp_host", "SMTP_HOST")
+	_ = v.BindEnv("email.smtp_port", "SMTP_PORT")
+	_ = v.BindEnv("email.smtp_username", "SMTP_USERNAME")
+	_ = v.BindEnv("email.smtp_password", "SMTP_PASSWORD")
+	_ = v.BindEnv("email.from_email", "EMAIL_FROM")
+	_ = v.BindEnv("email.base_url", "EMAIL_BASE_URL")
 }
 
 func validateConfig(config *Config) error {

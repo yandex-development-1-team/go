@@ -10,8 +10,8 @@ INSERT INTO staff (telegram_nick, first_name, last_name, second_name, email, pho
 ('manager_6', 'Сергей', 'Морозов', 'Алексеевич', 'manager6@example.com', '79166789012', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'manager_3', 'active', 'Продажи', 'Менеджер по спецпроектам', NOW(), NOW()),
 ('manager_7', 'Наталья', 'Попова', 'Дмитриевна', 'manager7@example.com', '79167890123', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'manager_1', 'blocked', 'Продажи', 'Менеджер по работе с клиентами', NOW(), NOW()),
 ('user_1', 'Михаил', 'Лебедев', 'Романович', 'user1@example.com', '79168901234', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', 'active', 'Маркетинг', 'Специалист', NOW(), NOW()),
-('user_2', 'Татьяна', 'Александрова', 'Юрьевна', 'user2@example.com', '79169012345', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', 'invited', 'HR', 'HR-специалист', NOW(), NOW())
-ON CONFLICT (email) DO NOTHING;
+('user_2', 'Татьяна', 'Александрова', 'Юрьевна', 'user2@example.com', '79169012345', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', 'invited', 'HR', 'HR-специалист', NOW(), NOW()),
+('my_admin', 'Sergey','Klo','sfdfd', 'kolomii4uks@yandex.com', '+7949', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 'active', 'Маркетинг', 'Специалист', NOW(), NOW());
 -- +goose StatementEnd
 
 -- +goose Down

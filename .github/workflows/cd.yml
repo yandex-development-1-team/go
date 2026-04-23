@@ -69,6 +69,8 @@ jobs:
           CI_JWT_SECRET: ${{ secrets.JWT_SECRET }}
           CI_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           CI_YANDEX_FORMS_WEBHOOK_TOKEN: ${{ secrets.YANDEX_FORMS_WEBHOOK_TOKEN }}
+          CI_MINIO_PUBLIC_BASE_URL: ${{ vars.MINIO_PUBLIC_BASE_URL }}
+          CI_SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         run: |
           pip3 install dump-env
           dump-env \
