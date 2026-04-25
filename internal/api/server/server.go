@@ -54,7 +54,7 @@ func New(cfg *config.Config, services *APIServices, authService *apiService.Auth
 	router.Use(middleware.Logger())
 	router.Use(middleware.Metrics())
 	router.Use(middleware.CORS(cfg.CORS))
-	registerCustomValidators()
+	RegisterCustomValidators()
 
 	return &Server{
 		router:      router,
@@ -98,7 +98,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.srv.Shutdown(ctx)
 }
 
-func registerCustomValidators() {
+func RegisterCustomValidators() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		_ = v.RegisterValidation("httpurl", func(fl validator.FieldLevel) bool {
 			url := fl.Field().String()

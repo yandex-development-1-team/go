@@ -8,10 +8,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,6 +49,12 @@ func setupUsersAdminServer(t *testing.T) *httptest.Server {
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		_ = v.RegisterValidation("httpurl", func(fl validator.FieldLevel) bool {
+			url := fl.Field().String()
+			return strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://")
+		})
+	}
 
 	router.Use(func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
