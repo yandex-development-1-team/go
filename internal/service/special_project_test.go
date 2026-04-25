@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -120,9 +121,10 @@ func TestSpecialProjectService_GetByID(t *testing.T) {
 	})
 
 	t.Run("success returns domain", func(t *testing.T) {
+		desc := ""
 		repo := &mockSpecialProjectRepo{
 			getByIDFn: func(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
-				return &models.SpecialProjectDB{ID: id, Title: "T", Status: "active"}, nil
+				return &models.SpecialProjectDB{ID: id, Title: "T", Description: &desc, Image: nil, Status: "active", CreatedAt: time.Now(), UpdatedAt: time.Now()}, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
@@ -179,7 +181,7 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 			updateFn: func(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error) {
 				return &models.SpecialProjectDB{
 					ID: id, Title: update.Title, Description: update.Description,
-					Image: update.Image, Status: update.Status,
+					Image: &update.Image, Status: update.Status,
 				}, nil
 			},
 		}
@@ -238,11 +240,12 @@ func TestSpecialProjectService_List(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success returns list", func(t *testing.T) {
+		desc := "D"
 		repo := &mockSpecialProjectRepo{
 			listFn: func(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 				return []*models.SpecialProjectDB{
-					{ID: 1, Title: "A", Status: "active"},
-					{ID: 2, Title: "B", Status: "inactive"},
+					{ID: 1, Title: "A", Description: &desc, Image: nil, Status: "active", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+					{ID: 2, Title: "B", Description: &desc, Image: nil, Status: "inactive", CreatedAt: time.Now(), UpdatedAt: time.Now()},
 				}, 10, nil
 			},
 		}
