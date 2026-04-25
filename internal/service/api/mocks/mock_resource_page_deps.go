@@ -14,8 +14,9 @@ import (
 	io "io"
 	reflect "reflect"
 
-	dto "github.com/yandex-development-1-team/go/internal/dto"
 	gomock "go.uber.org/mock/gomock"
+
+	dto "github.com/yandex-development-1-team/go/internal/dto"
 )
 
 // MockfileUploader is a mock of fileUploader interface.

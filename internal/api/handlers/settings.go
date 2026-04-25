@@ -38,6 +38,33 @@ func (a SettingsHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, settingsDTO)
 }
 
+func (a SettingsHandler) GetPermissions(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	role := c.Param("role")
+
+	if role == "" {
+		logger.Error("failed to get role from URL")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "failed to get role from URL",
+		})
+		return
+	}
+
+	permissions, err := a.service.GetSettingsPermissions(ctx, role)
+	if err != nil {
+		logger.Error("failed to get settings permissions from handler", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to get settings permissions",
+		})
+		return
+	}
+
+	permissionsDTO := convertServiceToDTOFromSettingsPermissions(permissions)
+
+	c.JSON(http.StatusOK, permissionsDTO)
+}
+
 func (a SettingsHandler) Put(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -70,7 +97,7 @@ func (a SettingsHandler) Put(c *gin.Context) {
 func (a SettingsHandler) Post(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var reqDTO dto.SettingsPermissionsRequest
+	var reqDTO dto.SettingsPermissions
 
 	if err := c.ShouldBindJSON(&reqDTO); err != nil {
 		logger.Error("failed to get settings permissions from post request", zap.Error(err))
@@ -105,10 +132,17 @@ func (a SettingsHandler) Post(c *gin.Context) {
 	})
 }
 
-func convertDTOToServiceFromSettingsPermissions(reqDTO dto.SettingsPermissionsRequest) models.SettingsPermissions {
+func convertDTOToServiceFromSettingsPermissions(reqDTO dto.SettingsPermissions) models.SettingsPermissions {
 	return models.SettingsPermissions{
 		Role:        reqDTO.Role,
 		Permissions: reqDTO.Permissions,
+	}
+}
+
+func convertServiceToDTOFromSettingsPermissions(permissions models.SettingsPermissions) dto.SettingsPermissions {
+	return dto.SettingsPermissions{
+		Role:        permissions.Role,
+		Permissions: permissions.Permissions,
 	}
 }
 
@@ -136,7 +170,7 @@ func convertDTOToModelsFromSettingsMessages(settingsMes dto.SettingsFormMessages
 	}
 }
 
-func validateSettingsPermissionsFromRequest(req dto.SettingsPermissionsRequest) error {
+func validateSettingsPermissionsFromRequest(req dto.SettingsPermissions) error {
 	exist := false
 
 	for _, role := range service.Roles {

@@ -50,6 +50,29 @@ func (r *SettingsRep) GetSettings(ctx context.Context) (models.SettingsFormMessa
 	return settings, nil
 }
 
+func (r *SettingsRep) GetSettingsPermissions(ctx context.Context, role string) (models.SettingsPermissions, error) {
+	var permissions models.SettingsPermissions
+
+	query := `
+		SELECT role, permissions 
+		FROM role_permissions 
+		WHERE role = $1;
+	`
+
+	err := r.client.GetContext(ctx, &permissions, query, role)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			logger.Error("failed to get settings permissions from db", zap.Error(err))
+			return models.SettingsPermissions{}, fmt.Errorf("settings permissions not found in database")
+		}
+
+		logger.Error("failed to get settings permissions from db", zap.Error(err))
+		return models.SettingsPermissions{}, fmt.Errorf("failed to get settings permissions: %w", err)
+	}
+
+	return permissions, nil
+}
+
 func (r *SettingsRep) PutSettings(ctx context.Context, newSettings models.SettingsFormMessages) error {
 	query := `
         INSERT INTO settings_messages (key, value)
