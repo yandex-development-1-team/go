@@ -3,33 +3,33 @@ package dto
 import "time"
 
 type UserCreateRequest struct {
-	FirstName   string  `json:"first_name"`
-	LastName    string  `json:"last_name"`
-	Email       string  `json:"email" binding:"required,email"`
-	Role        string  `json:"role" binding:"required"`
-	Status      string  `json:"status,omitempty"`
-	PhoneNumber *string `json:"phone_number,omitempty"`
-	Image       *string `json:"image,omitempty"`
-	Department  *string `json:"department,omitempty"`
-	Position    *string `json:"position,omitempty"`
-	Supervisor  *string `json:"supervisor,omitempty"`
-	Address     *string `json:"address,omitempty"`
-	SecondName  *string `json:"second_name,omitempty"`
+	FirstName   string  `json:"first_name"          binding:"required,min=1,max=255"`
+	LastName    string  `json:"last_name"            binding:"required,min=1,max=255"`
+	Email       string  `json:"email"                binding:"required,email,max=255"`
+	Role        string  `json:"role"                 binding:"required,oneof=admin manager_1 manager_2 manager_3 user"`
+	Status      string  `json:"status,omitempty"     binding:"omitempty,oneof=active blocked invited"`
+	PhoneNumber *string `json:"phone_number,omitempty" binding:"omitempty,max=50"`
+	Image       *string `json:"image,omitempty"      binding:"omitempty,httpurl,max=500"`
+	Department  *string `json:"department,omitempty" binding:"omitempty,max=255"`
+	Position    *string `json:"position,omitempty"   binding:"omitempty,max=255"`
+	Supervisor  *string `json:"supervisor,omitempty" binding:"omitempty,max=255"`
+	Address     *string `json:"address,omitempty"    binding:"omitempty,max=500"`
+	SecondName  *string `json:"second_name,omitempty" binding:"omitempty,max=255"`
 }
 
 type UserUpdateRequest struct {
-	FirstName   *string `json:"first_name,omitempty"`
-	LastName    *string `json:"last_name,omitempty"`
-	Email       *string `json:"email,omitempty"`
-	Role        *string `json:"role,omitempty"`
-	Status      *string `json:"status,omitempty"`
-	PhoneNumber *string `json:"phone_number,omitempty"`
-	Image       *string `json:"image,omitempty"`
-	Department  *string `json:"department,omitempty"`
-	Position    *string `json:"position,omitempty"`
-	Supervisor  *string `json:"supervisor,omitempty"`
-	Address     *string `json:"address,omitempty"`
-	SecondName  *string `json:"second_name,omitempty"`
+	FirstName   *string `json:"first_name,omitempty"  binding:"omitempty,min=1,max=255"`
+	LastName    *string `json:"last_name,omitempty"   binding:"omitempty,min=1,max=255"`
+	Email       *string `json:"email,omitempty"       binding:"omitempty,email,max=255"`
+	Role        *string `json:"role,omitempty"        binding:"omitempty,oneof=admin manager_1 manager_2 manager_3 user"`
+	Status      *string `json:"status,omitempty"      binding:"omitempty,oneof=active blocked invited"`
+	PhoneNumber *string `json:"phone_number,omitempty" binding:"omitempty,max=50"`
+	Image       *string `json:"image,omitempty"       binding:"omitempty,httpurl,max=500"`
+	Department  *string `json:"department,omitempty"  binding:"omitempty,max=255"`
+	Position    *string `json:"position,omitempty"    binding:"omitempty,max=255"`
+	Supervisor  *string `json:"supervisor,omitempty"  binding:"omitempty,max=255"`
+	Address     *string `json:"address,omitempty"     binding:"omitempty,max=500"`
+	SecondName  *string `json:"second_name,omitempty" binding:"omitempty,max=255"`
 }
 
 type BlockResponse struct {

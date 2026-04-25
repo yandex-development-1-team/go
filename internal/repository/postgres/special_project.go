@@ -26,7 +26,7 @@ const (
         AND $3 != ''
 )
 	INSERT INTO special_projects (title, description, image, status)
-	VALUES ($1, $2, $3, $4::special_project_status)
+	VALUES ($1, $2, $3, $4::spec_type)
 	RETURNING id, title, description, image, status, created_at, updated_at`
 
 	updateSpecProjectQuery = `
@@ -62,10 +62,13 @@ const (
     WHERE id = $5
     RETURNING id, title, description, image, status, created_at, updated_at`
 
-	getSpecProjectByIDQuery = `SELECT * FROM special_projects WHERE id = $1`
+	getSpecProjectByIDQuery = `
+	SELECT id, title, description, image, status, created_at, updated_at 
+	FROM special_projects 
+	WHERE id = $1 AND deleted_at IS NULL`
 
-	listSpecProjectsBaseQuery      = `SELECT id, title, status FROM special_projects WHERE 1=1`
-	listSpecProjectsCountBaseQuery = `SELECT COUNT(1) FROM special_projects WHERE 1=1`
+	listSpecProjectsBaseQuery      = `SELECT id, title, description, image, status, created_at, updated_at FROM special_projects WHERE deleted_at IS NULL`
+	listSpecProjectsCountBaseQuery = `SELECT COUNT(1) FROM special_projects WHERE deleted_at IS NULL`
 
 	deleteSpecProjectQuery = `
     WITH deactivate_image AS (

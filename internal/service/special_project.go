@@ -79,9 +79,13 @@ func (s *SpecialProjectService) List(ctx context.Context, statusStr string, sear
 	result := make([]*models.SpecialProject, 0, len(dbList))
 	for _, item := range dbList {
 		result = append(result, &models.SpecialProject{
-			ID:     item.ID,
-			Title:  item.Title,
-			Status: item.Status,
+			ID:          item.ID,
+			Title:       item.Title,
+			Description: item.Description,
+			Image:       item.Image,
+			Status:      item.Status,
+			CreatedAt:   item.CreatedAt,
+			UpdatedAt:   item.UpdatedAt,
 		})
 	}
 	return result, total, nil

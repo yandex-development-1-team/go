@@ -56,9 +56,13 @@ func toItemList(domain []*models.SpecialProject) []dto.SpecialProjectListItem {
 	result := make([]dto.SpecialProjectListItem, 0, len(domain))
 	for _, item := range domain {
 		result = append(result, dto.SpecialProjectListItem{
-			ID:     item.ID,
-			Title:  item.Title,
-			Status: item.Status,
+			ID:          item.ID,
+			Title:       item.Title,
+			Description: *item.Description,
+			Image:       item.Image,
+			Status:      item.Status,
+			CreatedAt:   item.CreatedAt,
+			UpdatedAt:   item.UpdatedAt,
 		})
 	}
 	return result
