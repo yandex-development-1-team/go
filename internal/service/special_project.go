@@ -20,11 +20,15 @@ func toDomain(db *models.SpecialProjectDB) *models.SpecialProject {
 	if db == nil {
 		return nil
 	}
+	var image string
+	if db.Image != nil {
+		image = *db.Image
+	}
 	return &models.SpecialProject{
 		ID:          db.ID,
 		Title:       db.Title,
 		Description: db.Description,
-		Image:       db.Image,
+		Image:       image,
 		Status:      db.Status,
 		CreatedAt:   db.CreatedAt,
 		UpdatedAt:   db.UpdatedAt,
@@ -39,7 +43,7 @@ func fromDomain(domain *models.SpecialProject) *models.SpecialProjectDB {
 		ID:          domain.ID,
 		Title:       domain.Title,
 		Description: domain.Description,
-		Image:       domain.Image,
+		Image:       &domain.Image,
 		Status:      domain.Status,
 	}
 }
@@ -78,11 +82,15 @@ func (s *SpecialProjectService) List(ctx context.Context, statusStr string, sear
 	}
 	result := make([]*models.SpecialProject, 0, len(dbList))
 	for _, item := range dbList {
+		var image string
+		if item.Image != nil {
+			image = *item.Image
+		}
 		result = append(result, &models.SpecialProject{
 			ID:          item.ID,
 			Title:       item.Title,
 			Description: item.Description,
-			Image:       item.Image,
+			Image:       image,
 			Status:      item.Status,
 			CreatedAt:   item.CreatedAt,
 			UpdatedAt:   item.UpdatedAt,
