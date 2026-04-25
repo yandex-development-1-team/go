@@ -26,19 +26,23 @@ const (
 )
 
 var MapPermissions = map[string]bool{
-	"bookings:view":      true,
-	"bookings:edit":      true,
-	"bookings:delete":    true,
-	"boxes:create":       true,
-	"boxes:edit":         true,
-	"boxes:delete":       true,
-	"specproject:view":   true,
-	"specproject:edit":   true,
-	"specproject:delete": true,
-	"analytics:view":     true,
-	"analytics:download": true,
-	"aboutus:yes":        true,
-	"faq:yes":            true,
+	"bookings:view":       true,
+	"bookings:edit":       true,
+	"bookings:delete":     true,
+	"boxes:create":        true,
+	"boxes:edit":          true,
+	"boxes:delete":        true,
+	"specproject:view":    true,
+	"specproject:edit":    true,
+	"specproject:delete":  true,
+	"presentation:view":   true,
+	"presentation:edit":   true,
+	"presentation:delete": true,
+	"analytics:view":      true,
+	"analytics:download":  true,
+	"aboutus:yes":         true,
+	"poster:yes":          true,
+	"faq:yes":             true,
 }
 
 var (

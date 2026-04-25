@@ -73,6 +73,7 @@ type SessionRepository interface {
 
 type SettingsRepository interface {
 	GetSettings(ctx context.Context) (models.SettingsFormMessages, error)
+	GetSettingsPermissions(ctx context.Context, role string) (models.SettingsPermissions, error)
 	PutSettings(ctx context.Context, newSettings models.SettingsFormMessages) error
 	PostSettings(ctx context.Context, newSettings models.SettingsPermissions) error
 }

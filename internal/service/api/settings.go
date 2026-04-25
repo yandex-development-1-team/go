@@ -29,6 +29,16 @@ func (a SettingsService) GetSettings(ctx context.Context) (models.SettingsFormMe
 	return settingsDB, nil
 }
 
+func (a SettingsService) GetSettingsPermissions(ctx context.Context, role string) (models.SettingsPermissions, error) {
+	permissionsDB, err := a.settingsRepo.GetSettingsPermissions(ctx, role)
+	if err != nil {
+		logger.Error("failed to get settings permissions from service", zap.Error(err))
+		return models.SettingsPermissions{}, err
+	}
+
+	return permissionsDB, nil
+}
+
 func (a SettingsService) PutSettings(ctx context.Context, reqService models.SettingsFormMessages) error {
 	err := a.settingsRepo.PutSettings(ctx, reqService)
 	if err != nil {

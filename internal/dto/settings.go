@@ -40,7 +40,7 @@ type General struct {
 	ContactPhone *string `json:"contact_phone,omitempty"`
 }
 
-type SettingsPermissionsRequest struct {
+type SettingsPermissions struct {
 	Role        string   `json:"role"`
 	Permissions []string `json:"permissions"`
 }

@@ -1,6 +1,9 @@
 package models
 
-import "database/sql"
+import (
+	"database/sql"
+	"github.com/lib/pq"
+)
 
 type SettingRow struct {
 	Category string         `db:"category"`
@@ -15,8 +18,8 @@ type Setting struct {
 }
 
 type SettingsPermissions struct {
-	Role        string   `db:"role"`
-	Permissions []string `db:"permissions"`
+	Role        string         `db:"role"`
+	Permissions pq.StringArray `db:"permissions"`
 }
 
 type SettingsFormMessages struct {
