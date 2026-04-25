@@ -72,14 +72,14 @@ type BoxAvailableSlot struct {
 }
 
 type BoxCreateRequest struct {
-	Name        *string            `json:"name" binding:"required"`
-	Description *string            `json:"description,omitempty"`
-	Rules       *string            `json:"rules,omitempty"`
-	Location    *string            `json:"location,omitempty"`
-	Price       *int               `json:"price" binding:"required,gt=0"`
-	Image       *string            `json:"image,omitempty" binding:"omitempty,url"`
-	Status      *string            `json:"status" binding:"required,oneof=active inactive"`
-	Organizer   *string            `json:"organizer,omitempty"`
+	Name        *string            `json:"name"                  binding:"required,min=1,max=255"`
+	Description *string            `json:"description,omitempty" binding:"omitempty,max=1000"`
+	Rules       *string            `json:"rules,omitempty"       binding:"omitempty,max=1000"`
+	Location    *string            `json:"location,omitempty"    binding:"omitempty,max=255"`
+	Price       *int               `json:"price"                 binding:"required,gt=0"`
+	Image       *string            `json:"image,omitempty"       binding:"omitempty,httpurl,max=500"`
+	Status      *string            `json:"status"                binding:"required,oneof=active inactive"`
+	Organizer   *string            `json:"organizer,omitempty"   binding:"omitempty,max=255"`
 	Slots       []BoxAvailableSlot `json:"slots,omitempty"`
 }
 
@@ -91,7 +91,7 @@ type BoxUpdateRequest struct {
 	Slots       []BoxAvailableSlot `json:"slots"         binding:"omitempty,dive"`
 	Location    *string            `json:"location"      binding:"omitempty,max=255"`
 	Price       *int               `json:"price"         binding:"omitempty,min=0"`
-	Image       *string            `json:"image"         binding:"omitempty,max=500"`
+	Image       *string            `json:"image"         binding:"omitempty,httpurl,max=500"`
 	Status      *string            `json:"status"        binding:"omitempty,oneof=active inactive"`
 	Organizer   *string            `json:"organizer"     binding:"omitempty,max=255"`
 }

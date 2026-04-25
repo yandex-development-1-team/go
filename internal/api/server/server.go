@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 
 	"github.com/yandex-development-1-team/go/internal/api/handlers"
 	"github.com/yandex-development-1-team/go/internal/api/middleware"
@@ -51,6 +54,7 @@ func New(cfg *config.Config, services *APIServices, authService *apiService.Auth
 	router.Use(middleware.Logger())
 	router.Use(middleware.Metrics())
 	router.Use(middleware.CORS(cfg.CORS))
+	RegisterCustomValidators()
 
 	return &Server{
 		router:      router,
@@ -92,4 +96,13 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		return nil
 	}
 	return s.srv.Shutdown(ctx)
+}
+
+func RegisterCustomValidators() {
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		_ = v.RegisterValidation("httpurl", func(fl validator.FieldLevel) bool {
+			url := fl.Field().String()
+			return strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://")
+		})
+	}
 }
