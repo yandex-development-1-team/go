@@ -140,7 +140,7 @@ func (h *SpecialProjectHandler) UpdateSpecialProject(c *gin.Context) {
 	}
 	var payload models.SpecialProject
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_error", "details": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_error"})
 		return
 	}
 	updated, err := h.svc.Update(c.Request.Context(), id, &payload)
