@@ -85,9 +85,9 @@ func (h *UserHandler) List(c *gin.Context) {
 	status := c.Query("status")
 	search := c.Query("search")
 
-	limit, err := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "15"))
 	if err != nil || limit <= 0 {
-		limit = 50
+		limit = 15
 	}
 
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))

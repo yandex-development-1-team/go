@@ -92,7 +92,7 @@ type PasswordResetRepository interface {
 }
 
 type SpecialProjectRepository interface {
-	Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error)
+	Create(ctx context.Context, proj *models.SpecialProject) (*models.SpecialProjectDB, error)
 	GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error)
 	List(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
 	Update(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error)

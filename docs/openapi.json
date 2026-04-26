@@ -3381,7 +3381,10 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive"]
+            "enum": [
+              "active",
+              "inactive"
+            ]
           },
           "created_at": {
             "type": "string",
@@ -3403,9 +3406,26 @@
           "title": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive"]
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -3424,12 +3444,17 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive"],
+            "enum": [
+              "active",
+              "inactive"
+            ],
             "default": "active"
           }
         },
         "required": [
-          "title"
+          "title",
+          "description",
+          "status"
         ]
       },
       "SpecialProjectUpdateRequest": {
@@ -3447,7 +3472,10 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive"]
+            "enum": [
+              "active",
+              "inactive"
+            ]
           }
         }
       },
@@ -3563,7 +3591,12 @@
             "type": "string"
           }
         },
-        "required": ["first_name", "last_name", "email", "role"]
+        "required": [
+          "first_name",
+          "last_name",
+          "email",
+          "role"
+        ]
       },
       "UserUpdateRequest": {
         "type": "object",
@@ -3578,13 +3611,26 @@
             "type": "string"
           },
           "email": {
-            "type": "string", "format": "email"
+            "type": "string",
+            "format": "email"
           },
           "role": {
-            "type": "string", "enum": ["admin", "manager_1", "manager_2", "manager_3", "user"]
+            "type": "string",
+            "enum": [
+              "admin",
+              "manager_1",
+              "manager_2",
+              "manager_3",
+              "user"
+            ]
           },
           "status": {
-            "type": "string", "enum": ["active", "blocked", "invited"]
+            "type": "string",
+            "enum": [
+              "active",
+              "blocked",
+              "invited"
+            ]
           },
           "phone_number": {
             "type": "string"

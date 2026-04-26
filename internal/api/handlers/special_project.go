@@ -34,22 +34,38 @@ func toDomainFromCreate(req *dto.SpecialProjectCreateRequest) *models.SpecialPro
 	}
 }
 
-func toSpecialProjectResponse(domain *models.SpecialProject) *dto.SpecialProjectResponse {
+func toDomainFromUpdate(req *dto.SpecialProjectUpdateRequest) *models.SpecialProjectUpdate {
+	if req == nil {
+		return nil
+	}
+	return &models.SpecialProjectUpdate{
+		Title:       req.Title,
+		Description: req.Description,
+		Image:       req.Image,
+		Status:      req.Status,
+	}
+}
+
+func toSpecialProjectResponse(domain *models.SpecialProjectDB) *dto.SpecialProjectResponse {
 	if domain == nil {
 		return nil
+	}
+	var image string
+	if domain.Image != nil {
+		image = *domain.Image
 	}
 	return &dto.SpecialProjectResponse{
 		ID:          domain.ID,
 		Title:       domain.Title,
 		Description: domain.Description,
-		Image:       domain.Image,
+		Image:       image,
 		Status:      domain.Status,
 		CreatedAt:   domain.CreatedAt,
 		UpdatedAt:   domain.UpdatedAt,
 	}
 }
 
-func toItemList(domain []*models.SpecialProject) []dto.SpecialProjectListItem {
+func toItemList(domain []*models.SpecialProjectDB) []dto.SpecialProjectListItem {
 	if domain == nil {
 		return nil
 	}
@@ -58,7 +74,7 @@ func toItemList(domain []*models.SpecialProject) []dto.SpecialProjectListItem {
 		result = append(result, dto.SpecialProjectListItem{
 			ID:          item.ID,
 			Title:       item.Title,
-			Description: *item.Description,
+			Description: item.Description,
 			Image:       item.Image,
 			Status:      item.Status,
 			CreatedAt:   item.CreatedAt,
@@ -71,7 +87,7 @@ func toItemList(domain []*models.SpecialProject) []dto.SpecialProjectListItem {
 func (h *SpecialProjectHandler) CreateSpecialProject(c *gin.Context) {
 	var req dto.SpecialProjectCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_error", "details": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_error"})
 		return
 	}
 	proj := toDomainFromCreate(&req)
@@ -138,12 +154,12 @@ func (h *SpecialProjectHandler) UpdateSpecialProject(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_id"})
 		return
 	}
-	var payload models.SpecialProject
+	var payload dto.SpecialProjectUpdateRequest
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_error"})
 		return
 	}
-	updated, err := h.svc.Update(c.Request.Context(), id, &payload)
+	updated, err := h.svc.Update(c.Request.Context(), id, toDomainFromUpdate(&payload))
 	if err != nil {
 		sendSpecialProjectErr(c, &id, err)
 		return
