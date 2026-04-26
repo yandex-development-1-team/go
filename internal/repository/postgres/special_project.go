@@ -56,7 +56,7 @@ const (
     SET
         title       = COALESCE($1, title),
         description = COALESCE($2, description),
-        image = COALESCE(NULLIF($3::text, ''), image),
+        image = COALESCE($3, image),
         status = COALESCE($4, status),
         updated_at  = NOW()
     WHERE id = $5
@@ -89,7 +89,7 @@ func NewSpecialProjectRepository(db *sqlx.DB) *specialProjectRepo {
 	return &specialProjectRepo{db: db}
 }
 
-func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
+func (r *specialProjectRepo) Create(ctx context.Context, proj *models.SpecialProject) (*models.SpecialProjectDB, error) {
 	var result models.SpecialProjectDB
 
 	err := r.db.QueryRowContext(ctx, createSpecProjectQuery,

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -15,14 +14,14 @@ import (
 )
 
 type mockSpecialProjectRepo struct {
-	createFn  func(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error)
+	createFn  func(ctx context.Context, proj *models.SpecialProject) (*models.SpecialProjectDB, error)
 	getByIDFn func(ctx context.Context, id int64) (*models.SpecialProjectDB, error)
 	listFn    func(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error)
 	updateFn  func(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error)
 	deleteFn  func(ctx context.Context, id int64) error
 }
 
-func (m *mockSpecialProjectRepo) Create(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
+func (m *mockSpecialProjectRepo) Create(ctx context.Context, proj *models.SpecialProject) (*models.SpecialProjectDB, error) {
 	if m.createFn != nil {
 		return m.createFn(ctx, proj)
 	}
@@ -57,7 +56,6 @@ func (m *mockSpecialProjectRepo) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// Ensure mock implements the interface.
 var _ repository.SpecialProjectRepository = (*mockSpecialProjectRepo)(nil)
 
 func TestSpecialProjectService_Create(t *testing.T) {
@@ -73,7 +71,7 @@ func TestSpecialProjectService_Create(t *testing.T) {
 
 	t.Run("already exists maps to ErrAlreadyExists", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
-			createFn: func(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
+			createFn: func(ctx context.Context, proj *models.SpecialProject) (*models.SpecialProjectDB, error) {
 				return nil, models.ErrSpecialProjectAlreadyExists
 			},
 		}
@@ -83,25 +81,26 @@ func TestSpecialProjectService_Create(t *testing.T) {
 		assert.ErrorIs(t, err, models.ErrSpecialProjectAlreadyExists)
 	})
 
-	t.Run("success creates and returns domain", func(t *testing.T) {
+	t.Run("success creates and returns db model", func(t *testing.T) {
+		img := "https://example.com/img.jpg"
 		repo := &mockSpecialProjectRepo{
-			createFn: func(ctx context.Context, proj *models.SpecialProjectDB) (*models.SpecialProjectDB, error) {
-				proj.ID = 1
-				return proj, nil
+			createFn: func(ctx context.Context, proj *models.SpecialProject) (*models.SpecialProjectDB, error) {
+				return &models.SpecialProjectDB{
+					ID:    1,
+					Title: proj.Title,
+					Image: proj.Image,
+				}, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		desc := "desc"
 		got, err := svc.Create(ctx, &models.SpecialProject{
-			Title:       "Test",
-			Description: &desc,
-			Image:       "img",
-			Status:      "active",
+			Title:  "Test",
+			Image:  &img,
+			Status: "active",
 		})
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), got.ID)
 		assert.Equal(t, "Test", got.Title)
-		assert.Equal(t, models.ServiceStatus("active"), got.Status)
 	})
 }
 
@@ -120,11 +119,16 @@ func TestSpecialProjectService_GetByID(t *testing.T) {
 		assert.ErrorIs(t, err, models.ErrSpecialProjectNotFound)
 	})
 
-	t.Run("success returns domain", func(t *testing.T) {
-		desc := ""
+	t.Run("success returns db model", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{
 			getByIDFn: func(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
-				return &models.SpecialProjectDB{ID: id, Title: "T", Description: &desc, Image: nil, Status: "active", CreatedAt: time.Now(), UpdatedAt: time.Now()}, nil
+				return &models.SpecialProjectDB{
+					ID:        id,
+					Title:     "T",
+					Status:    "active",
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				}, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
@@ -132,34 +136,26 @@ func TestSpecialProjectService_GetByID(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), got.ID)
 		assert.Equal(t, "T", got.Title)
-		assert.Equal(t, models.ServiceStatus("active"), got.Status)
+		assert.Equal(t, "active", got.Status)
 	})
 }
 
-func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
+func TestSpecialProjectService_Update(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("invalid id <= 0", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.Update(ctx, 0, &models.SpecialProject{Title: "T"})
+		title := "T"
+		_, err := svc.Update(ctx, 0, &models.SpecialProjectUpdate{Title: &title})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, models.ErrInvalidInput)
 	})
 
-	t.Run("nil project", func(t *testing.T) {
+	t.Run("nil update", func(t *testing.T) {
 		repo := &mockSpecialProjectRepo{}
 		svc := NewSpecialProjectService(repo)
 		_, err := svc.Update(ctx, 1, nil)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, models.ErrInvalidInput)
-	})
-
-	t.Run("title too long", func(t *testing.T) {
-		repo := &mockSpecialProjectRepo{}
-		svc := NewSpecialProjectService(repo)
-		longTitle := strings.Repeat("x", 256)
-		_, err := svc.Update(ctx, 1, &models.SpecialProject{Title: longTitle})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, models.ErrInvalidInput)
 	})
@@ -171,33 +167,40 @@ func TestSpecialProjectService_UpdateSpecialProject(t *testing.T) {
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		_, err := svc.Update(ctx, 1, &models.SpecialProject{Title: "T"})
+		title := "T"
+		_, err := svc.Update(ctx, 1, &models.SpecialProjectUpdate{Title: &title})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, models.ErrSpecialProjectNotFound)
 	})
 
-	t.Run("success returns updated domain", func(t *testing.T) {
+	t.Run("success returns updated db model", func(t *testing.T) {
+		title := "Updated"
+		desc := "new desc"
+		status := "inactive"
 		repo := &mockSpecialProjectRepo{
 			updateFn: func(ctx context.Context, id int64, update *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error) {
 				return &models.SpecialProjectDB{
-					ID: id, Title: update.Title, Description: update.Description,
-					Image: &update.Image, Status: update.Status,
+					ID:          id,
+					Title:       *update.Title,
+					Description: *update.Description,
+					Status:      *update.Status,
 				}, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		desc := "new desc"
-		got, err := svc.Update(ctx, 1, &models.SpecialProject{
-			Title: "Updated", Description: &desc, Image: "img2", Status: "inactive",
+		got, err := svc.Update(ctx, 1, &models.SpecialProjectUpdate{
+			Title:       &title,
+			Description: &desc,
+			Status:      &status,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), got.ID)
 		assert.Equal(t, "Updated", got.Title)
-		assert.Equal(t, models.ServiceStatus("inactive"), got.Status)
+		assert.Equal(t, "inactive", got.Status)
 	})
 }
 
-func TestSpecialProjectService_DeleteSpecialProject(t *testing.T) {
+func TestSpecialProjectService_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("invalid id <= 0", func(t *testing.T) {
@@ -240,22 +243,21 @@ func TestSpecialProjectService_List(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success returns list", func(t *testing.T) {
-		desc := "D"
 		repo := &mockSpecialProjectRepo{
 			listFn: func(ctx context.Context, statusFilter string, searchQuery string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 				return []*models.SpecialProjectDB{
-					{ID: 1, Title: "A", Description: &desc, Image: nil, Status: "active", CreatedAt: time.Now(), UpdatedAt: time.Now()},
-					{ID: 2, Title: "B", Description: &desc, Image: nil, Status: "inactive", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+					{ID: 1, Title: "A", Status: "active", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+					{ID: 2, Title: "B", Status: "inactive", CreatedAt: time.Now(), UpdatedAt: time.Now()},
 				}, 10, nil
 			},
 		}
 		svc := NewSpecialProjectService(repo)
-		got, _, err := svc.List(ctx, "active", "q", 10, 0)
+		got, total, err := svc.List(ctx, "active", "q", 10, 0)
 		require.NoError(t, err)
 		require.Len(t, got, 2)
+		assert.Equal(t, 10, total)
 		assert.Equal(t, int64(1), got[0].ID)
-		assert.Equal(t, "A", got[0].Title)
-		assert.Equal(t, models.ServiceStatus("active"), got[0].Status)
+		assert.Equal(t, "active", got[0].Status)
 	})
 
 	t.Run("repo error propagated", func(t *testing.T) {

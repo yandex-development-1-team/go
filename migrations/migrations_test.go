@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,11 @@ import (
 )
 
 func TestBookingsMigration(t *testing.T) {
-	ctx := context.Background()
+	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
 	db := setupTestDatabase(t, ctx)
 	defer db.Close()
 
