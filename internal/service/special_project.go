@@ -16,54 +16,22 @@ func NewSpecialProjectService(repo repository.SpecialProjectRepository) *Special
 	return &SpecialProjectService{repo: repo}
 }
 
-func toDomain(db *models.SpecialProjectDB) *models.SpecialProject {
-	if db == nil {
-		return nil
-	}
-	var image string
-	if db.Image != nil {
-		image = *db.Image
-	}
-	return &models.SpecialProject{
-		ID:          db.ID,
-		Title:       db.Title,
-		Description: db.Description,
-		Image:       image,
-		Status:      db.Status,
-		CreatedAt:   db.CreatedAt,
-		UpdatedAt:   db.UpdatedAt,
-	}
-}
-
-func fromDomain(domain *models.SpecialProject) *models.SpecialProjectDB {
-	if domain == nil {
-		return nil
-	}
-	return &models.SpecialProjectDB{
-		ID:          domain.ID,
-		Title:       domain.Title,
-		Description: domain.Description,
-		Image:       &domain.Image,
-		Status:      domain.Status,
-	}
-}
-
-func (s *SpecialProjectService) Create(ctx context.Context, proj *models.SpecialProject) (*models.SpecialProject, error) {
+func (s *SpecialProjectService) Create(ctx context.Context, proj *models.SpecialProject) (*models.SpecialProjectDB, error) {
 	if proj.Title == "" {
 		return nil, errors.New("title is required")
 	}
-	dbModel := fromDomain(proj)
-	dbModel, err := s.repo.Create(ctx, dbModel)
+
+	dbModel, err := s.repo.Create(ctx, proj)
 	if err != nil {
 		if errors.Is(err, models.ErrSpecialProjectAlreadyExists) {
 			return nil, models.ErrSpecialProjectAlreadyExists
 		}
 		return nil, err
 	}
-	return toDomain(dbModel), nil
+	return dbModel, nil
 }
 
-func (s *SpecialProjectService) GetByID(ctx context.Context, id int64) (*models.SpecialProject, error) {
+func (s *SpecialProjectService) GetByID(ctx context.Context, id int64) (*models.SpecialProjectDB, error) {
 	dbModel, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, models.ErrSpecialProjectNotFound) {
@@ -71,55 +39,31 @@ func (s *SpecialProjectService) GetByID(ctx context.Context, id int64) (*models.
 		}
 		return nil, err
 	}
-	return toDomain(dbModel), nil
+	return dbModel, nil
 }
 
-func (s *SpecialProjectService) List(ctx context.Context, statusStr string, search string, limit, offset int) ([]*models.SpecialProject, int, error) {
+func (s *SpecialProjectService) List(ctx context.Context, statusStr string, search string, limit, offset int) ([]*models.SpecialProjectDB, int, error) {
 
 	dbList, total, err := s.repo.List(ctx, statusStr, search, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	result := make([]*models.SpecialProject, 0, len(dbList))
-	for _, item := range dbList {
-		var image string
-		if item.Image != nil {
-			image = *item.Image
-		}
-		result = append(result, &models.SpecialProject{
-			ID:          item.ID,
-			Title:       item.Title,
-			Description: item.Description,
-			Image:       image,
-			Status:      item.Status,
-			CreatedAt:   item.CreatedAt,
-			UpdatedAt:   item.UpdatedAt,
-		})
-	}
-	return result, total, nil
+
+	return dbList, total, nil
 }
 
-func (s *SpecialProjectService) Update(ctx context.Context, id int64, proj *models.SpecialProject) (*models.SpecialProject, error) {
+func (s *SpecialProjectService) Update(ctx context.Context, id int64, proj *models.SpecialProjectUpdate) (*models.SpecialProjectDB, error) {
 	if id <= 0 || proj == nil {
 		return nil, models.ErrInvalidInput
 	}
-	if len(proj.Title) > 255 {
-		return nil, models.ErrInvalidInput
-	}
-	update := &models.SpecialProjectUpdate{
-		Title:       proj.Title,
-		Description: proj.Description,
-		Image:       proj.Image,
-		Status:      proj.Status,
-	}
-	dbModel, err := s.repo.Update(ctx, id, update)
+	dbModel, err := s.repo.Update(ctx, id, proj)
 	if err != nil {
 		if errors.Is(err, models.ErrSpecialProjectNotFound) {
 			return nil, models.ErrSpecialProjectNotFound
 		}
 		return nil, err
 	}
-	return toDomain(dbModel), nil
+	return dbModel, nil
 }
 
 func (s *SpecialProjectService) Delete(ctx context.Context, id int64) error {
