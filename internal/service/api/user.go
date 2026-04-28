@@ -101,13 +101,16 @@ func (s *UsersAdminService) Update(ctx context.Context, id int64, req dto.UserUp
 	return s.staffRepo.UpdateStaff(ctx, id, u)
 }
 
-func (s *UsersAdminService) Block(ctx context.Context, id int64) (*models.UserAPI, error) {
-	user, err := s.staffRepo.BlockStaff(ctx, id)
+func (s *UsersAdminService) UpdateStatus(ctx context.Context, id int64, status string) (*models.UserAPI, error) {
+	user, err := s.staffRepo.UpdateStaffStatus(ctx, id, status)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.rtRepo.DeleteByStaffID(ctx, id); err != nil {
-		return nil, err
+	// удаляем refresh tokens только при блокировке
+	if status == "blocked" {
+		if err := s.rtRepo.DeleteByStaffID(ctx, id); err != nil {
+			return nil, err
+		}
 	}
 	return user, nil
 }

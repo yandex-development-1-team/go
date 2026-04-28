@@ -32,16 +32,22 @@ type UserUpdateRequest struct {
 	SecondName  *string `json:"second_name,omitempty" binding:"omitempty,max=255"`
 }
 
-type BlockResponse struct {
+type UpdateStatusResponse struct {
 	ID        int64     `json:"id"`
 	Status    string    `json:"status"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type UpdateStatusRequest struct {
+	Status string `json:"status" binding:"required,oneof=active blocked"`
+}
+
 type UserListItem struct {
 	ID           int64     `json:"id"`
 	TelegramNick string    `json:"telegram_nick"`
-	Name         string    `json:"name"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	SecondName   string    `json:"second_name"`
 	Role         string    `json:"role"`
 	Status       string    `json:"status"`
 	Department   string    `json:"department"`
@@ -73,7 +79,7 @@ type VisitHistoryItem struct {
 type UserWithDetails struct {
 	ID            int64              `json:"id"`
 	TelegramNick  string             `json:"telegram_nick"`
-	Name          string             `json:"name"`
+	FirstName     string             `json:"first_name"`
 	LastName      string             `json:"last_name"`
 	SecondName    string             `json:"second_name"`
 	Email         string             `json:"email"`
