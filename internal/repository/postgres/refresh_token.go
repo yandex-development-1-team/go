@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 
+	"github.com/yandex-development-1-team/go/internal/ctxutil"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
@@ -53,7 +54,7 @@ func NewRefreshTokenRepo(db *sqlx.DB) *RefreshTokenRepo {
 
 func (r *RefreshTokenRepo) Create(ctx context.Context, rt *models.RefreshToken) error {
 	const op = "create_refresh_token"
-	_, err := r.db.ExecContext(ctx, insertRefreshTokenQuery, rt.UserID, rt.Token, rt.ExpiresAt)
+	_, err := r.getDB(ctx).ExecContext(ctx, insertRefreshTokenQuery, rt.UserID, rt.Token, rt.ExpiresAt)
 	if err != nil {
 		return r.checkError(op, err)
 	}
@@ -69,9 +70,9 @@ func (r *RefreshTokenRepo) CreateRefreshToken(ctx context.Context, userID int64,
 	})
 }
 
-func (r *RefreshTokenRepo) GetForUpdate(ctx context.Context, tx *sqlx.Tx, token string) (*models.RefreshToken, error) {
+func (r *RefreshTokenRepo) GetForUpdate(ctx context.Context, token string) (*models.RefreshToken, error) {
 	var rt models.RefreshToken
-	err := tx.GetContext(ctx, &rt, getRefreshTokenForUpdateQuery, token)
+	err := sqlx.GetContext(ctx, r.getDB(ctx), &rt, getRefreshTokenForUpdateQuery, token)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrRefreshTokenNotFound
 	}
@@ -86,7 +87,7 @@ func (r *RefreshTokenRepo) GetForUpdate(ctx context.Context, tx *sqlx.Tx, token 
 }
 
 func (r *RefreshTokenRepo) DeleteByToken(ctx context.Context, token string) error {
-	_, err := r.db.ExecContext(ctx, deleteRefreshTokenByToken, token)
+	_, err := r.getDB(ctx).ExecContext(ctx, deleteRefreshTokenByToken, token)
 	if err != nil {
 		return err
 	}
@@ -112,4 +113,11 @@ func (r *RefreshTokenRepo) checkError(operation string, err error) error {
 	}
 	logger.Error("database_error", zap.Error(err), zap.String("operation", operation))
 	return ErrRTDatabase
+}
+
+func (r *RefreshTokenRepo) getDB(ctx context.Context) sqlx.ExtContext {
+	if tx, ok := ctxutil.TxFromContext(ctx); ok {
+		return tx
+	}
+	return r.db
 }

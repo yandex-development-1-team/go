@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
+	"github.com/yandex-development-1-team/go/internal/ctxutil"
 	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
@@ -137,7 +138,7 @@ func NewStaffRepo(db *sqlx.DB) *StaffRepo {
 
 func (u *StaffRepo) CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error) {
 	var user dto.UserRow
-	err := u.db.GetContext(ctx, &user, createUserQuery,
+	err := sqlx.GetContext(ctx, u.getDB(ctx), &user, createUserQuery,
 		userReq.Name,
 		userReq.LastName,
 		userReq.Email,
@@ -156,7 +157,7 @@ func (u *StaffRepo) CreateStaff(ctx context.Context, userReq *models.UserAPI, ha
 
 func (u *StaffRepo) GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error) {
 	var user dto.UserRow
-	err := u.db.GetContext(ctx, &user, getUserByEmailQuery, email)
+	err := sqlx.GetContext(ctx, u.getDB(ctx), &user, getUserByEmailQuery, email)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, models.ErrUserNotFound
 	}
@@ -517,4 +518,29 @@ func (u *StaffRepo) GetDashboard(ctx context.Context, managerId int64) (*dto.Das
 		ManagerStats: managerStats,
 		Applications: applicationShort,
 	}, nil
+}
+
+func (u *StaffRepo) UpdatePassword(ctx context.Context, staffId int64, passHash string) error {
+	query := `UPDATE staff SET password_hash = $1, updated_at = NOW() WHERE id = $2`
+	resp, err := u.getDB(ctx).ExecContext(ctx, query, passHash, staffId)
+	if err != nil {
+		return err
+	}
+
+	affected, err := resp.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return models.ErrUserNotFound
+	}
+
+	return nil
+}
+
+func (u *StaffRepo) getDB(ctx context.Context) sqlx.ExtContext {
+	if tx, ok := ctxutil.TxFromContext(ctx); ok {
+		return tx
+	}
+	return u.db
 }
