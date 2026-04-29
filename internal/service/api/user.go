@@ -107,7 +107,7 @@ func (s *UsersAdminService) UpdateStatus(ctx context.Context, id int64, status s
 		return nil, err
 	}
 	// удаляем refresh tokens только при блокировке
-	if status == "blocked" {
+	if user.Status == "blocked" {
 		if err := s.rtRepo.DeleteByStaffID(ctx, id); err != nil {
 			return nil, err
 		}
