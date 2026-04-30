@@ -20,7 +20,6 @@ type StaffRepository interface {
 	GetDashboard(ctx context.Context, managerId int64) (*dto.DashboardResponse, error)
 	CreateStaffByAdmin(ctx context.Context, req *models.StaffAdminCreate) (*models.UserAPI, error)
 	UpdateStaff(ctx context.Context, id int64, req *models.StaffAdminUpdate) (*models.UserAPI, error)
-	BlockStaff(ctx context.Context, id int64) (*models.UserAPI, error)
 	UpdatePassword(ctx context.Context, staffId int64, passHash string) error
 	UpdateStaffStatus(ctx context.Context, id int64, status string) (*models.UserAPI, error)
 }
