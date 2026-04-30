@@ -142,9 +142,9 @@ func setupUsersAdminRoutes(rg *gin.RouterGroup, h *handlers.UsersHandler) {
 	users := rg.Group("/users")
 	users.Use(middleware.RequireAdmin())
 	{
-		users.POST("", h.Create)
+		users.POST("/", h.Create)
 		users.PUT("/:id", h.Update)
-		users.PUT("/:id/block", h.Block)
+		users.PUT("/:id/status", h.UpdateStatus)
 	}
 }
 

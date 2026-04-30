@@ -1896,9 +1896,9 @@
         }
       }
     },
-    "/api/v1/users/{id}/block": {
+    "/api/v1/users/{id}/status": {
       "put": {
-        "summary": "Заблокировать пользователя",
+        "summary": "Изменить статус пользователя",
         "tags": [
           "users"
         ],
@@ -1907,9 +1907,26 @@
             "$ref": "#/components/parameters/IdPathParam"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["active", "blocked"]
+                  }
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Пользователь заблокирован",
+            "description": "Статус пользователя изменён",
             "content": {
               "application/json": {
                 "schema": {
@@ -3489,7 +3506,7 @@
           "telegram_nick": {
             "type": "string"
           },
-          "name": {
+          "first_name": {
             "type": "string"
           },
           "last_name": {
@@ -3516,6 +3533,16 @@
           "position": {
             "type": "string"
           },
+          "supervisor": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
+          },
           "invite_token": {
             "type": "string"
           },
@@ -3539,7 +3566,13 @@
           "telegram_nick": {
             "type": "string"
           },
-          "name": {
+          "first_name": {
+            "type": "string"
+          },
+          "last_name":  {
+            "type": "string"
+          },
+          "second_name":{
             "type": "string"
           },
           "role": {
@@ -3567,13 +3600,17 @@
             "type": "string"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "format": "email"
           },
           "role": {
-            "type": "string"
+            "type": "string",
+            "enum": ["admin", "manager_1", "manager_2", "manager_3", "user"]
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": ["active", "blocked", "invited"],
+            "default": "invited"
           },
           "phone_number": {
             "type": "string"
@@ -3589,6 +3626,10 @@
           },
           "address": {
             "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
           }
         },
         "required": [
@@ -3646,6 +3687,10 @@
           },
           "address": {
             "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
           }
         }
       },
