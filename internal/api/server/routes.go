@@ -144,7 +144,7 @@ func setupUsersAdminRoutes(rg *gin.RouterGroup, h *handlers.UsersHandler) {
 	{
 		users.POST("", h.Create)
 		users.PUT("/:id", h.Update)
-		users.PUT("/:id/block", h.Block)
+		users.PUT("/:id/status", h.UpdateStatus)
 	}
 }
 

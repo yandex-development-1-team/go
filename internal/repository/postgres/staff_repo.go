@@ -118,8 +118,8 @@ const updateStaffQuery = `
         phone_number, role, status, invite_token, department, position,
         supervisor, address, image, created_at, updated_at`
 
-const blockStaffQuery = `
-    UPDATE staff SET status = 'blocked'::user_status_type
+const updateStaffStatusQuery = `
+    UPDATE staff SET status = $2::user_status_type
     WHERE id = $1
     RETURNING id, telegram_nick, first_name, last_name, second_name, email,
         phone_number, role, status, invite_token, department, position,
@@ -201,7 +201,7 @@ func derefString(s *string) string {
 
 func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit, offset int) ([]dto.UserListItem, int, error) {
 	query := `
-		SELECT id, telegram_nick, first_name, last_name, role, status, department, supervisor, position, phone_number, email, created_at
+		SELECT id, telegram_nick, first_name, last_name, second_name, role, status, department, supervisor, position, phone_number, email, created_at
 		FROM staff
 		WHERE 1=1`
 	countQuery := `SELECT COUNT(*) FROM staff WHERE 1=1`
@@ -247,6 +247,7 @@ func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit
 		TelegramNick *string      `db:"telegram_nick"`
 		FirstName    string       `db:"first_name"`
 		LastName     string       `db:"last_name"`
+		SecondName   string       `db:"second_name"`
 		Role         string       `db:"role"`
 		Status       string       `db:"status"`
 		Department   *string      `db:"department"`
@@ -264,14 +265,12 @@ func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit
 
 	items := make([]dto.UserListItem, 0, len(rows))
 	for _, row := range rows {
-		name := row.FirstName
-		if row.LastName != "" {
-			name += " " + row.LastName
-		}
 		items = append(items, dto.UserListItem{
 			ID:           row.ID,
 			TelegramNick: derefString(row.TelegramNick),
-			Name:         name,
+			FirstName:    row.FirstName,
+			LastName:     row.LastName,
+			SecondName:   row.SecondName,
 			Role:         row.Role,
 			Status:       row.Status,
 			Department:   derefString(row.Department),
@@ -398,15 +397,10 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		visitHistory = []dto.VisitHistoryItem{}
 	}
 
-	name := user.FirstName
-	if user.LastName != "" {
-		name += " " + user.LastName
-	}
-
 	return &dto.UserWithDetails{
 		ID:            user.ID,
 		TelegramNick:  derefString(user.TelegramNick),
-		Name:          name,
+		FirstName:     user.FirstName,
 		LastName:      user.LastName,
 		SecondName:    user.SecondName,
 		Email:         user.Email,
@@ -481,9 +475,9 @@ func (u *StaffRepo) UpdateStaff(ctx context.Context, id int64, req *models.Staff
 	return toUser(&row), nil
 }
 
-func (u *StaffRepo) BlockStaff(ctx context.Context, id int64) (*models.UserAPI, error) {
+func (u *StaffRepo) UpdateStaffStatus(ctx context.Context, id int64, status string) (*models.UserAPI, error) {
 	var row dto.UserRow
-	err := u.db.GetContext(ctx, &row, blockStaffQuery, id)
+	err := u.db.GetContext(ctx, &row, updateStaffStatusQuery, id, status)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, models.ErrUserNotFound
 	}
