@@ -68,6 +68,7 @@ var (
 	ErrSlotsNotFound          = errors.New("slots not found")
 	ErrInvalidSlug            = errors.New("wrong slug")
 	ErrInvalidFileType        = errors.New("wrong format file")
+	ErrInvalidEmail           = errors.New("invalid email address")
 )
 
 var AllowedSlugs = map[string]struct{}{
