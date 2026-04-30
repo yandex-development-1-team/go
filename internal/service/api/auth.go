@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -116,41 +115,39 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 }
 
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*models.RefreshResponse, error) {
-	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	var accessToken string
+	var newRT *models.RefreshToken
+
+	err := s.txRepo.RunToTx(ctx, func(txCtx context.Context) error {
+		rt, err := s.rtRepo.GetForUpdate(txCtx, refreshToken)
+		if err != nil {
+			return err
+		}
+
+		accessToken, err = s.generateAccessToken(rt.UserID, rt.Role)
+		if err != nil {
+			return err
+		}
+
+		newRT = &models.RefreshToken{
+			UserID:    rt.UserID,
+			Token:     generateRandomToken(),
+			ExpiresAt: time.Now().Add(s.refreshTTL),
+		}
+		if err := s.rtRepo.Create(txCtx, newRT); err != nil {
+			return err
+		}
+
+		if err := s.rtRepo.DeleteByToken(txCtx, refreshToken); err != nil {
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = tx.Rollback() }()
 
-	rt, err := s.rtRepo.GetForUpdate(ctx, tx, refreshToken)
-	if err != nil {
-		return nil, err
-	}
-
-	accessToken, err := s.generateAccessToken(rt.UserID, rt.Role)
-	if err != nil {
-		return nil, err
-	}
-
-	newRT := &models.RefreshToken{
-		UserID:    rt.UserID,
-		Token:     generateRandomToken(),
-		ExpiresAt: time.Now().Add(s.refreshTTL),
-	}
-	if err := s.rtRepo.Create(ctx, newRT); err != nil {
-		return nil, err
-	}
-
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM refresh_tokens
-		WHERE token = $1
-	`, refreshToken); err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
 	return &models.RefreshResponse{
 		Token:        accessToken,
 		RefreshToken: newRT.Token,
@@ -166,26 +163,27 @@ func (s *AuthService) Register(ctx context.Context, user *models.UserAPI, passwo
 	refreshToken := generateRandomToken()
 	expiresAt := time.Now().Add(s.refreshTTL)
 
-	err = s.txRepo.RunToTx(ctx, func(ctx context.Context) error {
+	var accessToken string
+	err = s.txRepo.RunToTx(ctx, func(txCtx context.Context) error {
 
-		user, err = s.staffRepo.CreateStaff(ctx, user, hashPassword)
+		user, err = s.staffRepo.CreateStaff(txCtx, user, hashPassword)
 		if err != nil {
 			return err
 		}
 
-		err = s.rtRepo.CreateRefreshToken(ctx, user.ID, refreshToken, expiresAt)
+		err = s.rtRepo.CreateRefreshToken(txCtx, user.ID, refreshToken, expiresAt)
+		if err != nil {
+			return err
+		}
+
+		// accessToken
+		accessToken, err = s.generateAccessToken(user.ID, user.Role)
 		if err != nil {
 			return err
 		}
 
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	// accessToken
-	accessToken, err := s.generateAccessToken(user.ID, user.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -200,6 +198,89 @@ func (s *AuthService) Register(ctx context.Context, user *models.UserAPI, passwo
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	return s.rtRepo.DeleteByToken(ctx, refreshToken)
+}
+
+func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
+	var signedToken string
+	err := s.txRepo.RunToTx(ctx, func(txCtx context.Context) error {
+		user, err := s.staffRepo.GetUserByEmail(txCtx, email)
+		if err != nil {
+			return err
+		}
+
+		// Генерируем JWT токен для сброса пароля
+		resetClaims := ResetPasswordClaims{
+			UserID: user.User.ID,
+			RegisteredClaims: jwt.RegisteredClaims{
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, resetClaims)
+		signedToken, err = token.SignedString(s.JwtSecret)
+		if err != nil {
+			return fmt.Errorf("sign reset token: %w", err)
+		}
+
+		expiresAt := time.Now().Add(1 * time.Hour)
+
+		err = s.prRepo.CreateToken(txCtx, user.User.ID, signedToken, expiresAt)
+		if err != nil {
+			return fmt.Errorf("create reset token: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Send email
+	err = s.emailSvc.SendPasswordResetEmail(ctx, email, signedToken)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *AuthService) ResetPassword(ctx context.Context, token, newPassword string) error {
+	var claims ResetPasswordClaims
+	parsedToken, err := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (interface{}, error) {
+		return s.JwtSecret, nil
+	})
+	if err != nil || !parsedToken.Valid {
+		return models.ErrInvalidCredentials
+	}
+
+	hash, err := HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+
+	return s.txRepo.RunToTx(ctx, func(txCtx context.Context) error {
+		prt, err := s.prRepo.GetToken(txCtx, token)
+		if err != nil {
+			if errors.Is(err, models.ErrTokenNotFound) {
+				return models.ErrInvalidCredentials
+			}
+			return err
+		}
+
+		if prt.UsedAt != nil {
+			return models.ErrInvalidCredentials
+		}
+
+		if err := s.staffRepo.UpdatePassword(txCtx, prt.UserID, hash); err != nil {
+			return err
+		}
+
+		if err := s.prRepo.DeleteToken(txCtx, prt.ID); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (s *AuthService) generateAccessToken(userID int64, role string) (string, error) {
@@ -224,96 +305,4 @@ func generateRandomToken() string {
 		return ""
 	}
 	return hex.EncodeToString(b)
-}
-
-func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
-	user, err := s.staffRepo.GetUserByEmail(ctx, email)
-	if err != nil {
-		return nil
-	}
-
-	// Генерируем JWT токен для сброса пароля
-	resetClaims := ResetPasswordClaims{
-		UserID: user.User.ID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, resetClaims)
-	signedToken, err := token.SignedString(s.JwtSecret)
-	if err != nil {
-		return fmt.Errorf("sign reset token: %w", err)
-	}
-
-	expiresAt := time.Now().Add(1 * time.Hour)
-
-	err = s.prRepo.CreateToken(ctx, user.User.ID, signedToken, expiresAt)
-	if err != nil {
-		return fmt.Errorf("create reset token: %w", err)
-	}
-
-	// Send email
-	err = s.emailSvc.SendPasswordResetEmail(ctx, email, signedToken)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *AuthService) ResetPassword(ctx context.Context, token, newPassword string) error {
-	// Парсим JWT токен
-	var claims ResetPasswordClaims
-	parsedToken, err := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (interface{}, error) {
-		return s.JwtSecret, nil
-	})
-	if err != nil || !parsedToken.Valid {
-		return models.ErrInvalidCredentials
-	}
-
-	// Проверяем, что токен в БД
-	prt, err := s.prRepo.GetToken(ctx, token)
-	if err != nil {
-		if errors.Is(err, models.ErrTokenNotFound) {
-			return models.ErrInvalidCredentials
-		}
-		return err
-	}
-
-	if prt.UsedAt != nil {
-		return models.ErrInvalidCredentials
-	}
-
-	if time.Now().After(prt.ExpiresAt) {
-		return models.ErrInvalidCredentials
-	}
-
-	hash, err := HashPassword(newPassword)
-	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
-	}
-
-	// Update password and remove reset token in a transaction
-	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	query := `UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3`
-	if _, err := tx.ExecContext(ctx, query, hash, time.Now(), prt.UserID); err != nil {
-		return err
-	}
-
-	query = `DELETE FROM password_reset_tokens WHERE id = $1`
-	if _, err := tx.ExecContext(ctx, query, prt.ID); err != nil {
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
 }
