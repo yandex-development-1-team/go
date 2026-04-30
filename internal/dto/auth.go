@@ -86,6 +86,6 @@ type ForgotPasswordRequest struct {
 }
 
 type ResetPasswordRequest struct {
-	Token    string `json:"token"    binding:"required"`
+	Token    string `json:"token"    binding:"required,min=100,max=512"`
 	Password string `json:"password" binding:"required,min=8,max=72"`
 }

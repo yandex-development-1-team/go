@@ -6,8 +6,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
+	"net/textproto"
+	"strings"
 	"time"
 
+	"github.com/go-mail/mail/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
@@ -86,10 +90,10 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 		return nil, models.ErrUserBlocked
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(authInfo.PassHash), []byte(password)); err != nil {
-		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) || errors.Is(err, bcrypt.ErrHashTooShort) {
 			return nil, models.ErrInvalidCredentials
 		}
-		return nil, fmt.Errorf("check password: %w", err)
+		return nil, fmt.Errorf("compare password hash: %w", err)
 	}
 	token, err := s.generateAccessToken(user.ID, user.Role)
 	if err != nil {
@@ -201,6 +205,11 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 || !domainHasMX(parts[1]) {
+		return models.ErrInvalidEmail
+	}
+
 	var signedToken string
 	err := s.txRepo.RunToTx(ctx, func(txCtx context.Context) error {
 		user, err := s.staffRepo.GetUserByEmail(txCtx, email)
@@ -236,9 +245,15 @@ func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
 	}
 
 	// Send email
-	err = s.emailSvc.SendPasswordResetEmail(ctx, email, signedToken)
-	if err != nil {
-		return err
+	if err = s.emailSvc.SendPasswordResetEmail(ctx, email, signedToken); err != nil {
+		var sendErr *mail.SendError
+		if errors.As(err, &sendErr) {
+			var textErr *textproto.Error
+			if errors.As(sendErr.Cause, &textErr) && textErr.Code >= 550 && textErr.Code <= 553 {
+				return nil
+			}
+		}
+		return fmt.Errorf("send email: %w", err)
 	}
 
 	return nil
@@ -305,4 +320,9 @@ func generateRandomToken() string {
 		return ""
 	}
 	return hex.EncodeToString(b)
+}
+
+func domainHasMX(domain string) bool {
+	records, err := net.LookupMX(domain)
+	return err == nil && len(records) > 0
 }
