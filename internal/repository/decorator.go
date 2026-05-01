@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/lib/pq"
 	"go.uber.org/zap"
 
-	"github.com/lib/pq"
 	"github.com/yandex-development-1-team/go/internal/logger"
 	"github.com/yandex-development-1-team/go/internal/metrics"
 	"github.com/yandex-development-1-team/go/internal/models"
