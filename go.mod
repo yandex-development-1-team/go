@@ -32,7 +32,10 @@ require (
 	golang.org/x/net v0.51.0
 )
 
-require github.com/phpdave11/gofpdi v1.0.14-0.20211212211723-1f10f9844311 // indirect
+require (
+	github.com/gin-contrib/pprof v1.5.4 // indirect
+	github.com/phpdave11/gofpdi v1.0.14-0.20211212211723-1f10f9844311 // indirect
+)
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
@@ -147,7 +150,7 @@ require (
 	golang.org/x/arch v0.25.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/mail.v2 v2.3.1 // indirect
