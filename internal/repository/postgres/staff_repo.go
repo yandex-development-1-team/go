@@ -442,7 +442,12 @@ func (u *StaffRepo) CreateStaffByAdmin(ctx context.Context, req *models.StaffAdm
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			return nil, models.ErrEmailAlreadyExist
+			switch pqErr.Constraint {
+			case "staff_email_key":
+				return nil, models.ErrEmailAlreadyExist
+			case "staff_phone_number_key":
+				return nil, models.ErrPhoneNumberAlreadyExist
+			}
 		}
 		return nil, err
 	}
