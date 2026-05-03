@@ -61,8 +61,8 @@ const listOfShortApplications = `
 			SELECT
 					a.contact_info       AS tg_account,
 					a.customer_name,
-					'Спецпроект'         AS service_type,
-					'Спецпроект'         AS service_name,
+					'spec_project'         AS service_type,
+					'spec_project'         AS service_name,
 					a.status::TEXT,
 					a.manager_id,
 					a.created_at
@@ -74,7 +74,7 @@ const listOfShortApplications = `
 			SELECT
 					'@' || u.username    AS tg_account,
 					b.guest_name         AS customer_name,
-					'Коробочное решение' AS service_type,
+					'box_solution' AS service_type,
 					s.name               AS service_name,
 					b.status::TEXT,
 					b.manager_id,
