@@ -2,7 +2,6 @@
 # Добавляет веб-сервер (Caddy) и средство мониторинга логов (dozzle) контейнеров для дебага
 # У основного сервиса (app) указываем image для загрузки готового образа шп ghcr.io
 
-
 services:
   app:
     image: ${APP_IMAGE}
@@ -12,6 +11,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks:
+      - monitoring
 
   caddy:
     image: caddy:2.10.0
@@ -27,6 +28,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    networks:
+      - monitoring
 
   dozzle:
     image: amir20/dozzle:latest
@@ -37,7 +40,58 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+    networks:
+      - monitoring
+    expose:
+      - "9090" # Только внутри Docker
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    expose:
+      - "3000" # Только внутри Docker, не публикуем наружу
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_SERVER_ROOT_URL=https://razvitie.rassokha.pro/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_APP_SUB_PATH=/grafana
+      # Для правильной работы статики
+      - GF_SERVER_STATIC_ROOT_PATH=/usr/share/grafana/public
+      # Безопасность
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - monitoring
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   caddy-config:
   caddy-data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  monitoring:
+    external: true

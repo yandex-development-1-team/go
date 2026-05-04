@@ -36,8 +36,21 @@
           try_files {path} {path}/ /index.html
     }
 
+    # Grafana на подпути /grafana
+    handle_path /grafana/* {
+        reverse_proxy grafana:3000 {
+            # Важно: пробрасываем оригинальный Host и URI
+            header_up Host {host}
+            header_up X-Forwarded-Prefix "/grafana"
+        }
+    }
+    
+    # Метрики (если нужно)
+    handle_path /metrics {
+        reverse_proxy app:9090
+    }
 
-	# Dynamically compress response with gzip when it makes sense.
+    # Dynamically compress response with gzip when it makes sense.
 	# This setting is ignored for precompressed files.
 	encode gzip
 
