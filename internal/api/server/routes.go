@@ -9,11 +9,12 @@ import (
 	"github.com/yandex-development-1-team/go/internal/models"
 )
 
-func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler, usersHandler *handlers.UsersHandler, bookingHandler *handlers.BookingHandler) {
+func SetupRoutes(client *sqlx.DB, router *gin.Engine, jwtSecret []byte, authHandler *handlers.AuthHandler, boxHandler *handlers.BoxHandler, specProjHandler *handlers.SpecialProjectHandler, settingsHandler *handlers.SettingsHandler, analyticsHandler *handlers.AnalyticsHandler, recPageHandler *handlers.ResourcePageHandler, userHandler *handlers.UserHandler, fileHandler *handlers.FileHandler, applicationHandler *handlers.ApplicationHandler, usersHandler *handlers.UsersHandler, bookingHandler *handlers.BookingHandler, specPath string) {
 	middlewareRepo := middleware.NewMiddlewareRepository(client)
 	apiV1 := router.Group("/api/v1")
 	{
 		setupAuthRoutes(apiV1, authHandler)
+		setupDocsRoutes(apiV1, specPath)
 
 		protected := apiV1.Group("/")
 		protected.Use(middlewareRepo.Auth(jwtSecret))
@@ -153,4 +154,31 @@ func setupDashboardRoutes(rg *gin.RouterGroup, h *handlers.UserHandler) {
 	{
 		dashboard.GET("", middleware.RequireManagersOrAdmin(), h.GetDashboard)
 	}
+}
+
+func setupDocsRoutes(rg *gin.RouterGroup, specPath string) {
+	docs := rg.Group("/docs")
+
+	docs.GET("", func(c *gin.Context) {
+		c.Data(200, "text/html; charset=utf-8", []byte(`
+<!DOCTYPE html>
+<html>
+<head>
+	<title>API Docs</title>
+	<meta charset="utf-8"/>
+</head>
+<body>
+	<script
+			id="api-reference"
+			data-url="/api/v1/docs/spec.json">
+	</script>
+	<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>
+			`))
+	})
+
+	docs.GET("/spec.json", func(c *gin.Context) {
+		c.File(specPath)
+	})
 }
