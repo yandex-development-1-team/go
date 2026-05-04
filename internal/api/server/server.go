@@ -63,7 +63,7 @@ func New(cfg *config.Config, services *APIServices, authService *apiService.Auth
 	}
 }
 
-func (s *Server) RegisterRoutes(yandexFormToken string) {
+func (s *Server) RegisterRoutes(yandexFormToken string, specPath string) {
 	authHandler := handlers.NewAuthHandler(s.authService)
 	boxHandler := handlers.NewBoxHandler(s.services.BoxService)
 	specProjHandler := handlers.NewSpecialProjectHandler(s.services.SpecialProjectSvc)
@@ -76,7 +76,7 @@ func (s *Server) RegisterRoutes(yandexFormToken string) {
 	applicationHandler := handlers.NewApplicationHandler(s.services.ApplicationSvc, yandexFormToken)
 	bookingHamdler := handlers.NewBookingHandler(s.services.BookingSvc)
 
-	SetupRoutes(s.services.MiddlewareRepo, s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, usersHandler, bookingHamdler)
+	SetupRoutes(s.services.MiddlewareRepo, s.router, s.authService.JwtSecret, authHandler, boxHandler, specProjHandler, settingsHandler, analyticsHandler, recPageHandler, userHandler, fileHandler, applicationHandler, usersHandler, bookingHamdler, specPath)
 }
 
 func (s *Server) Run(cfg *config.Config) error {
