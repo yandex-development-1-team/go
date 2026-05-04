@@ -31,6 +31,7 @@ type Config struct {
 	Storage           StorageConfig     `mapstructure:"storage"`
 	FileGC            FileGCConfig      `mapstructure:"file_gc"`
 	YandexForms       YandexFormsConfig `mapstructure:"yandex_forms"`
+	DocsPath          string            `mapstructure:"docs_path"`
 }
 
 type StorageConfig struct {
@@ -242,6 +243,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("file_gc.interval", "1h")
 	v.SetDefault("file_gc.orphan_grace_period", "24h")
 	v.SetDefault("file_gc.delete_batch_size", 100)
+	v.SetDefault("docs_path", "./docs/openapi.json")
 }
 
 func bindEnvs(v *viper.Viper) {

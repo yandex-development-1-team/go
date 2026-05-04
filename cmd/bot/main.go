@@ -193,7 +193,7 @@ func run() error {
 		)
 	}
 
-	apiServer.RegisterRoutes(cfg.YandexForms.WebhookToken)
+	apiServer.RegisterRoutes(cfg.YandexForms.WebhookToken, cfg.DocsPath)
 
 	var wg sync.WaitGroup
 	go func() {
