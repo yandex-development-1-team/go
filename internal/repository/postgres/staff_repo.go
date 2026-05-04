@@ -434,10 +434,10 @@ func (u *StaffRepo) CreateStaffByAdmin(ctx context.Context, req *models.StaffAdm
 		req.Status,
 		req.Department,
 		req.Position,
+		req.Image,
 		req.InviteToken,
 		req.Supervisor,
 		req.Address,
-		req.Image,
 	)
 	if err != nil {
 		var pqErr *pq.Error
