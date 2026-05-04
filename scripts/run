@@ -16,7 +16,7 @@ case "$MODE" in
   *)
     echo "Использование: $0 [local|local-api]"
     echo "  local (по умолчанию) — make run-local (инфра + app в Docker, порты на 127.0.0.1)"
-    echo "  local-api          — make run-local-api (только Postgres и Redis)"
+    echo "  local-api          — make run-local-api (Postgres, Redis, MinIO на localhost)"
     exit 1
     ;;
 esac

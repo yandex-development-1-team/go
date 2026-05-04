@@ -5,7 +5,7 @@
 | Скрипт    | Действие                          |
 |-----------|-----------------------------------|
 | `./scripts/run`       | `make run-local` (полный стек в Docker, порты на 127.0.0.1) |
-| `./scripts/run local-api` | `make run-local-api` (только Postgres и Redis) |
+| `./scripts/run local-api` | `make run-local-api` (Postgres, Redis, MinIO на localhost) |
 | `./scripts/stop`      | `make stop-local`                 |
 
 Перед запуском: `cp .env.example .env` и заполните переменные.
