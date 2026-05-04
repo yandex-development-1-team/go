@@ -392,3 +392,30 @@ DROP TABLE ...;
     - Проверьте заголовок авторизации, срок JWT и роль пользователя в Staff относительно требуемых прав маршрута.
 
 ---
+
+## Профилирование (pprof)
+
+pprof доступен на отдельном порту только локально.
+
+**Локально:**
+```bash
+# Снять CPU профиль под нагрузкой (30 секунд)
+go tool pprof 'http://localhost:6060/debug/pprof/profile?seconds=30'
+
+# Heap (память)
+go tool pprof -http=:8091 'http://localhost:6060/debug/pprof/heap'
+
+# Горутины
+go tool pprof -http=:8091 'http://localhost:6060/debug/pprof/goroutine'
+```
+
+**На проде** — только через SSH туннель:
+```bash
+ssh -L 6060:localhost:6060 user@server
+# затем локально:
+go tool pprof 'http://localhost:6060/debug/pprof/profile?seconds=30'
+```
+
+Порт `6060` проброшен только на `127.0.0.1` — снаружи недоступен.
+
+---

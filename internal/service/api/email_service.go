@@ -27,7 +27,7 @@ func NewEmailService(cfg config.EmailConfig) *EmailService {
 }
 
 func (s *EmailService) SendPasswordResetEmail(ctx context.Context, toEmail, resetToken string) error {
-	resetURL := fmt.Sprintf("%s/api/v1/auth/reset-password?token=%s", s.baseURL, resetToken)
+	resetURL := fmt.Sprintf("%s/reset-password?token=%s", s.baseURL, resetToken)
 
 	m := mail.NewMessage()
 	m.SetHeader("From", s.from)
