@@ -91,7 +91,3 @@ volumes:
   caddy-data:
   prometheus_data:
   grafana_data:
-
-networks:
-  monitoring:
-    external: true
