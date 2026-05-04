@@ -305,8 +305,8 @@ func TestGetDashboard_ServiceType_Booking(t *testing.T) {
 	if len(result.Applications) == 0 {
 		t.Fatal("expected at least 1 application")
 	}
-	if result.Applications[0].ServiceType != "Коробочное решение" {
-		t.Errorf("expected Коробочное решение, got %q", result.Applications[0].ServiceType)
+	if result.Applications[0].ServiceType != "box_solution" {
+		t.Errorf("expected box_solution, got %q", result.Applications[0].ServiceType)
 	}
 	if result.Applications[0].ServiceName != "Моя коробка" {
 		t.Errorf("expected Моя коробка, got %q", result.Applications[0].ServiceName)
@@ -333,10 +333,10 @@ func TestGetDashboard_ServiceType_Application(t *testing.T) {
 	if len(result.Applications) == 0 {
 		t.Fatal("expected at least 1 application")
 	}
-	if result.Applications[0].ServiceType != "Спецпроект" {
-		t.Errorf("expected Спецпроект, got %q", result.Applications[0].ServiceType)
+	if result.Applications[0].ServiceType != "spec_project" {
+		t.Errorf("expected spec_project, got %q", result.Applications[0].ServiceType)
 	}
-	if result.Applications[0].ServiceName != "Спецпроект" {
-		t.Errorf("expected Спецпроект, got %q", result.Applications[0].ServiceName)
+	if result.Applications[0].ServiceName != "spec_project" {
+		t.Errorf("expected spec_project, got %q", result.Applications[0].ServiceName)
 	}
 }

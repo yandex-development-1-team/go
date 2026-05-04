@@ -30,6 +30,10 @@ db:
   user: "postgres"
   password: "postgres"
   ssl_mode: "disable"
+  db_max_open_conns: 90
+  db_max_idle_conns: 90
+  db_conn_max_lifetime: 300
+  db_conn_max_idle_time: 300
 
 redis:
   addr: "redis:6379" # Redis address: 'localhost:6379' for local, or '<docker_service_name>:6379' for Docker

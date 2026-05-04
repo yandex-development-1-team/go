@@ -61,8 +61,8 @@ const listOfShortApplications = `
 			SELECT
 					a.contact_info       AS tg_account,
 					a.customer_name,
-					'Спецпроект'         AS service_type,
-					'Спецпроект'         AS service_name,
+					'spec_project'         AS service_type,
+					'spec_project'         AS service_name,
 					a.status::TEXT,
 					a.manager_id,
 					a.created_at
@@ -74,7 +74,7 @@ const listOfShortApplications = `
 			SELECT
 					'@' || u.username    AS tg_account,
 					b.guest_name         AS customer_name,
-					'Коробочное решение' AS service_type,
+					'box_solution' AS service_type,
 					s.name               AS service_name,
 					b.status::TEXT,
 					b.manager_id,
@@ -434,15 +434,20 @@ func (u *StaffRepo) CreateStaffByAdmin(ctx context.Context, req *models.StaffAdm
 		req.Status,
 		req.Department,
 		req.Position,
+		req.Image,
 		req.InviteToken,
 		req.Supervisor,
 		req.Address,
-		req.Image,
 	)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			return nil, models.ErrEmailAlreadyExist
+			switch pqErr.Constraint {
+			case "staff_email_key":
+				return nil, models.ErrEmailAlreadyExist
+			case "staff_phone_number_key":
+				return nil, models.ErrPhoneNumberAlreadyExist
+			}
 		}
 		return nil, err
 	}

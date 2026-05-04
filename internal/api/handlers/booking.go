@@ -88,6 +88,7 @@ func (h *BookingHandler) DeleteBooking(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
 func toBookingsListResponse(result *models.BookingList) dto.BookingListResponse {
 	items := make([]dto.BookingListItem, len(result.Items))
 	for i, app := range result.Items {

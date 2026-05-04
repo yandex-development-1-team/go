@@ -17,6 +17,7 @@ COPY internal/ ./internal/
 COPY cmd/ ./cmd/
 COPY migrations/ ./migrations/
 COPY config/ ./config/
+COPY docs/openapi.json ./docs/openapi.json
 
 # Компилируем приложение
 # CGO_ENABLED=0 - статическая сборка без CGO
@@ -52,6 +53,7 @@ RUN mkdir -p /app/config
 
 # Копируем конфиг
 COPY --from=builder /build/config /app/config
+COPY --from=builder /build/docs /app/docs 
 
 # Устанавливаем права на выполнение
 RUN chmod +x /app/bot

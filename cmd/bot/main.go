@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
@@ -66,6 +68,10 @@ func run() error {
 		return fmt.Errorf("migrations: %w", err)
 	}
 	dbSqlx := sqlx.NewDb(db, "postgres")
+	dbSqlx.SetMaxOpenConns(cfg.DB.MaxOpenConns)
+	dbSqlx.SetMaxIdleConns(cfg.DB.MaxIdleConns)
+	dbSqlx.SetConnMaxLifetime(time.Duration(cfg.DB.ConnMaxLifetime) * time.Second)
+	dbSqlx.SetConnMaxIdleTime(time.Duration(cfg.DB.ConnMaxIdleTime) * time.Second)
 
 	redisClient, err := redis.NewRedisClient(cfg.Redis)
 	if err != nil {
@@ -140,6 +146,19 @@ func run() error {
 		}
 	}()
 
+	// pprof сервер
+	pprofServer := &http.Server{
+		Addr:    ":6060",
+		Handler: http.DefaultServeMux,
+	}
+
+	go func() {
+		logger.Info("starting pprof server", zap.String("addr", "127.0.0.1:6060"))
+		if err := pprofServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("pprof server failed", zap.Error(err))
+		}
+	}()
+
 	apiAuthService := apiService.NewAuthService(dbSqlx, refreshTokenRepoRepo, passwordResetRepo, staffRepo, emailService, txRepo, cfg.AuthConfig.JWTSecret,
 		cfg.AuthConfig.AccessTokenTTLMinutes, cfg.AuthConfig.RefreshTokenTTLDays)
 
@@ -174,7 +193,7 @@ func run() error {
 		)
 	}
 
-	apiServer.RegisterRoutes(cfg.YandexForms.WebhookToken)
+	apiServer.RegisterRoutes(cfg.YandexForms.WebhookToken, cfg.DocsPath)
 
 	var wg sync.WaitGroup
 	go func() {
@@ -191,7 +210,7 @@ func run() error {
 		<-ctx.Done()
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer shutdownCancel()
-		return shutdown.NewShutdownHandler(nil, dbSqlx, metricsServer, redisClient).WaitForShutdown(shutdownCtx)
+		return shutdown.NewShutdownHandler(nil, dbSqlx, metricsServer, redisClient, pprofServer).WaitForShutdown(shutdownCtx)
 	}
 
 	tgBot, err := bot.NewTelegramBot(cfg.Telegram)
@@ -250,7 +269,7 @@ func run() error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 
-	if err := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient).WaitForShutdown(shutdownCtx); err != nil {
+	if err := shutdown.NewShutdownHandler(tgBot, dbSqlx, metricsServer, redisClient, pprofServer).WaitForShutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 

@@ -31,6 +31,7 @@ type Config struct {
 	Storage           StorageConfig     `mapstructure:"storage"`
 	FileGC            FileGCConfig      `mapstructure:"file_gc"`
 	YandexForms       YandexFormsConfig `mapstructure:"yandex_forms"`
+	DocsPath          string            `mapstructure:"docs_path"`
 }
 
 type StorageConfig struct {
@@ -71,12 +72,16 @@ type CORSConfig struct {
 }
 
 type DatabaseConfig struct {
-	PostgresURL string
-	Name        string `mapstructure:"name"`
-	User        string `mapstructure:"user"`
-	Password    string `mapstructure:"password"`
-	SslMode     string `mapstructure:"ssl_mode"`
-	HostPort    string `mapstructure:"host_port"`
+	PostgresURL     string
+	Name            string `mapstructure:"name"`
+	User            string `mapstructure:"user"`
+	Password        string `mapstructure:"password"`
+	SslMode         string `mapstructure:"ssl_mode"`
+	HostPort        string `mapstructure:"host_port"`
+	MaxOpenConns    int    `mapstructure:"db_max_open_conns"`
+	MaxIdleConns    int    `mapstructure:"db_max_idle_conns"`
+	ConnMaxLifetime int    `mapstructure:"db_conn_max_lifetime"`
+	ConnMaxIdleTime int    `mapstructure:"db_conn_max_idle_time"`
 }
 
 type RedisConfig struct {
@@ -203,6 +208,10 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("db.ssl_mode", "disable")
 	v.SetDefault("db.host_port", "localhost:5432")
+	v.SetDefault("db.db_max_open_conns", 25)
+	v.SetDefault("db.db_max_idle_conns", 25)
+	v.SetDefault("db.db_conn_max_lifetime", 300)
+	v.SetDefault("db.db_conn_max_idle_time", 300)
 
 	v.SetDefault("redis.addr", "localhost:6379")
 	v.SetDefault("redis.db", 0)
@@ -234,6 +243,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("file_gc.interval", "1h")
 	v.SetDefault("file_gc.orphan_grace_period", "24h")
 	v.SetDefault("file_gc.delete_batch_size", 100)
+	v.SetDefault("docs_path", "./docs/openapi.json")
 }
 
 func bindEnvs(v *viper.Viper) {
@@ -300,7 +310,6 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("storage.bucket is empty")
 	}
 
-	fmt.Println("webhook_token ---------------------->: ", config.YandexForms.WebhookToken)
 	if config.YandexForms.WebhookToken == "" {
 		return fmt.Errorf("yandex_forms.webhook_token is empty")
 	}
