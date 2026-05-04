@@ -168,7 +168,7 @@ func (r *specialProjectRepo) List(ctx context.Context, statusFilter string, sear
 	}
 
 	// Order results by creation date descending
-	baseQuery += " ORDER BY updated_at DESC LIMIT :limit OFFSET :offset"
+	baseQuery += " ORDER BY updated_at DESC, id LIMIT :limit OFFSET :offset"
 	args["limit"] = limit
 	args["offset"] = offset
 	// Prepare the named query

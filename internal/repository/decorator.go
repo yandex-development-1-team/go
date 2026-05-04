@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/lib/pq"
 	"go.uber.org/zap"
 
 	"github.com/yandex-development-1-team/go/internal/logger"
@@ -113,6 +114,11 @@ func CheckDBError(operation string, err error) error {
 		return models.ErrRequestTimeout
 	}
 
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == "57014" {
+		logger.Info("canceled_by_timeout", zap.Error(err), zap.String("operation", operation))
+		return models.ErrRequestTimeout
+	}
 	logger.Error("database_error", zap.Error(err), zap.String("operation", operation))
 	return models.ErrDatabase
 }
