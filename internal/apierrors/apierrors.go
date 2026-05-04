@@ -38,6 +38,8 @@ var errMappings = []errMapping{
 	{models.ErrEmailAlreadyExist, http.StatusConflict, "Указанный почтовый адрес уже занят"},
 	{models.ErrSlotsNotFound, http.StatusBadRequest, "Слоты коробочного решения не найдены"},
 	{models.ErrBoxSolutionNotFound, http.StatusNotFound, "Коробочное решение не найдено"},
+	{models.ErrInvalidEmail, http.StatusBadRequest, "Email адрес недействительный"},
+	{models.ErrPhoneNumberAlreadyExist, http.StatusConflict, "Указанный номер телефона уже занят"},
 }
 
 const defaultMessage = "Произошла ошибка. Попробуйте позже."

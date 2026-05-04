@@ -88,7 +88,7 @@ func setupUsersAdminServer(t *testing.T) *httptest.Server {
 	{
 		users.POST("", handler.Create)
 		users.PUT("/:id", handler.Update)
-		users.PUT("/:id/block", handler.Block)
+		users.PUT("/:id/block", handler.UpdateStatus)
 	}
 
 	server := httptest.NewServer(router)
@@ -311,7 +311,8 @@ func TestUsersAdmin_Block_Success(t *testing.T) {
 
 	id := seedStaffAdmin(t, "block@example.com")
 
-	resp, err := doRequest(fmt.Sprintf("%s/users/%d/block", server.URL, id), http.MethodPut, nil, authHeader(token))
+	body, _ := json.Marshal(map[string]interface{}{"status": "blocked"})
+	resp, err := doRequest(fmt.Sprintf("%s/users/%d/block", server.URL, id), http.MethodPut, body, authHeader(token))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -335,7 +336,8 @@ func TestUsersAdmin_Block_UserCannotLoginAfterBlock(t *testing.T) {
 		RETURNING id`, string(hash)).Scan(&id)
 	require.NoError(t, err)
 
-	resp, err := doRequest(fmt.Sprintf("%s/users/%d/block", server.URL, id), http.MethodPut, nil, authHeader(token))
+	body, _ := json.Marshal(map[string]interface{}{"status": "blocked"})
+	resp, err := doRequest(fmt.Sprintf("%s/users/%d/block", server.URL, id), http.MethodPut, body, authHeader(token))
 	require.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -363,7 +365,8 @@ func TestUsersAdmin_Block_RefreshTokensRevoked(t *testing.T) {
 	_ = db.QueryRow(`SELECT COUNT(*) FROM refresh_tokens WHERE user_id = $1`, id).Scan(&count)
 	assert.Equal(t, 1, count)
 
-	resp, err := doRequest(fmt.Sprintf("%s/users/%d/block", server.URL, id), http.MethodPut, nil, authHeader(token))
+	blockBody, _ := json.Marshal(map[string]interface{}{"status": "blocked"})
+	resp, err := doRequest(fmt.Sprintf("%s/users/%d/block", server.URL, id), http.MethodPut, blockBody, authHeader(token))
 	require.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -377,7 +380,8 @@ func TestUsersAdmin_Block_NotFound(t *testing.T) {
 	server := setupUsersAdminServer(t)
 	token := generateAdminToken(t)
 
-	resp, err := doRequest(server.URL+"/users/99999/block", http.MethodPut, nil, authHeader(token))
+	notFoundBody, _ := json.Marshal(map[string]interface{}{"status": "blocked"})
+	resp, err := doRequest(server.URL+"/users/99999/block", http.MethodPut, notFoundBody, authHeader(token))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)

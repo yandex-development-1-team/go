@@ -20,7 +20,8 @@ type StaffRepository interface {
 	GetDashboard(ctx context.Context, managerId int64) (*dto.DashboardResponse, error)
 	CreateStaffByAdmin(ctx context.Context, req *models.StaffAdminCreate) (*models.UserAPI, error)
 	UpdateStaff(ctx context.Context, id int64, req *models.StaffAdminUpdate) (*models.UserAPI, error)
-	BlockStaff(ctx context.Context, id int64) (*models.UserAPI, error)
+	UpdatePassword(ctx context.Context, staffId int64, passHash string) error
+	UpdateStaffStatus(ctx context.Context, id int64, status string) (*models.UserAPI, error)
 }
 
 type TelegramUserRepository interface {
@@ -81,7 +82,7 @@ type SettingsRepository interface {
 type RefreshTokenRepository interface {
 	Create(ctx context.Context, rt *models.RefreshToken) error
 	CreateRefreshToken(ctx context.Context, userID int64, token string, expiresAt time.Time) error
-	GetForUpdate(ctx context.Context, tx *sqlx.Tx, token string) (*models.RefreshToken, error)
+	GetForUpdate(ctx context.Context, token string) (*models.RefreshToken, error)
 	DeleteByToken(ctx context.Context, token string) error
 	DeleteByStaffID(ctx context.Context, id int64) error
 }
@@ -89,6 +90,7 @@ type RefreshTokenRepository interface {
 type PasswordResetRepository interface {
 	CreateToken(ctx context.Context, userID int64, token string, expiresAt time.Time) error
 	GetToken(ctx context.Context, token string) (*models.PasswordResetToken, error)
+	DeleteToken(ctx context.Context, id int64) error
 }
 
 type SpecialProjectRepository interface {

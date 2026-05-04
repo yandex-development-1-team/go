@@ -120,19 +120,13 @@ func (h *AuthHandler) HandleForgotPassword(c *gin.Context) {
 }
 
 func (h *AuthHandler) HandleResetPassword(c *gin.Context) {
-	token := c.Query("token")
-	if token == "" {
-		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Токен не указан"})
-		return
-	}
-
-	newPassword := c.Query("password")
-	if newPassword == "" || len(newPassword) < 8 {
+	var req dto.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Пароль должен содержать минимум 8 символов"})
 		return
 	}
 
-	err := h.svc.ResetPassword(c.Request.Context(), token, newPassword)
+	err := h.svc.ResetPassword(c.Request.Context(), req.Token, req.Password)
 	if err != nil {
 		apierrors.WriteErrorGin(c, err)
 		return

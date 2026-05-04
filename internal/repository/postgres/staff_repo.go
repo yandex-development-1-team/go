@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
+	"github.com/yandex-development-1-team/go/internal/ctxutil"
 	"github.com/yandex-development-1-team/go/internal/dto"
 	"github.com/yandex-development-1-team/go/internal/models"
 )
@@ -60,8 +61,8 @@ const listOfShortApplications = `
 			SELECT
 					a.contact_info       AS tg_account,
 					a.customer_name,
-					'Спецпроект'         AS service_type,
-					'Спецпроект'         AS service_name,
+					'spec_project'         AS service_type,
+					'spec_project'         AS service_name,
 					a.status::TEXT,
 					a.manager_id,
 					a.created_at
@@ -73,7 +74,7 @@ const listOfShortApplications = `
 			SELECT
 					'@' || u.username    AS tg_account,
 					b.guest_name         AS customer_name,
-					'Коробочное решение' AS service_type,
+					'box_solution' AS service_type,
 					s.name               AS service_name,
 					b.status::TEXT,
 					b.manager_id,
@@ -118,8 +119,8 @@ const updateStaffQuery = `
         phone_number, role, status, invite_token, department, position,
         supervisor, address, image, created_at, updated_at`
 
-const blockStaffQuery = `
-    UPDATE staff SET status = 'blocked'::user_status_type
+const updateStaffStatusQuery = `
+    UPDATE staff SET status = $2::user_status_type
     WHERE id = $1
     RETURNING id, telegram_nick, first_name, last_name, second_name, email,
         phone_number, role, status, invite_token, department, position,
@@ -137,7 +138,7 @@ func NewStaffRepo(db *sqlx.DB) *StaffRepo {
 
 func (u *StaffRepo) CreateStaff(ctx context.Context, userReq *models.UserAPI, hashPassword string) (*models.UserAPI, error) {
 	var user dto.UserRow
-	err := u.db.GetContext(ctx, &user, createUserQuery,
+	err := sqlx.GetContext(ctx, u.getDB(ctx), &user, createUserQuery,
 		userReq.Name,
 		userReq.LastName,
 		userReq.Email,
@@ -156,7 +157,7 @@ func (u *StaffRepo) CreateStaff(ctx context.Context, userReq *models.UserAPI, ha
 
 func (u *StaffRepo) GetUserByEmail(ctx context.Context, email string) (*models.UserWithAuth, error) {
 	var user dto.UserRow
-	err := u.db.GetContext(ctx, &user, getUserByEmailQuery, email)
+	err := sqlx.GetContext(ctx, u.getDB(ctx), &user, getUserByEmailQuery, email)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, models.ErrUserNotFound
 	}
@@ -201,7 +202,7 @@ func derefString(s *string) string {
 
 func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit, offset int) ([]dto.UserListItem, int, error) {
 	query := `
-		SELECT id, telegram_nick, first_name, last_name, role, status, department, supervisor, position, phone_number, email, created_at
+		SELECT id, telegram_nick, first_name, last_name, second_name, role, status, department, supervisor, position, phone_number, email, created_at
 		FROM staff
 		WHERE 1=1`
 	countQuery := `SELECT COUNT(*) FROM staff WHERE 1=1`
@@ -247,6 +248,7 @@ func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit
 		TelegramNick *string      `db:"telegram_nick"`
 		FirstName    string       `db:"first_name"`
 		LastName     string       `db:"last_name"`
+		SecondName   string       `db:"second_name"`
 		Role         string       `db:"role"`
 		Status       string       `db:"status"`
 		Department   *string      `db:"department"`
@@ -264,14 +266,12 @@ func (u *StaffRepo) List(ctx context.Context, role, status, search string, limit
 
 	items := make([]dto.UserListItem, 0, len(rows))
 	for _, row := range rows {
-		name := row.FirstName
-		if row.LastName != "" {
-			name += " " + row.LastName
-		}
 		items = append(items, dto.UserListItem{
 			ID:           row.ID,
 			TelegramNick: derefString(row.TelegramNick),
-			Name:         name,
+			FirstName:    row.FirstName,
+			LastName:     row.LastName,
+			SecondName:   row.SecondName,
 			Role:         row.Role,
 			Status:       row.Status,
 			Department:   derefString(row.Department),
@@ -398,15 +398,10 @@ func (u *StaffRepo) GetByID(ctx context.Context, id int64) (*dto.UserWithDetails
 		visitHistory = []dto.VisitHistoryItem{}
 	}
 
-	name := user.FirstName
-	if user.LastName != "" {
-		name += " " + user.LastName
-	}
-
 	return &dto.UserWithDetails{
 		ID:            user.ID,
 		TelegramNick:  derefString(user.TelegramNick),
-		Name:          name,
+		FirstName:     user.FirstName,
 		LastName:      user.LastName,
 		SecondName:    user.SecondName,
 		Email:         user.Email,
@@ -439,15 +434,20 @@ func (u *StaffRepo) CreateStaffByAdmin(ctx context.Context, req *models.StaffAdm
 		req.Status,
 		req.Department,
 		req.Position,
+		req.Image,
 		req.InviteToken,
 		req.Supervisor,
 		req.Address,
-		req.Image,
 	)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			return nil, models.ErrEmailAlreadyExist
+			switch pqErr.Constraint {
+			case "staff_email_key":
+				return nil, models.ErrEmailAlreadyExist
+			case "staff_phone_number_key":
+				return nil, models.ErrPhoneNumberAlreadyExist
+			}
 		}
 		return nil, err
 	}
@@ -481,9 +481,9 @@ func (u *StaffRepo) UpdateStaff(ctx context.Context, id int64, req *models.Staff
 	return toUser(&row), nil
 }
 
-func (u *StaffRepo) BlockStaff(ctx context.Context, id int64) (*models.UserAPI, error) {
+func (u *StaffRepo) UpdateStaffStatus(ctx context.Context, id int64, status string) (*models.UserAPI, error) {
 	var row dto.UserRow
-	err := u.db.GetContext(ctx, &row, blockStaffQuery, id)
+	err := u.db.GetContext(ctx, &row, updateStaffStatusQuery, id, status)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, models.ErrUserNotFound
 	}
@@ -517,4 +517,29 @@ func (u *StaffRepo) GetDashboard(ctx context.Context, managerId int64) (*dto.Das
 		ManagerStats: managerStats,
 		Applications: applicationShort,
 	}, nil
+}
+
+func (u *StaffRepo) UpdatePassword(ctx context.Context, staffId int64, passHash string) error {
+	query := `UPDATE staff SET password_hash = $1, updated_at = NOW() WHERE id = $2`
+	resp, err := u.getDB(ctx).ExecContext(ctx, query, passHash, staffId)
+	if err != nil {
+		return err
+	}
+
+	affected, err := resp.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return models.ErrUserNotFound
+	}
+
+	return nil
+}
+
+func (u *StaffRepo) getDB(ctx context.Context) sqlx.ExtContext {
+	if tx, ok := ctxutil.TxFromContext(ctx); ok {
+		return tx
+	}
+	return u.db
 }

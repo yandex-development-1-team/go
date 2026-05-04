@@ -26,19 +26,25 @@ type Redis interface {
 	Shutdown(ctx context.Context) *redis.StatusCmd
 }
 
+type PprofServer interface {
+	Shutdown(ctx context.Context) error
+}
+
 type ShutdownHandler struct {
 	bot     Bot
 	db      DB
 	metrics MetricsServer
 	redis   Redis
+	pprof   PprofServer
 }
 
-func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer, redis Redis) *ShutdownHandler {
+func NewShutdownHandler(bot Bot, db DB, metrics MetricsServer, redis Redis, pprof PprofServer) *ShutdownHandler {
 	return &ShutdownHandler{
 		bot:     bot,
 		db:      db,
 		metrics: metrics,
 		redis:   redis,
+		pprof:   pprof,
 	}
 }
 
@@ -86,6 +92,17 @@ func (s *ShutdownHandler) WaitForShutdown(ctx context.Context) error {
 				errChan <- err
 			} else {
 				logger.Info("metrics server gracefully shutdown")
+			}
+		})
+	}
+
+	if s.pprof != nil {
+		logger.Info("shutting down metrics server...")
+		wg.Go(func() {
+			if err := s.pprof.Shutdown(ctx); err != nil {
+				errChan <- err
+			} else {
+				logger.Info("pprof server gracefully shutdown")
 			}
 		})
 	}

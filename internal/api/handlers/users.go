@@ -54,20 +54,25 @@ func (h *UsersHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, toUserResponse(user))
 }
 
-func (h *UsersHandler) Block(c *gin.Context) {
+func (h *UsersHandler) UpdateStatus(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || id <= 0 {
 		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный id"})
 		return
 	}
-	user, err := h.svc.Block(c.Request.Context(), id)
+	var req dto.UpdateStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apierrors.WriteErrorMessagesGin(c, http.StatusBadRequest, []string{"Некорректный статус"})
+		return
+	}
+	user, err := h.svc.UpdateStatus(c.Request.Context(), id, req.Status)
 	if err != nil {
 		apierrors.WriteErrorGin(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.BlockResponse{
+	c.JSON(http.StatusOK, dto.UpdateStatusResponse{
 		ID:        user.ID,
-		Status:    "blocked",
+		Status:    user.Status,
 		UpdatedAt: user.UpdatedAt,
 	})
 }

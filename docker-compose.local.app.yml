@@ -5,6 +5,7 @@ services:
     ports:
       - "127.0.0.1:${SERVER_PORT}:${SERVER_PORT}"
       - "127.0.0.1:${PROMETHEUS_HOST_PORT}:${PROMETHEUS_PORT}"
+      - "127.0.0.1:6060:6060"
     healthcheck:
       test: [ "CMD", "curl", "-sf", "http://127.0.0.1:${PROMETHEUS_PORT}/health" ]
       interval: 15s
