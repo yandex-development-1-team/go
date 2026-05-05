@@ -76,6 +76,14 @@ jobs:
           dump-env \
             -t .env.example \
             -p 'CI_' > .env
+      - name: Cleanup before deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.SSH_DEPLOY_HOST }}
+          username: ${{ secrets.SSH_DEPLOY_USER }}
+          key: ${{ secrets.SSH_DEPLOY_KEY }}
+          script: rm -rf ~/backend
+
 
       - name: Copy deployment bundle to host
         uses: appleboy/scp-action@v1
@@ -85,7 +93,6 @@ jobs:
           key: ${{ secrets.SSH_DEPLOY_KEY }}
           source: "."
           target: "backend"
-          rm: true
 
       - name: Pull and restart production stack
         uses: appleboy/ssh-action@v1
