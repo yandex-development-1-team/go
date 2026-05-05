@@ -4,6 +4,10 @@ set -euo pipefail
 
 compose_files=(-f docker-compose.yml -f docker-compose.infra.prod.yml)
 
+# Create folders for Grafana with correct permissions
+mkdir -p ~/backend/grafana/provisioning/dashboards
+mkdir -p ~/backend/grafana/provisioning/datasources
+
 # Pull the already-built images published by the CD workflow for app service.
 docker compose -p prod "${compose_files[@]}" pull
 
