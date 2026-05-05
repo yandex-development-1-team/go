@@ -45,8 +45,6 @@ services:
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_BASE_URL: ${EMAIL_BASE_URL}
 
-    networks:
-      - monitoring
     depends_on:
       db:
         condition: service_healthy
